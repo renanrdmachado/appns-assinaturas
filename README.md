@@ -1,1 +1,0 @@
-# appns-assinaturas
