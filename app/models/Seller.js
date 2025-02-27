@@ -17,10 +17,33 @@ const Seller = sequelize.define('Seller', {
     allowNull: true,
     get() {
       const value = this.getDataValue('nuvemshop_info');
-      return value ? JSON.parse(value) : {};
+      if (!value || value === "") return {};
+      
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        console.error('Erro ao parser nuvemshop_info:', error.message);
+        return {};
+      }
     },
     set(value) {
-      this.setDataValue('nuvemshop_info', JSON.stringify(value || {}));
+      if (value === null || value === undefined || value === "") {
+        this.setDataValue('nuvemshop_info', "{}");
+        return;
+      }
+      
+      try {
+        const stringValue = typeof value === 'string' 
+          ? value 
+          : JSON.stringify(value);
+        
+        // Verificar se é um JSON válido
+        JSON.parse(stringValue);
+        this.setDataValue('nuvemshop_info', stringValue);
+      } catch (error) {
+        console.error('Erro ao converter nuvemshop_info para JSON:', error.message);
+        this.setDataValue('nuvemshop_info', "{}");
+      }
     }
   },
   nuvemshop_api_token: {

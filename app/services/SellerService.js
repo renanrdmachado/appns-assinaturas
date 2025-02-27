@@ -2,22 +2,45 @@ const Seller = require('../models/Seller');
 
 class SellerService {
     async get(id) {
-        console.log("Service / Seller: ", id);
-        
         try {
-            if (id) {
-                // Busca por um vendedor específico
-                const seller = await Seller.findOne({
-                    where: { nuvemshop_id: id }
-                });
-                return seller;
-            } else {
-                // Busca todos os vendedores
-                const sellers = await Seller.findAll();
-                return sellers;
+            if (!id) {
+                return null;
             }
+            
+            const seller = await Seller.findByPk(id);
+            console.log("Service / Seller: ", seller);
+            return seller;
         } catch (error) {
-            console.error('Erro ao buscar vendedor(es):', error.message);
+            console.error('Erro ao buscar vendedor:', error.message);
+            throw error;
+        }
+    }
+    
+    async getByNuvemshopId(nuvemshopId) {
+        try {
+            if (!nuvemshopId) {
+                return null;
+            }
+            
+            const seller = await Seller.findOne({
+                where: { nuvemshop_id: nuvemshopId }
+            });
+            
+            console.log("Service / Seller by nuvemshop_id: ", seller);
+            return seller;
+        } catch (error) {
+            console.error('Erro ao buscar vendedor por nuvemshop_id:', error.message);
+            throw error;
+        }
+    }
+    
+    async getAll() {
+        try {
+            const sellers = await Seller.findAll();
+            console.log("Service / All Sellers count: ", sellers.length);
+            return sellers;
+        } catch (error) {
+            console.error('Erro ao buscar vendedores:', error.message);
             throw error;
         }
     }
@@ -75,6 +98,46 @@ class SellerService {
             return seller;
         } catch (error) {
             console.error('Erro ao atualizar informações da loja:', error.message);
+            throw error;
+        }
+    }
+
+    async update(id, data) {
+        try {
+            const seller = await Seller.findByPk(id);
+            
+            if (!seller) {
+                throw new Error(`Vendedor com ID ${id} não encontrado`);
+            }
+            
+            // Transforma o objeto nuvemshop_info para string se não for string
+            if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
+                data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
+            }
+            
+            await seller.update(data);
+            
+            console.log('Seller updated:', seller.dataValues);
+            return seller;
+        } catch (error) {
+            console.error('Erro ao atualizar vendedor:', error.message);
+            throw error;
+        }
+    }
+    
+    async delete(id) {
+        try {
+            const seller = await Seller.findByPk(id);
+            
+            if (!seller) {
+                throw new Error(`Vendedor com ID ${id} não encontrado`);
+            }
+            
+            await seller.destroy();
+            console.log(`Vendedor com ID ${id} foi excluído com sucesso`);
+            return true;
+        } catch (error) {
+            console.error('Erro ao excluir vendedor:', error.message);
             throw error;
         }
     }
