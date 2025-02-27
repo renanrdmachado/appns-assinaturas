@@ -1,55 +1,15 @@
 require('dotenv').config();
-const axios = require('axios');
-const Seller = require('../models/Seller');
+const NsService = require('../services/NsService');
 
-const authorize = async (req,res) => {
-
+const authorize = async (req, res) => {
     try {
-        const response = await axios.post('https://www.nuvemshop.com.br/apps/authorize/token',{
-            'client_id': process.env.NS_CLIENT_ID,
-            'client_secret': process.env.NS_CLIENT_SECRET,
-            'grant_type': 'authorization_code',
-            'code': req.query.code
-        });
-        const data = response.data;
-        console.log(data);
-        if(data.access_token){
-            const createSeller = Seller.create(data);
-            getAndSaveStoreInfo(data);
-            console.log("createSeller",createSeller);
-        }
-
-
+        const data = await NsService.authorize(req.query.code);
         res.json(data);
     } catch (error) {
-        console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'Failed to fetch data' });
+        console.error('Error authorizing:', error.message);
+        res.status(500).json({ error: 'Failed to authorize' });
     }
-    
-}
-
-const getAndSaveStoreInfo = async ( store ) => {
-    const axios = require('axios');
-
-    const options = {
-        method: 'GET',
-        url: 'https://api.nuvemshop.com.br/v1/'+store.user_id+'/store',
-        headers: {
-            'Authentication': 'bearer '+store.access_token,
-            'User-Agent': process.env.NS_APP_NAME
-        }
-    };
-
-    axios(options)
-        .then(response => {
-            console.log(response.data);
-            Seller.saveStoreInfo(store.user_id,response.data);
-        })
-        .catch(error => {
-            console.error(error);
-        });
-
-}
+};
 
 exports.authorize = authorize;
 

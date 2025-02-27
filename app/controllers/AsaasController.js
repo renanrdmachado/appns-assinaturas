@@ -1,43 +1,22 @@
 require('dotenv').config();
-const axios = require('axios');
+const AsaasService = require('../services/AsaasService');
 
-const addCustomer = (req,res) => {
-
-    var customer = req.body;
-    
-    const options = {
-        method: 'GET',
-        url: process.env.AS_URL+'/customers?cpfCnpj='+customer.cpfCnpj,
-        headers: {
-            'Accept': 'application/json',
-            'access_token': process.env.AS_TOKEN
-        }
-    };
-    
-    axios(options)
-        .then(async response => {
-            var items = response.data;
-            if( items.totalCount===0 ) {
-                var createCustomer = axios.post(
-                    process.env.AS_URL+'/customers',
-                    customer,{
-                        headers: {
-                            'Accept': 'application/json',
-                            'access_token': process.env.AS_TOKEN
-                        }
-                    });
-                console.log("createCustomer",await createCustomer);
-            } else {
-                console.log('hasClient');
-            }
-        })
-        .catch(error => {
-            console.error(error);
+const addCustomer = async (req, res) => {
+    try {
+        const customer = req.body;
+        const result = await AsaasService.addCustomer(customer);
+        
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Erro ao adicionar cliente:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao adicionar cliente', 
+            error: error.message 
         });
-    // [CORRIGIR] ESTAMOS COM ERRO NO "RES"
-    res.send("teste");
-}
+    }
+};
 
 module.exports = {
     addCustomer
-}
+};

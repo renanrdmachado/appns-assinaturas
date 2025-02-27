@@ -1,37 +1,45 @@
-const {Product} = require('../database/database'); // import the database
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const get = async (req) => {
-    console.log(req);
-    if( !req.query.id )
-        return;
-    const product = await Product.findOne({
-        where: { nuvemshop_id: req.query.id },
-    });
-    console.log("Model / Product: ",product);
-    return product;
-}
+// Definição do modelo Product
+const Product = sequelize.define('Product', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  seller_id: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: false
+  },
+  stock: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  sku: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  categories: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  images: {
+    type: DataTypes.JSON,
+    allowNull: true
+  }
+});
 
-const create = ( data ) => {
-    console.log('Product - creating...');
-
-    Product.create({
-        seller_id: data.seller_id,
-        name: data.name,
-        price: data.price,
-        stock: data.stock,
-        sku: data.sku,
-        description: data.description,
-        categories: data.categories,
-        images: data.images
-    }).then(Product => {
-        console.log('Product created - before:', Product.toJSON());
-        var dataJson = Product.toJSON();
-        console.log('Product created:', dataJson);
-        return dataJson;
-    });
-}
-
-module.exports = {
-    get,
-    create
-}
+module.exports = Product;

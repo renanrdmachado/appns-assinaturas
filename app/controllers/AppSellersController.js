@@ -1,37 +1,65 @@
 require('dotenv').config();
-const axios = require('axios');
-const Seller = require('../models/Seller');
+const SellerService = require('../services/SellerService');
 
-const getSellers = async (req,res) => {
+const getSellers = async (req, res) => {
     console.log("Controller - AppSellersController/getSellers");
-    const getSeller = await Seller.get();
-        console.log("getSeller",getSeller);
-    
-        res.status(200).json(getSeller);
-}
-const getSellerById = async (req,res) => {
+    try {
+        const sellers = await SellerService.get();
+        res.status(200).json(sellers);
+    } catch (error) {
+        console.error('Erro ao buscar vendedores:', error.message);
+        res.status(500).json({ error: 'Falha ao buscar vendedores' });
+    }
+};
+
+const getSellerById = async (req, res) => {
     console.log("Controller - AppSellersController/getSellerById");
-    const getSeller = await Seller.get(req.params.id);
-        console.log("getSeller",getSeller);
-    
-        res.status(200).json(getSeller);
-}
+    try {
+        const seller = await SellerService.get(req.params.id);
+        if (!seller) {
+            return res.status(404).json({ message: 'Vendedor não encontrado' });
+        }
+        res.status(200).json(seller);
+    } catch (error) {
+        console.error('Erro ao buscar vendedor:', error.message);
+        res.status(500).json({ error: 'Falha ao buscar vendedor' });
+    }
+};
 
-const getSellerSubscriptions = async (req,res) => {
-    res.status(200).json({message:"getSellerSubscriptions: "+req.params.id});
-}
-const addSellerSubscription = async (req,res) => {
-    res.status(200).json({message:"addSellerSubscription"});
-}
+const getSellerSubscriptions = async (req, res) => {
+    res.status(200).json({message: "getSellerSubscriptions: " + req.params.id});
+};
 
-const addSeller = (req,res) => {
+const addSellerSubscription = async (req, res) => {
+    res.status(200).json({message: "addSellerSubscription"});
+};
+
+const addSeller = async (req, res) => {
     console.log("Controller - AppSellersController/addSeller");
-
-    const createSeller = Seller.create(req.body);
-    console.log("createSeller",createSeller);
-
-    res.status(200).json({ message: 'Controller - AppSellersController/addSeller' });
-}
+    try {
+        if (!req.body.nuvemshop_id) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'O campo nuvemshop_id é obrigatório' 
+            });
+        }
+        
+        const seller = await SellerService.create(req.body);
+        
+        res.status(201).json({ 
+            success: true, 
+            message: 'Vendedor criado com sucesso', 
+            data: seller 
+        });
+    } catch (error) {
+        console.error("Erro ao criar vendedor:", error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao criar vendedor', 
+            error: error.message
+        });
+    }
+};
 
 module.exports = {
     getSellers,

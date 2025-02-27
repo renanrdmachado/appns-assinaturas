@@ -1,32 +1,47 @@
 require('dotenv').config();
-const axios = require('axios');
-const User = require('../models/User');
+const UserService = require('../services/UserService');
 
-const getUsers = async (req,res) => {
+const getUsers = async (req, res) => {
     console.log("Controller - AppUsersController/getUsers");
-    const getUser = await User.get();
-    console.log("getUser",getUser);
+    try {
+        const users = await UserService.get();
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Erro ao buscar usuários:', error.message);
+        res.status(500).json({ error: 'Falha ao buscar usuários' });
+    }
+};
 
-    res.status(200).json(getUser);
-}
-const getUserById = async (req,res) => {
+const getUserById = async (req, res) => {
     console.log("Controller - AppUsersController/getUserById");
-    const getUser = await User.get(req.params.id);
-    console.log("getUserById",getUser);
+    try {
+        const user = await UserService.get(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'Usuário não encontrado' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error('Erro ao buscar usuário:', error.message);
+        res.status(500).json({ error: 'Falha ao buscar usuário' });
+    }
+};
 
-    res.status(200).json(getUser);
-}
-const addUser = (req,res) => {
+const addUser = async (req, res) => {
     console.log("Controller - AppUsersController/addUser");
-
-    const createUser = User.create(req.body);
-    console.log("createUser",createUser);
-
-    res.status(200).json({ message: 'Controller - AppUsersController/addUser' });
-}
+    try {
+        const user = await UserService.create(req.body);
+        res.status(201).json({ 
+            message: 'Usuário criado com sucesso', 
+            user: user 
+        });
+    } catch (error) {
+        console.error('Erro ao criar usuário:', error.message);
+        res.status(500).json({ error: 'Falha ao criar usuário' });
+    }
+};
 
 module.exports = {
     getUsers,
     getUserById,
     addUser
-}
+};

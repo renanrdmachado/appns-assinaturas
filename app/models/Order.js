@@ -1,22 +1,41 @@
-const {Order} = require('../database/database'); // import the database
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const create = ( data ) => {
-    console.log('Order - creating...');
+// Definição do modelo Order
+const Order = sequelize.define('Order', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  seller_id: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  products: {
+    type: DataTypes.JSON,
+    allowNull: false
+  },
+  customer_id: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  customer_info: {
+    type: DataTypes.JSON,
+    allowNull: false
+  },
+  nuvemshop: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  value: {
+    type: DataTypes.FLOAT,
+    allowNull: false
+  },
+  cycle: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+});
 
-    Order.create({
-        seller_id: data.seller_id,
-        products: data.products,
-        customer_id: data.customer_id,
-        customer_info: data.customer_info,
-        nuvemshop: data.nuvemshop,
-        value: data.value,
-        cycle: data.cycle,
-    }).then(Order => {
-        console.log('Order created - before:', Order.toJSON());
-        var dataJson = Order.toJSON();
-        console.log('Order created:', dataJson);
-        return dataJson;
-    });
-}
-
-exports.create = create;
+module.exports = Order;

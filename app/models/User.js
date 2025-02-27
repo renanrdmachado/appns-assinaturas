@@ -1,38 +1,30 @@
-const {User} = require('../database/database'); // import the database
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const get = async (id = null) => {
+// Definição do modelo User
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  seller_id: {
+    type: DataTypes.STRING,
+    allowNull: true
+  }
+});
 
-    if( id ) {
-        const user = await User.findOne({
-            where: { id: id },
-        });
-        console.log("Model / User: ",user);
-        return user;
-    } else {
-        const user = await User.findAll();
-        console.log("Model / User: ",user);
-        return user;
-    }
-    
-}
-
-const create = ( data ) => {
-    console.log('User - creating...');
-
-    User.upsert({
-        username: data.username,
-        email: data.email,
-        password: data.password,
-        seller_id: data.seller_id
-    }).then(user => {
-        console.log('User created - before:', user[0].dataValues);
-        var dataJson = user[0].dataValues;
-        console.log('User created:', dataJson);
-        return dataJson;
-    });
-}
-
-module.exports = {
-    create,
-    get
-}
+module.exports = User;
