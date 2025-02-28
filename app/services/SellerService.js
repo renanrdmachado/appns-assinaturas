@@ -144,3 +144,48 @@ class SellerService {
 }
 
 module.exports = new SellerService();
+
+/*
+// Para implementar
+const savePaymentsInfo = (store,payments) => {
+    console.log("savePaymentsInfo  - store", store);
+    console.log("savePaymentsInfo  - payments", payments);
+    Seller.upsert({
+        nuvemshop_id: store,
+        payments_customer_id: payments.customer,
+        payments_subscription_id: payments.id,
+        payments_next_due: payments.nextDueDate,
+        payments_status: "PENDING",
+        app_status: payments.status
+    }).then(seller => {
+        var dataJson = seller[0].dataValues;
+        console.log('Seller store info updated:', dataJson);
+        return dataJson;
+    });
+}
+
+const saveSubAccountInfo = (store,account) => {
+    console.log("saveSubAccountInfo  - store", store);
+    console.log("saveSubAccountInfo  - account", account);
+    Seller.upsert({
+        nuvemshop_id: store,
+        subaccount_id: account.id,
+        subaccount_wallet_id: account.walletId,
+        subaccount_api_key: account.apiKey,
+        Asaas_cpfCnpj: account.cpfCnpj,
+        Asaas_mobilePhone: account.mobilePhone,
+        Asaas_site: account.site,
+        Asaas_incomeValue: account.incomeValue,
+        Asaas_address: account.address,
+        Asaas_addressNumber: account.addressNumber,
+        Asaas_province: account.province,
+        Asaas_postalCode: account.postalCode,
+        Asaas_loginEmail: account.loginEmail,
+        Asaas_birthDate: account.birthDate
+    }).then(seller => {
+        var dataJson = seller[0].dataValues;
+        console.log('Seller store info updated:', dataJson);
+        return dataJson;
+    });
+}
+*/

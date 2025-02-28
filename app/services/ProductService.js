@@ -8,7 +8,7 @@ class ProductService {
             }
             
             const product = await Product.findOne({
-                where: { nuvemshop_id: id },
+                where: { id: id },
             });
             console.log("Service / Product: ", product);
             return product;
