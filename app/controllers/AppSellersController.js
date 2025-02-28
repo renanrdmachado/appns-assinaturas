@@ -27,11 +27,117 @@ const getSellerById = async (req, res) => {
 };
 
 const getSellerSubscriptions = async (req, res) => {
-    res.status(200).json({message: "getSellerSubscriptions: " + req.params.id});
+    console.log("Controller - AppSellersController/getSellerSubscriptions");
+    try {
+        const seller = await SellerService.get(req.params.id);
+        if (!seller) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Vendedor não encontrado' 
+            });
+        }
+        
+        // Retorna as informações de assinatura do vendedor
+        const subscriptionInfo = {
+            subscription_id: seller.payments_subscription_id,
+            customer_id: seller.payments_customer_id,
+            next_due: seller.payments_next_due,
+            status: seller.payments_status,
+            app_status: seller.app_status
+        };
+        
+        res.status(200).json({ 
+            success: true, 
+            data: subscriptionInfo 
+        });
+    } catch (error) {
+        console.error('Erro ao buscar assinaturas do vendedor:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Falha ao buscar assinaturas do vendedor',
+            error: error.message
+        });
+    }
 };
 
 const addSellerSubscription = async (req, res) => {
-    res.status(200).json({message: "addSellerSubscription"});
+    console.log("Controller - AppSellersController/addSellerSubscription");
+    try {
+        const sellerId = req.params.id;
+        const paymentInfo = req.body;
+        
+        if (!sellerId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ID do vendedor é obrigatório' 
+            });
+        }
+        
+        // Verificar se o vendedor existe
+        const existingSeller = await SellerService.get(sellerId);
+        if (!existingSeller) {
+            return res.status(404).json({ 
+                success: false, 
+                message: `Vendedor com ID ${sellerId} não encontrado` 
+            });
+        }
+        
+        // Salvar informações de pagamento
+        const updatedSeller = await SellerService.savePaymentsInfo(sellerId, paymentInfo);
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Informações de assinatura atualizadas com sucesso', 
+            data: updatedSeller 
+        });
+    } catch (error) {
+        console.error('Erro ao adicionar assinatura do vendedor:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Falha ao adicionar assinatura do vendedor',
+            error: error.message
+        });
+    }
+};
+
+const addSellerSubAccount = async (req, res) => {
+    console.log("Controller - AppSellersController/addSellerSubAccount");
+    try {
+        const sellerId = req.params.id;
+        const accountInfo = req.body;
+        
+        if (!sellerId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ID do vendedor é obrigatório' 
+            });
+        }
+        
+        // Verificar se o vendedor existe
+        const existingSeller = await SellerService.get(sellerId);
+        if (!existingSeller) {
+            return res.status(404).json({ 
+                success: false, 
+                message: `Vendedor com ID ${sellerId} não encontrado` 
+            });
+        }
+        
+        // Salvar informações da subconta
+        const updatedSeller = await SellerService.saveSubAccountInfo(sellerId, accountInfo);
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Informações da subconta atualizadas com sucesso', 
+            data: updatedSeller 
+        });
+    } catch (error) {
+        console.error('Erro ao adicionar subconta do vendedor:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Falha ao adicionar subconta do vendedor',
+            error: error.message
+        });
+    }
 };
 
 const addSeller = async (req, res) => {
@@ -145,5 +251,6 @@ module.exports = {
     addSellerSubscription,
     addSeller,
     updateSeller,
-    deleteSeller
+    deleteSeller,
+    addSellerSubAccount
 };
