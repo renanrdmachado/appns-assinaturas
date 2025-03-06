@@ -1,117 +1,123 @@
 require('dotenv').config();
-const axios = require('axios');
-const Seller = require('../models/Seller'); // Importação necessária para os novos métodos
+const AsaasApiClient = require('../helpers/AsaasApiClient');
+const AsaasValidator = require('../helpers/AsaasValidator');
+const SellerService = require('./SellerService');
 const { formatError } = require('../utils/errorHandler');
 
 class AsaasService {
     async addCustomer(customerData) {
         try {
+            AsaasValidator.validateCustomerData(customerData);
+
             // Verificar se o cliente já existe
-            const options = {
+            const params = new URLSearchParams();
+            params.append('cpfCnpj', customerData.cpfCnpj);
+            const items = await AsaasApiClient.request({
                 method: 'GET',
-                url: `${process.env.AS_URL}/customers?cpfCnpj=${customerData.cpfCnpj}`,
-                headers: {
-                    'Accept': 'application/json',
-                    'access_token': process.env.AS_TOKEN
-                }
-            };
-            
-            const response = await axios(options);
-            const items = response.data;
-            
-            // Se o cliente não existir, cria um novo
+                endpoint: 'customers',
+                params
+            });
+
             if (items.totalCount === 0) {
-                const createResponse = await axios.post(
-                    `${process.env.AS_URL}/customers`,
-                    customerData,
-                    {
-                        headers: {
-                            'Accept': 'application/json',
-                            'access_token': process.env.AS_TOKEN
-                        }
-                    }
-                );
-                
-                return { success: true, data: createResponse.data };
+                const created = await AsaasApiClient.request({
+                    method: 'POST',
+                    endpoint: 'customers',
+                    data: customerData
+                });
+                return { success: true, data: created };
             } else {
                 const error = new Error('Cliente já existe');
                 error.name = 'CustomerExistsError';
                 throw error;
             }
         } catch (error) {
-            console.error('Erro ao adicionar cliente Asaas:', error.message);
             return formatError(error);
         }
     }
 
     async addSubAccount(accountData, sellerId) {
         try {
-            const options = {
-                method: 'GET',
-                url: `${process.env.AS_URL}/accounts?cpfCnpj=${accountData.cpfCnpj}`,
-                headers: {
-                    'Accept': 'application/json',
-                    'access_token': process.env.AS_TOKEN
-                }
-            };
-            
-            const response = await axios(options);
-            const items = response.data;
-            
-            if (items.totalCount === 0) {
-                const createResponse = await axios.post(
-                    `${process.env.AS_URL}/accounts`,
-                    accountData,
-                    {
-                        headers: {
-                            'Accept': 'application/json',
-                            'access_token': process.env.AS_TOKEN
-                        }
-                    }
-                );
-                
-                console.log("createAccount then", createResponse.data);
-                const saveAccount = await Seller.saveSubAccountInfo(sellerId, createResponse.data);
-                console.log("saveAccount", saveAccount);
-                
-                return createResponse.data;
-            } else {
-                console.log('hasAccount', items);
-                const saveAccount = await Seller.saveSubAccountInfo(sellerId, items.data[0]);
-                console.log("saveAccount", saveAccount);
-                
-                return items.data[0];
+            AsaasValidator.validateSubAccountData(accountData);
+
+            const existingSeller = await SellerService.findByCpfCnpj(accountData.cpfCnpj);
+            if (existingSeller && existingSeller.subaccount_id) {
+                const error = new Error('Subconta já existe para este CPF/CNPJ');
+                error.statusCode = 400;
+                throw error;
             }
+
+            const params = new URLSearchParams();
+            params.append('cpfCnpj', accountData.cpfCnpj);
+            const items = await AsaasApiClient.request({
+                method: 'GET',
+                endpoint: 'accounts',
+                params
+            });
+
+            let subAccountData;
+            if (items.totalCount === 0) {
+                subAccountData = await AsaasApiClient.request({
+                    method: 'POST',
+                    endpoint: 'accounts',
+                    data: accountData
+                });
+            } else {
+                subAccountData = items.data[0];
+            }
+
+            const updatedSeller = await SellerService.update(sellerId, {
+                subaccount_id: subAccountData.id,
+                subaccount_wallet_id: subAccountData.walletId,
+                subaccount_api_key: subAccountData.apiKey
+            });
+            return subAccountData;
         } catch (error) {
-            console.error('Erro ao adicionar subconta Asaas:', error.message);
             return formatError(error);
         }
     }
-    
-    async getSubAccount(cpfCnpj = null) {
+
+    async getAllSubAccounts() {
         try {
-            const url = cpfCnpj ? `/accounts?cpfCnpj=${cpfCnpj}` : '/accounts';
-            
-            const options = {
+            const items = await AsaasApiClient.request({
                 method: 'GET',
-                url: `${process.env.AS_URL}${url}`,
-                headers: {
-                    'Accept': 'application/json',
-                    'access_token': process.env.AS_TOKEN
-                }
-            };
-            
-            const response = await axios(options);
-            const items = response.data;
-            
-            if (items.totalCount > 0) {
-                console.log('hasAccount', items);
-                return cpfCnpj ? items.data[0] : items.data;
-            }
-            
-            return null;
+                endpoint: 'accounts'
+            });
+            return items.totalCount > 0 ? items.data : [];
         } catch (error) {
-            console.error('Erro ao buscar subconta Asaas:', error.message);
+            return formatError(error);
+        }
+    }
+
+    async getSubAccountByCpfCnpj(cpfCnpj) {
+        try {
+            if (!cpfCnpj) {
+                throw new Error('CPF/CNPJ é obrigatório');
+            }
+            const params = new URLSearchParams();
+            params.append('cpfCnpj', cpfCnpj);
+            const items = await AsaasApiClient.request({
+                method: 'GET',
+                endpoint: 'accounts',
+                params
+            });
+            return items.totalCount > 0 ? items.data[0] : null;
+        } catch (error) {
+            return formatError(error);
+        }
+    }
+
+    async getCustomers(filters) {
+        try {
+            const params = new URLSearchParams();
+            for (const key of Object.keys(filters)) {
+                if (filters[key]) params.append(key, filters[key]);
+            }
+            return await AsaasApiClient.request({
+                method: 'GET',
+                endpoint: 'customers',
+                params
+            });
+        } catch (error) {
             return formatError(error);
         }
     }

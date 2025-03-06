@@ -189,6 +189,20 @@ class SellerService {
             return formatError(error);
         }
     }
+
+    /**
+     * Find a seller by CPF/CNPJ (stored in Asaas_cpfCnpj)
+     * @param {string} cpfCnpj
+     * @returns {Promise<Seller|null>}
+     */
+    async findByCpfCnpj(cpfCnpj) {
+        if (!cpfCnpj) {
+            return null;
+        }
+        return Seller.findOne({
+            where: { Asaas_cpfCnpj: cpfCnpj }
+        });
+    }
 }
 
 module.exports = new SellerService();
