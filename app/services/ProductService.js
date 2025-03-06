@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const { formatError } = require('../utils/errorHandler');
 
 class ProductService {
     async get(id) {
@@ -14,7 +15,7 @@ class ProductService {
             return product;
         } catch (error) {
             console.error('Erro ao buscar produto:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -29,7 +30,7 @@ class ProductService {
             return products;
         } catch (error) {
             console.error('Erro ao buscar produtos:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -48,10 +49,10 @@ class ProductService {
             });
             
             console.log('Product created:', product.toJSON());
-            return product.toJSON();
+            return { success: true, data: product.toJSON() };
         } catch (error) {
             console.error('Erro ao criar produto:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -75,10 +76,10 @@ class ProductService {
             });
             
             console.log('Product updated:', product.toJSON());
-            return product.toJSON();
+            return { success: true, data: product.toJSON() };
         } catch (error) {
             console.error('Erro ao atualizar produto:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -92,10 +93,10 @@ class ProductService {
             
             await product.destroy();
             console.log(`Produto com ID ${id} foi excluído com sucesso`);
-            return true;
+            return { success: true, message: `Produto com ID ${id} foi excluído com sucesso` };
         } catch (error) {
             console.error('Erro ao excluir produto:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 }

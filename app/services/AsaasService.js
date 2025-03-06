@@ -1,6 +1,7 @@
 require('dotenv').config();
 const axios = require('axios');
 const Seller = require('../models/Seller'); // Importação necessária para os novos métodos
+const { formatError } = require('../utils/errorHandler');
 
 class AsaasService {
     async addCustomer(customerData) {
@@ -31,18 +32,15 @@ class AsaasService {
                     }
                 );
                 
-                return createResponse.data;
+                return { success: true, data: createResponse.data };
             } else {
-                // Cliente já existe
-                return { 
-                    success: true, 
-                    message: 'Cliente já existe',
-                    customer: items.data[0] 
-                };
+                const error = new Error('Cliente já existe');
+                error.name = 'CustomerExistsError';
+                throw error;
             }
         } catch (error) {
             console.error('Erro ao adicionar cliente Asaas:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -86,7 +84,7 @@ class AsaasService {
             }
         } catch (error) {
             console.error('Erro ao adicionar subconta Asaas:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -114,7 +112,7 @@ class AsaasService {
             return null;
         } catch (error) {
             console.error('Erro ao buscar subconta Asaas:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 }

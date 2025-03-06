@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const { formatError } = require('../utils/errorHandler');
 
 class OrderService {
     async get(id) {
@@ -12,7 +13,7 @@ class OrderService {
             return order;
         } catch (error) {
             console.error('Erro ao buscar pedido:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -36,7 +37,7 @@ class OrderService {
             return orders;
         } catch (error) {
             console.error('Erro ao buscar pedidos:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -54,10 +55,10 @@ class OrderService {
             });
             
             console.log('Order created:', order.toJSON());
-            return order.toJSON();
+            return { success: true, data: order.toJSON() };
         } catch (error) {
             console.error('Erro ao criar pedido:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -80,10 +81,10 @@ class OrderService {
             });
             
             console.log('Order updated:', order.toJSON());
-            return order.toJSON();
+            return { success: true, data: order.toJSON() };
         } catch (error) {
             console.error('Erro ao atualizar pedido:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -97,10 +98,10 @@ class OrderService {
             
             await order.destroy();
             console.log(`Pedido com ID ${id} foi excluído com sucesso`);
-            return true;
+            return { success: true, message: `Pedido com ID ${id} foi excluído com sucesso` };
         } catch (error) {
             console.error('Erro ao excluir pedido:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 }

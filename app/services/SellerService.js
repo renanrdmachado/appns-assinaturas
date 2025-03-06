@@ -1,4 +1,5 @@
 const Seller = require('../models/Seller');
+const { formatError } = require('../utils/errorHandler');
 
 class SellerService {
     async get(id) {
@@ -12,7 +13,7 @@ class SellerService {
             return seller;
         } catch (error) {
             console.error('Erro ao buscar vendedor:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -30,7 +31,7 @@ class SellerService {
             return seller;
         } catch (error) {
             console.error('Erro ao buscar vendedor por nuvemshop_id:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -41,7 +42,7 @@ class SellerService {
             return sellers;
         } catch (error) {
             console.error('Erro ao buscar vendedores:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -49,42 +50,36 @@ class SellerService {
         console.log("Seller - creating...");
         
         try {
-            // Garantir que nuvemshop_id está presente
             if (!data.nuvemshop_id) {
                 throw new Error('nuvemshop_id é obrigatório');
             }
             
-            // Transforma o objeto nuvemshop_info para string se não for string
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
             
-            // Usar o método findOrCreate do sequelize
             const [seller, created] = await Seller.findOrCreate({
                 where: { nuvemshop_id: data.nuvemshop_id },
                 defaults: data
             });
             
             if (!created) {
-                // Se o vendedor já existia, atualiza os dados
                 await seller.update(data);
             }
             
             return seller;
         } catch (error) {
             console.error('Erro ao criar vendedor:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
     async updateStoreInfo(nuvemshopId, storeInfo) {
         try {
-            // Converte as informações da loja para string se não for string
             const nuvemshopInfo = typeof storeInfo === 'string' 
                 ? storeInfo 
                 : JSON.stringify(storeInfo);
             
-            // Atualiza o vendedor com as informações da loja
             const seller = await Seller.findOne({ 
                 where: { nuvemshop_id: nuvemshopId } 
             });
@@ -98,7 +93,7 @@ class SellerService {
             return seller;
         } catch (error) {
             console.error('Erro ao atualizar informações da loja:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -110,7 +105,6 @@ class SellerService {
                 throw new Error(`Vendedor com ID ${id} não encontrado`);
             }
             
-            // Transforma o objeto nuvemshop_info para string se não for string
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
@@ -121,7 +115,7 @@ class SellerService {
             return seller;
         } catch (error) {
             console.error('Erro ao atualizar vendedor:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -135,10 +129,10 @@ class SellerService {
             
             await seller.destroy();
             console.log(`Vendedor com ID ${id} foi excluído com sucesso`);
-            return true;
+            return { success: true, message: `Vendedor com ID ${id} foi excluído com sucesso` };
         } catch (error) {
             console.error('Erro ao excluir vendedor:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -161,7 +155,7 @@ class SellerService {
             return dataJson;
         } catch (error) {
             console.error('Erro ao salvar informações de pagamento:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -192,7 +186,7 @@ class SellerService {
             return dataJson;
         } catch (error) {
             console.error('Erro ao salvar informações da subconta:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 }

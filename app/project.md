@@ -1,4 +1,3 @@
-/*
 # SELLER
 ## Instala o APP
 > https://mvldev2.lojavirtualnuvem.com.br/admin/apps/15300/authorize
@@ -330,7 +329,3 @@ Tipo: API ASAAS
     }
   ]
 }
-
-
-
-*/

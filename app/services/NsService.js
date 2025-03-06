@@ -1,6 +1,7 @@
 require('dotenv').config();
 const axios = require('axios');
 const SellerService = require('./SellerService');
+const { formatError } = require('../utils/errorHandler');
 
 class NsService {
     async authorize(code) {
@@ -15,19 +16,15 @@ class NsService {
             const data = response.data;
             
             if (data.access_token) {
-                // Criando o vendedor com os dados da Nuvemshop
                 const seller = await SellerService.create(data);
-                
-                // Buscando e salvando informações adicionais da loja
                 await this.getAndSaveStoreInfo(data);
-                
-                return data;
+                return { success: true, data };
             }
             
-            return data;
+            return { success: false, message: 'Falha na autorização', data };
         } catch (error) {
             console.error('Erro na autorização Nuvemshop:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -43,14 +40,11 @@ class NsService {
             };
 
             const response = await axios(options);
-            
-            // Atualizar o vendedor com as informações da loja
             await SellerService.updateStoreInfo(store.user_id, response.data);
-            
-            return response.data;
+            return { success: true, data: response.data };
         } catch (error) {
             console.error('Erro ao obter informações da loja:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 }

@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { formatError } = require('../utils/errorHandler');
 
 class UserService {
     async get(id) {
@@ -34,7 +35,7 @@ class UserService {
     async create(data) {
         console.log('User - creating...');
         try {
-            const [user, created] = await User.upsert({
+            const user = await User.create({
                 username: data.username,
                 email: data.email,
                 password: data.password,
@@ -42,10 +43,14 @@ class UserService {
             });
             
             console.log('User created:', user.dataValues);
-            return user.dataValues;
+            return { success: true, data: user.dataValues };
         } catch (error) {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                console.error('Erro de validação: email já existe');
+                return formatError(new Error('Email já existe'));
+            }
             console.error('Erro ao criar usuário:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 
@@ -65,10 +70,10 @@ class UserService {
             });
             
             console.log('User updated:', user.dataValues);
-            return user.dataValues;
+            return { success: true, data: user.dataValues };
         } catch (error) {
             console.error('Erro ao atualizar usuário:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
     
@@ -82,10 +87,10 @@ class UserService {
             
             await user.destroy();
             console.log(`Usuário com ID ${id} foi excluído com sucesso`);
-            return true;
+            return { success: true, message: `Usuário com ID ${id} foi excluído com sucesso` };
         } catch (error) {
             console.error('Erro ao excluir usuário:', error.message);
-            throw error;
+            return formatError(error);
         }
     }
 }
