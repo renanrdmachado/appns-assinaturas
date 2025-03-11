@@ -20,9 +20,8 @@ const addCustomer = async (req, res) => {
 const addSubAccount = async (req, res) => {
     try {
         const account = req.body;
-        const sellerId = req.params.id;
         
-        const result = await AsaasService.addSubAccount(account, sellerId);
+        const result = await AsaasService.addSubAccount(account);
         res.status(200).json(result);
     } catch (error) {
         console.error('Erro ao adicionar subconta:', error.message);

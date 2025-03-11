@@ -37,9 +37,8 @@ const {
 router.post('/customer', addCustomer);
 
 /**
- * @route POST /asaas/subaccount/:id
- * @description Creates a sub-account for a seller in Asaas to enable split payments
- * @param {string} id - Seller ID from our database
+ * @route POST /asaas/subaccount
+ * @description Creates a sub-account in Asaas to enable split payments
  * @access Private
  * @request_body {
  *   "name": "Seller name",
@@ -56,7 +55,7 @@ router.post('/customer', addCustomer);
  *   "postalCode": "Postal code"
  * }
  * @response {
- *   Account object containing subaccount_id, subaccount_wallet_id, and subaccount_api_key
+ *   Account object from Asaas
  * }
  * @error {
  *   "success": false,
@@ -65,7 +64,7 @@ router.post('/customer', addCustomer);
  * }
  * @flow Part of the SELLER onboarding process - creates a sub-account that will receive split payments from customer subscriptions
  */
-router.post('/subaccount/:id', addSubAccount);
+router.post('/subaccount', addSubAccount);
 
 /**
  * @route GET /asaas/subaccount

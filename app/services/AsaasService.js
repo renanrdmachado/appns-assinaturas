@@ -35,7 +35,7 @@ class AsaasService {
         }
     }
 
-    async addSubAccount(accountData, sellerId) {
+    async addSubAccount(accountData) {
         try {
             AsaasValidator.validateSubAccountData(accountData);
 
@@ -65,11 +65,6 @@ class AsaasService {
                 subAccountData = items.data[0];
             }
 
-            const updatedSeller = await SellerService.update(sellerId, {
-                subaccount_id: subAccountData.id,
-                subaccount_wallet_id: subAccountData.walletId,
-                subaccount_api_key: subAccountData.apiKey
-            });
             return subAccountData;
         } catch (error) {
             return formatError(error);
