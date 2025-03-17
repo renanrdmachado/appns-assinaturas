@@ -4,7 +4,6 @@ app/npm-debug.log
 app/yarn-error.log
 #app/.env
 
-
 # Optional npm cache directory
 .npm
 
@@ -27,3 +26,6 @@ dist/
 /.vscode/
 /.idea/
 /.DS_Store
+
+# Optional ngrok configuration folder
+scripts/

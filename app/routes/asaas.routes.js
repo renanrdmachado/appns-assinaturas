@@ -5,7 +5,14 @@ const {
     addSubAccount,
     getAllSubAccounts,
     getSubAccountByCpfCnpj,
-    getCustomers
+    getCustomers,
+    registerWebhook,
+    getWebhooks,
+    getWebhookById,
+    updateWebhook,
+    deleteWebhook,
+    receiveWebhook,
+    testWebhook
     // Additional controller methods would be imported here
 } = require('../controllers/AsaasController');
 
@@ -131,12 +138,18 @@ router.get('/customers', getCustomers);
 // router.post('/subscription', createSubscription);
 
 /**
- * @route POST /asaas/webhook
+ * @route POST /asaas/webhook/register
  * @description Registers a webhook in Asaas to receive payment status updates
  * @access Private - Admin only
  * @request_body {
- *   "event": "Event type (PAYMENT_UPDATED, etc)",
- *   "url": "Webhook URL"
+ *   "name": "Webhook name",
+ *   "url": "Webhook URL",
+ *   "email": "Notification email (optional)",
+ *   "enabled": true,
+ *   "interrupted": false,
+ *   "authToken": "Authentication token (optional)",
+ *   "sendType": "SEQUENTIALLY",
+ *   "events": ["PAYMENT_CREATED", "PAYMENT_UPDATED", ...]
  * }
  * @response Webhook registration confirmation
  * @error {
@@ -145,7 +158,59 @@ router.get('/customers', getCustomers);
  * }
  * @flow System setup - configures Asaas to notify the application about payment events
  */
-// router.post('/webhook/register', registerWebhook);
+router.post('/webhook/register', registerWebhook);
+
+/**
+ * @route GET /asaas/webhook
+ * @description Lists all registered webhooks
+ * @access Private - Admin only
+ * @response Array of webhook objects
+ * @error {
+ *   "success": false,
+ *   "message": "Error message"
+ * }
+ */
+router.get('/webhook', getWebhooks);
+
+/**
+ * @route GET /asaas/webhook/:id
+ * @description Gets a specific webhook by ID
+ * @access Private - Admin only
+ * @param {string} id - Webhook ID
+ * @response Webhook object
+ * @error {
+ *   "success": false,
+ *   "message": "Error message"
+ * }
+ */
+router.get('/webhook/:id', getWebhookById);
+
+/**
+ * @route PUT /asaas/webhook/:id
+ * @description Updates a specific webhook
+ * @access Private - Admin only
+ * @param {string} id - Webhook ID
+ * @request_body Webhook data to update
+ * @response Updated webhook object
+ * @error {
+ *   "success": false,
+ *   "message": "Error message"
+ * }
+ */
+router.put('/webhook/:id', updateWebhook);
+
+/**
+ * @route DELETE /asaas/webhook/:id
+ * @description Deletes a specific webhook
+ * @access Private - Admin only
+ * @param {string} id - Webhook ID
+ * @response Success message
+ * @error {
+ *   "success": false,
+ *   "message": "Error message"
+ * }
+ */
+router.delete('/webhook/:id', deleteWebhook);
 
 /**
  * @route POST /asaas/webhook/receive
@@ -157,6 +222,6 @@ router.get('/customers', getCustomers);
  * }
  * @flow Payment processing - handles payment status updates from Asaas
  */
-// router.post('/webhook/receive', receiveWebhook);
+router.post('/webhook/receive', receiveWebhook);
 
 module.exports = router;
