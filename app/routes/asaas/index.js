@@ -11,6 +11,6 @@ const shopperRoutes = require('./shopper.routes');
 router.use('/customer', customerRoutes);
 router.use('/subaccount', subAccountRoutes);
 router.use('/webhook', webhookRoutes);
-router.use('/shoppers', shopperRoutes);
+router.use('/shopper', shopperRoutes);
 
 module.exports = router;

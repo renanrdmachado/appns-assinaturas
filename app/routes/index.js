@@ -9,7 +9,7 @@ const userRoutes = require('./user.routes');
 
 // Rotas de integrações
 const nsRoutes = require('./ns.routes');
-const asaasRoutes = require('./asaas.routes');
+const asaasRoutes = require('./asaas/index');
 
 // Configuração das rotas mantendo URLs originais
 router.use('/app/products', productRoutes);

@@ -3,7 +3,7 @@ const router = express.Router();
 const { createShopperSubscription } = require('../../controllers/asaas/shopper.controller');
 
 /**
- * @route POST /asaas/shoppers/subscription
+ * @route POST /asaas/shopper/subscription
  * @description Creates a new subscription for a shopper
  * @access Private
  * @request_body {
