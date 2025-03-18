@@ -1,5 +1,5 @@
 require('dotenv').config();
-const NsService = require('../services/NsService');
+const NsService = require('../services/ns.service');
 
 const authorize = async (req, res) => {
     try {

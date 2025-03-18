@@ -69,26 +69,26 @@ class SellerService {
             
             return seller;
         } catch (error) {
-            console.error('Erro ao criar vendedor:', error.message);
+            console.error('Erro ao criar vendedor - service:', error.message);
             return formatError(error);
         }
     }
 
-    async updateStoreInfo(nuvemshopId, storeInfo) {
+    async updateStoreInfo(nuvemshopId, api_token, storeInfo) {
         try {
             const nuvemshopInfo = typeof storeInfo === 'string' 
                 ? storeInfo 
                 : JSON.stringify(storeInfo);
             
-            const seller = await Seller.findOne({ 
-                where: { nuvemshop_id: nuvemshopId } 
+            let seller = await Seller.upsert({
+                nuvemshop_id: nuvemshopId,
+                nuvemshop_info: nuvemshopInfo,
+                nuvemshop_api_token: api_token
             });
             
             if (!seller) {
                 throw new Error(`Vendedor com ID ${nuvemshopId} não encontrado`);
             }
-            
-            await seller.update({ nuvemshop_info: nuvemshopInfo });
             
             return seller;
         } catch (error) {

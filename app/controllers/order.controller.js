@@ -1,8 +1,8 @@
 require('dotenv').config();
-const OrderService = require('../services/OrderService');
+const OrderService = require('../services/order.service');
 
 const getOrders = async (req, res) => {
-    console.log("Controller - AppOrdersController/getOrders");
+    console.log("Controller - orders.controller/getOrders");
     try {
         const sellerId = req.query.seller_id;
         const customerId = req.query.customer_id;
@@ -20,7 +20,7 @@ const getOrders = async (req, res) => {
 };
 
 const getOrderById = async (req, res) => {
-    console.log("Controller - AppOrdersController/getOrderById");
+    console.log("Controller - orders.controller/getOrderById");
     try {
         const order = await OrderService.get(req.params.id);
         if (!order) {
@@ -45,7 +45,7 @@ const getOrderById = async (req, res) => {
 };
 
 const addOrder = async (req, res) => {
-    console.log("Controller - AppOrdersController/addOrder");
+    console.log("Controller - orders.controller/addOrder");
     try {
         const createdOrder = await OrderService.create(req.body);
         res.status(201).json({ 
@@ -64,7 +64,7 @@ const addOrder = async (req, res) => {
 };
 
 const updateOrder = async (req, res) => {
-    console.log("Controller - AppOrdersController/updateOrder");
+    console.log("Controller - orders.controller/updateOrder");
     try {
         const orderId = req.params.id;
         
@@ -103,7 +103,7 @@ const updateOrder = async (req, res) => {
 };
 
 const deleteOrder = async (req, res) => {
-    console.log("Controller - AppOrdersController/deleteOrder");
+    console.log("Controller - orders.controller/deleteOrder");
     try {
         const orderId = req.params.id;
         

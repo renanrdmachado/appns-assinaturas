@@ -1,5 +1,5 @@
 require('dotenv').config();
-const SellerService = require('../services/SellerService');
+const SellerService = require('../services/seller.service');
 
 const getSellers = async (req, res) => {
     console.log("Controller - AppSellersController/getSellers");

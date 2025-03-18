@@ -1,5 +1,5 @@
 require('dotenv').config();
-const UserService = require('../services/UserService');
+const UserService = require('../services/user.service');
 
 const getUsers = async (req, res) => {
     console.log("Controller - AppUsersController/getUsers");

@@ -17,6 +17,6 @@ router.use('/app/orders', orderRoutes);
 router.use('/app/sellers', sellerRoutes);
 router.use('/app/users', userRoutes);
 router.use('/ns', nsRoutes);
-router.use('/app/asaas', asaasRoutes);
+router.use('/asaas', asaasRoutes);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const axios = require('axios');
-const SellerService = require('./SellerService');
+const SellerService = require('./seller.service');
 const { formatError } = require('../utils/errorHandler');
 
 class NsService {
@@ -16,7 +16,6 @@ class NsService {
             const data = response.data;
             
             if (data.access_token) {
-                const seller = await SellerService.create(data);
                 await this.getAndSaveStoreInfo(data);
                 return { success: true, data };
             }
@@ -40,7 +39,7 @@ class NsService {
             };
 
             const response = await axios(options);
-            await SellerService.updateStoreInfo(store.user_id, response.data);
+            await SellerService.updateStoreInfo(store.user_id, store.access_token, response.data);
             return { success: true, data: response.data };
         } catch (error) {
             console.error('Erro ao obter informações da loja:', error.message);

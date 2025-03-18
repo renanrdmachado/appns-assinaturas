@@ -9,7 +9,7 @@ const {
     updateSeller,
     deleteSeller,
     addSellerSubAccount
-} = require('../controllers/AppSellersController');
+} = require('../controllers/seller.controller');
 
 router.get('/', getSellers);
 router.get('/:id', getSellerById);

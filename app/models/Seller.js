@@ -10,6 +10,7 @@ const Seller = sequelize.define('Seller', {
   },
   nuvemshop_id: {
     type: DataTypes.STRING,
+    unique: true,
     allowNull: false
   },
   nuvemshop_info: {

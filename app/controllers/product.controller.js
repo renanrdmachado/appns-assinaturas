@@ -1,8 +1,8 @@
 require('dotenv').config();
-const ProductService = require('../services/ProductService');
+const ProductService = require('../services/product.service');
 
 const getProducts = async (req, res) => {
-    console.log("Controller - AppProductsController/getProducts");
+    console.log("Controller - products.controller/getProducts");
     try {
         const sellerId = req.query.sellerId || null;
         const products = await ProductService.getAll(sellerId);
@@ -14,7 +14,7 @@ const getProducts = async (req, res) => {
 }
 
 const getProductById = async (req, res) => {
-    console.log("Controller - AppProductsController/getProductById");
+    console.log("Controller - products.controller/getProductById");
     try {
         const productId = req.params.id;
         const product = await ProductService.get(productId);
@@ -30,7 +30,7 @@ const getProductById = async (req, res) => {
 
 const addProduct = async (req, res) => {
     try {
-        console.log("Controller - AppProductsController/addProducts");
+        console.log("Controller - products.controller/addProducts");
         const createdProduct = await ProductService.create(req.body);
         res.status(201).json({ message: 'Produto criado com sucesso', product: createdProduct });
     } catch (error) {
@@ -41,7 +41,7 @@ const addProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
     try {
-        console.log("Controller - AppProductsController/updateProduct");
+        console.log("Controller - products.controller/updateProduct");
         const productId = req.params.id;
         const updatedProduct = await ProductService.update(productId, req.body);
         res.status(200).json({ message: 'Produto atualizado com sucesso', product: updatedProduct });
@@ -53,7 +53,7 @@ const updateProduct = async (req, res) => {
 
 const deleteProduct = async (req, res) => {
     try {
-        console.log("Controller - AppProductsController/deleteProduct");
+        console.log("Controller - products.controller/deleteProduct");
         const productId = req.params.id;
         await ProductService.delete(productId);
         res.status(200).json({ message: 'Produto excluído com sucesso' });

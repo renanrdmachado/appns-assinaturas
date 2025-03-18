@@ -6,7 +6,7 @@ const {
     addOrder,
     updateOrder,
     deleteOrder
-} = require('../controllers/AppOrdersController');
+} = require('../controllers/order.controller');
 
 router.get('/', getOrders);
 router.get('/:id', getOrderById);
