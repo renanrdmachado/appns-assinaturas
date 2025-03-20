@@ -1,8 +1,8 @@
 require('dotenv').config();
 const UserService = require('../services/user.service');
 
-const getUsers = async (req, res) => {
-    console.log("Controller - AppUsersController/getUsers");
+const index = async (req, res) => {
+    console.log("Controller - AppUsersController/index");
     try {
         const sellerId = req.query.seller_id;
         const users = await UserService.getAll(sellerId);
@@ -13,8 +13,8 @@ const getUsers = async (req, res) => {
     }
 };
 
-const getUserById = async (req, res) => {
-    console.log("Controller - AppUsersController/getUserById");
+const show = async (req, res) => {
+    console.log("Controller - AppUsersController/show");
     try {
         const user = await UserService.get(req.params.id);
         if (!user) {
@@ -27,8 +27,8 @@ const getUserById = async (req, res) => {
     }
 };
 
-const addUser = async (req, res) => {
-    console.log("Controller - AppUsersController/addUser");
+const store = async (req, res) => {
+    console.log("Controller - AppUsersController/store");
     try {
         const user = await UserService.create(req.body);
         res.status(201).json({ 
@@ -46,8 +46,8 @@ const addUser = async (req, res) => {
     }
 };
 
-const updateUser = async (req, res) => {
-    console.log("Controller - AppUsersController/updateUser");
+const update = async (req, res) => {
+    console.log("Controller - AppUsersController/update");
     try {
         const userId = req.params.id;
         
@@ -85,8 +85,8 @@ const updateUser = async (req, res) => {
     }
 };
 
-const deleteUser = async (req, res) => {
-    console.log("Controller - AppUsersController/deleteUser");
+const destroy = async (req, res) => {
+    console.log("Controller - AppUsersController/destroy");
     try {
         const userId = req.params.id;
         
@@ -124,9 +124,9 @@ const deleteUser = async (req, res) => {
 };
 
 module.exports = {
-    getUsers,
-    getUserById,
-    addUser,
-    updateUser,
-    deleteUser
+    index,
+    show,
+    store,
+    update,
+    destroy
 };

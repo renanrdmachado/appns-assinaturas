@@ -1,23 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    getSellers, 
-    getSellerById, 
-    addSeller,
-    getSellerSubscriptions,
-    addSellerSubscription,
-    updateSeller,
-    deleteSeller,
-    addSellerSubAccount
-} = require('../controllers/seller.controller');
+const SellerController = require('../controllers/seller.controller');
 
-router.get('/', getSellers);
-router.get('/:id', getSellerById);
-router.post('/', addSeller);
-router.get('/:id/subscriptions', getSellerSubscriptions);
-router.post('/:id/subscriptions', addSellerSubscription);
-router.post('/:id/subaccount', addSellerSubAccount);
-router.put('/:id', updateSeller);
-router.delete('/:id', deleteSeller);
+router.get('/', SellerController.index);
+router.get('/:id', SellerController.show);
+router.post('/', SellerController.store);
+router.put('/:id', SellerController.update);
+router.delete('/:id', SellerController.destroy);
+
+// Rotas específicas para este controlador
+router.get('/:id/subscriptions', SellerController.getSubscriptions);
+router.post('/:id/subscriptions', SellerController.addSubscription);
+router.post('/:id/subaccount', SellerController.addSubAccount);
 
 module.exports = router;

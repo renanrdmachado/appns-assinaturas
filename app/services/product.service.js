@@ -5,14 +5,19 @@ class ProductService {
     async get(id) {
         try {
             if (!id) {
-                return null;
+                return { success: false, message: 'ID é obrigatório', status: 400 };
             }
             
             const product = await Product.findOne({
                 where: { id: id },
             });
             console.log("Service / Product: ", product);
-            return product;
+            
+            if (!product) {
+                return { success: false, message: `Produto com ID ${id} não encontrado`, status: 404 };
+            }
+            
+            return { success: true, data: product };
         } catch (error) {
             console.error('Erro ao buscar produto:', error.message);
             return formatError(error);
@@ -27,7 +32,7 @@ class ProductService {
             });
             
             console.log("Service / All Products count: ", products.length);
-            return products;
+            return { success: true, data: products };
         } catch (error) {
             console.error('Erro ao buscar produtos:', error.message);
             return formatError(error);
@@ -61,7 +66,7 @@ class ProductService {
             const product = await Product.findByPk(id);
             
             if (!product) {
-                throw new Error(`Produto com ID ${id} não encontrado`);
+                return { success: false, message: `Produto com ID ${id} não encontrado`, status: 404 };
             }
             
             await product.update({
@@ -88,7 +93,7 @@ class ProductService {
             const product = await Product.findByPk(id);
             
             if (!product) {
-                throw new Error(`Produto com ID ${id} não encontrado`);
+                return { success: false, message: `Produto com ID ${id} não encontrado`, status: 404 };
             }
             
             await product.destroy();

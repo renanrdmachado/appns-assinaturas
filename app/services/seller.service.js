@@ -5,12 +5,17 @@ class SellerService {
     async get(id) {
         try {
             if (!id) {
-                return null;
+                return { success: false, message: 'ID é obrigatório', status: 400 };
             }
             
             const seller = await Seller.findByPk(id);
             console.log("Service / Seller: ", seller);
-            return seller;
+            
+            if (!seller) {
+                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+            }
+            
+            return { success: true, data: seller };
         } catch (error) {
             console.error('Erro ao buscar vendedor:', error.message);
             return formatError(error);
@@ -20,7 +25,7 @@ class SellerService {
     async getByNuvemshopId(nuvemshopId) {
         try {
             if (!nuvemshopId) {
-                return null;
+                return { success: false, message: 'ID da Nuvemshop é obrigatório', status: 400 };
             }
             
             const seller = await Seller.findOne({
@@ -28,7 +33,12 @@ class SellerService {
             });
             
             console.log("Service / Seller by nuvemshop_id: ", seller);
-            return seller;
+            
+            if (!seller) {
+                return { success: false, message: `Vendedor com Nuvemshop ID ${nuvemshopId} não encontrado`, status: 404 };
+            }
+            
+            return { success: true, data: seller };
         } catch (error) {
             console.error('Erro ao buscar vendedor por nuvemshop_id:', error.message);
             return formatError(error);
@@ -39,7 +49,7 @@ class SellerService {
         try {
             const sellers = await Seller.findAll();
             console.log("Service / All Sellers count: ", sellers.length);
-            return sellers;
+            return { success: true, data: sellers };
         } catch (error) {
             console.error('Erro ao buscar vendedores:', error.message);
             return formatError(error);
@@ -51,7 +61,7 @@ class SellerService {
         
         try {
             if (!data.nuvemshop_id) {
-                throw new Error('nuvemshop_id é obrigatório');
+                return { success: false, message: 'nuvemshop_id é obrigatório', status: 400 };
             }
             
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
@@ -67,7 +77,7 @@ class SellerService {
                 await seller.update(data);
             }
             
-            return seller;
+            return { success: true, data: seller };
         } catch (error) {
             console.error('Erro ao criar vendedor - service:', error.message);
             return formatError(error);
@@ -76,21 +86,21 @@ class SellerService {
 
     async updateStoreInfo(nuvemshopId, api_token, storeInfo) {
         try {
+            if (!nuvemshopId) {
+                return { success: false, message: 'ID da Nuvemshop é obrigatório', status: 400 };
+            }
+            
             const nuvemshopInfo = typeof storeInfo === 'string' 
                 ? storeInfo 
                 : JSON.stringify(storeInfo);
             
-            let seller = await Seller.upsert({
+            const [seller, created] = await Seller.upsert({
                 nuvemshop_id: nuvemshopId,
                 nuvemshop_info: nuvemshopInfo,
                 nuvemshop_api_token: api_token
             });
             
-            if (!seller) {
-                throw new Error(`Vendedor com ID ${nuvemshopId} não encontrado`);
-            }
-            
-            return seller;
+            return { success: true, data: seller };
         } catch (error) {
             console.error('Erro ao atualizar informações da loja:', error.message);
             return formatError(error);
@@ -102,7 +112,7 @@ class SellerService {
             const seller = await Seller.findByPk(id);
             
             if (!seller) {
-                throw new Error(`Vendedor com ID ${id} não encontrado`);
+                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
             }
             
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
@@ -112,7 +122,7 @@ class SellerService {
             await seller.update(data);
             
             console.log('Seller updated:', seller.dataValues);
-            return seller;
+            return { success: true, data: seller };
         } catch (error) {
             console.error('Erro ao atualizar vendedor:', error.message);
             return formatError(error);
@@ -124,7 +134,7 @@ class SellerService {
             const seller = await Seller.findByPk(id);
             
             if (!seller) {
-                throw new Error(`Vendedor com ID ${id} não encontrado`);
+                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
             }
             
             await seller.destroy();
@@ -141,6 +151,10 @@ class SellerService {
             console.log("savePaymentsInfo - store", storeId);
             console.log("savePaymentsInfo - payments", payments);
             
+            if (!storeId) {
+                return { success: false, message: 'ID da loja é obrigatório', status: 400 };
+            }
+            
             const [seller, created] = await Seller.upsert({
                 nuvemshop_id: storeId,
                 payments_customer_id: payments.customer,
@@ -152,7 +166,7 @@ class SellerService {
             
             const dataJson = seller.dataValues;
             console.log('Seller store info updated:', dataJson);
-            return dataJson;
+            return { success: true, data: dataJson };
         } catch (error) {
             console.error('Erro ao salvar informações de pagamento:', error.message);
             return formatError(error);
@@ -163,6 +177,10 @@ class SellerService {
         try {
             console.log("saveSubAccountInfo - store", storeId);
             console.log("saveSubAccountInfo - account", account);
+            
+            if (!storeId) {
+                return { success: false, message: 'ID da loja é obrigatório', status: 400 };
+            }
             
             const [seller, created] = await Seller.upsert({
                 nuvemshop_id: storeId,
@@ -183,25 +201,92 @@ class SellerService {
             
             const dataJson = seller.dataValues;
             console.log('Seller store info updated:', dataJson);
-            return dataJson;
+            return { success: true, data: dataJson };
         } catch (error) {
             console.error('Erro ao salvar informações da subconta:', error.message);
             return formatError(error);
         }
     }
 
-    /**
-     * Find a seller by CPF/CNPJ (stored in Asaas_cpfCnpj)
-     * @param {string} cpfCnpj
-     * @returns {Promise<Seller|null>}
-     */
     async findByCpfCnpj(cpfCnpj) {
-        if (!cpfCnpj) {
-            return null;
+        try {
+            if (!cpfCnpj) {
+                return { success: false, message: 'CPF/CNPJ é obrigatório', status: 400 };
+            }
+            
+            const seller = await Seller.findOne({
+                where: { Asaas_cpfCnpj: cpfCnpj }
+            });
+            
+            return { success: true, data: seller };
+        } catch (error) {
+            console.error('Erro ao buscar vendedor por CPF/CNPJ:', error.message);
+            return formatError(error);
         }
-        return Seller.findOne({
-            where: { Asaas_cpfCnpj: cpfCnpj }
-        });
+    }
+
+    async getSubscriptions(id) {
+        try {
+            if (!id) {
+                return { success: false, message: 'ID é obrigatório', status: 400 };
+            }
+            
+            const seller = await Seller.findByPk(id);
+            
+            if (!seller) {
+                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+            }
+            
+            // Verifica se há informações de assinatura
+            const subscriptionData = {
+                subscriptionId: seller.payments_subscription_id,
+                customerId: seller.payments_customer_id,
+                nextDueDate: seller.payments_next_due,
+                status: seller.payments_status,
+                appStatus: seller.app_status
+            };
+            
+            return { success: true, data: subscriptionData };
+        } catch (error) {
+            console.error('Erro ao buscar assinaturas do vendedor:', error.message);
+            return formatError(error);
+        }
+    }
+
+    async addSubscription(id, subscriptionData) {
+        try {
+            if (!id) {
+                return { success: false, message: 'ID é obrigatório', status: 400 };
+            }
+            
+            const seller = await Seller.findByPk(id);
+            
+            if (!seller) {
+                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+            }
+            
+            // Atualiza as informações de assinatura
+            await seller.update({
+                payments_customer_id: subscriptionData.customerId,
+                payments_subscription_id: subscriptionData.subscriptionId,
+                payments_next_due: subscriptionData.nextDueDate,
+                payments_status: subscriptionData.status || "PENDING",
+                app_status: subscriptionData.appStatus
+            });
+            
+            const updatedData = {
+                subscriptionId: seller.payments_subscription_id,
+                customerId: seller.payments_customer_id,
+                nextDueDate: seller.payments_next_due,
+                status: seller.payments_status,
+                appStatus: seller.app_status
+            };
+            
+            return { success: true, data: updatedData };
+        } catch (error) {
+            console.error('Erro ao adicionar assinatura ao vendedor:', error.message);
+            return formatError(error);
+        }
     }
 }
 

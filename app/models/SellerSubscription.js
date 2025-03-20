@@ -1,21 +1,18 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Definição do modelo Order para assinaturas de produtos
-const Order = sequelize.define('Order', {
+// Definição do modelo SellerSubscription para assinaturas dos vendedores ao SaaS
+const SellerSubscription = sequelize.define('SellerSubscription', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  // Dados do vendedor e comprador
+  // Relação com o vendedor
   seller_id: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  shopper_id: {
-    type: DataTypes.STRING,
-    allowNull: false
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    comment: 'ID do vendedor que assina o SaaS'
   },
   
   // Identificação externa na plataforma de pagamento
@@ -25,25 +22,16 @@ const Order = sequelize.define('Order', {
     comment: 'ID da assinatura na plataforma de pagamento'
   },
   
-  // Detalhes da compra - lista de produtos comprados
-  products: {
-    type: DataTypes.JSON,
-    allowNull: false,
-    comment: 'Array de IDs ou objetos de produtos'
-  },
-  customer_info: {
-    type: DataTypes.JSON,
-    allowNull: false
-  },
-  nuvemshop: {
-    type: DataTypes.JSON,
-    allowNull: true
-  },
-  
   // Dados da assinatura
+  plan_name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: 'Nome do plano assinado'
+  },
   value: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false
+    allowNull: false,
+    comment: 'Valor da assinatura'
   },
   status: {
     type: DataTypes.ENUM('active', 'inactive', 'overdue', 'canceled', 'pending'),
@@ -80,6 +68,11 @@ const Order = sequelize.define('Order', {
   },
   
   // Metadados e informações adicionais
+  features: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Recursos disponíveis neste plano'
+  },
   metadata: {
     type: DataTypes.JSON,
     allowNull: true,
@@ -87,4 +80,4 @@ const Order = sequelize.define('Order', {
   }
 });
 
-module.exports = Order;
+module.exports = SellerSubscription;

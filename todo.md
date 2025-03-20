@@ -31,25 +31,32 @@
 - ✅ PUT `/app/users/:id` - Atualizar usuário
 - ✅ DELETE `/app/users/:id` - Excluir usuário
 
+## Rotas de Pagamentos
+- ✅ GET `/app/payments` - Obter todos os pagamentos
+- ✅ GET `/app/payments/:id` - Obter pagamento por ID
+- ✅ GET `/app/payments/asaas/:asaasId` - Obter pagamento por ID do Asaas
+- ✅ POST `/app/payments/sync` - Sincronizar pagamento do Asaas
+- ✅ PUT `/app/payments/:id` - Atualizar pagamento
+
 ## Rotas da Nuvemshop
 - ✅ GET `/ns/install` - Autorizar instalação do aplicativo na Nuvemshop
 
 ## Rotas do Asaas
-- ✅ POST `/app/asaas/customer` - Criar novo cliente no Asaas
-- ✅ PUT `/app/asaas/customer/:id` - Atualizar cliente no Asaas
-- ❗ POST `/app/asaas/subaccount` - Criar subconta no Asaas
+- ✅ POST `/asaas/customer` - Criar novo cliente no Asaas
+- ✅ PUT `/asaas/customer/:id` - Atualizar cliente no Asaas
+- ❗ POST `/asaas/subaccount` - Criar subconta no Asaas
   > **Observação**: Esta rota possui uma limitação da API do Asaas - ela aceita apenas CNPJ e não CPF para criar subcontas. Além disso, se você enviar uma solicitação com um CPF/CNPJ que já existe, a API silenciosamente retorna a conta existente sem qualquer aviso de que não está criando uma nova conta.
-- ✅ GET `/app/asaas/subaccount` - Obter todas as subcontas
-- ✅ GET `/app/asaas/subaccount/bycpfcnpj/:cpfCnpj` - Obter subconta por CPF/CNPJ
-- ✅ GET `/app/asaas/customers` - Obter clientes com filtros opcionais
-- ✅ POST `/app/asaas/shoppers/subscription` - Criar uma assinatura para os shoppers
+- ✅ GET `/asaas/subaccount` - Obter todas as subcontas
+- ✅ GET `/asaas/subaccount/bycpfcnpj/:cpfCnpj` - Obter subconta por CPF/CNPJ
+- ✅ GET `/asaas/customers` - Obter clientes com filtros opcionais
+- ✅ POST `/asaas/shoppers/subscription` - Criar uma assinatura para os shoppers
 
 ## Rotas do Webhook
-- ✅ POST `/app/asaas/webhook/register` - Registrar webhook
-- ✅ POST `/app/asaas/webhook/receive` - Receptor de webhook
-- ✅ GET `/app/asaas/webhook` - Listar webhooks
-- ✅ PUT `/app/asaas/webhook/:id` - Atualizar webhook
-- ✅ DELETE `/app/asaas/webhook/:id` - Deletar webhook
+- ✅ POST `/asaas/webhook/register` - Registrar webhook
+- ✅ POST `/asaas/webhook/receive` - Receptor de webhook
+- ✅ GET `/asaas/webhook` - Listar webhooks
+- ✅ PUT `/asaas/webhook/:id` - Atualizar webhook
+- ✅ DELETE `/asaas/webhook/:id` - Deletar webhook
 
 
 # Ajustes da API
@@ -63,12 +70,12 @@
 
 ## Asaas/Customers
 - ✅ "customers" na api do asaas separados por grupo "shoppers" e "sellers"
-- ✅ PUT `/app/asaas/customers/:id` -  Atualizar cliente no Asaas
-- ✅ POST `/app/asaas/shoppers/subscription` - Criar uma assinatura para os shoppers
+- ✅ PUT `/asaas/customers/:id` -  Atualizar cliente no Asaas
+- ✅ POST `/asaas/shoppers/subscription` - Criar uma assinatura para os shoppers
 
 ## Payments CRUD
-- ⏳ payments_sellers
-- ⏳ payments_shoppers
+- ✅ payments_sellers
+- ✅ payments_shoppers
 
 ## Nuvemshop
 - ⏳ vincular webhook do asaas para criar uma order no ns toda vez que se criar um novo pagamento

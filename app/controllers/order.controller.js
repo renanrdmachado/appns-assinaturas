@@ -1,96 +1,88 @@
 require('dotenv').config();
 const OrderService = require('../services/order.service');
 
-const getOrders = async (req, res) => {
-    console.log("Controller - orders.controller/getOrders");
+// Listar todos os pedidos
+const index = async (req, res) => {
+    console.log("Controller - OrderController/index");
     try {
-        const sellerId = req.query.seller_id;
-        const customerId = req.query.customer_id;
+        const { sellerId, customerId } = req.query;
+        const result = await OrderService.getAll(sellerId, customerId);
         
-        const orders = await OrderService.getAll(sellerId, customerId);
-        res.status(200).json(orders);
+        if (!result.success) {
+            return res.status(result.status || 500).json(result);
+        }
+        
+        res.status(200).json(result);
     } catch (error) {
         console.error('Erro ao buscar pedidos:', error.message);
         res.status(500).json({ 
-            success: false,
+            success: false, 
             message: 'Falha ao buscar pedidos',
-            error: error.message
+            error: error.message 
         });
     }
 };
 
-const getOrderById = async (req, res) => {
-    console.log("Controller - orders.controller/getOrderById");
+// Obter um pedido específico
+const show = async (req, res) => {
+    console.log("Controller - OrderController/show");
     try {
-        const order = await OrderService.get(req.params.id);
-        if (!order) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Pedido não encontrado' 
-            });
+        const result = await OrderService.get(req.params.id);
+        
+        if (!result.success) {
+            return res.status(result.status || 404).json(result);
         }
         
-        res.status(200).json({
-            success: true,
-            data: order
-        });
+        res.status(200).json(result);
     } catch (error) {
         console.error('Erro ao buscar pedido:', error.message);
         res.status(500).json({ 
-            success: false,
+            success: false, 
             message: 'Falha ao buscar pedido',
             error: error.message
         });
     }
 };
 
-const addOrder = async (req, res) => {
-    console.log("Controller - orders.controller/addOrder");
+// Criar um novo pedido
+const store = async (req, res) => {
+    console.log("Controller - OrderController/store");
     try {
-        const createdOrder = await OrderService.create(req.body);
+        const result = await OrderService.create(req.body);
+        
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
         res.status(201).json({ 
             success: true,
             message: 'Pedido criado com sucesso', 
-            data: createdOrder 
+            data: result.data 
         });
     } catch (error) {
-        console.error("Erro ao criar pedido:", error.message);
-        res.status(500).json({ 
-            success: false,
-            message: 'Erro ao criar pedido',
+        console.error('Erro ao criar pedido:', error.message);
+        res.status(500).json({
+            success: false, 
+            message: 'Falha ao criar pedido',
             error: error.message
         });
     }
 };
 
-const updateOrder = async (req, res) => {
-    console.log("Controller - orders.controller/updateOrder");
+// Atualizar um pedido existente
+const update = async (req, res) => {
+    console.log("Controller - OrderController/update");
     try {
-        const orderId = req.params.id;
+        const result = await OrderService.update(req.params.id, req.body);
         
-        if (!orderId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'ID do pedido é obrigatório' 
-            });
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
         }
-        
-        // Verificar se o pedido existe
-        const existingOrder = await OrderService.get(orderId);
-        if (!existingOrder) {
-            return res.status(404).json({ 
-                success: false, 
-                message: `Pedido com ID ${orderId} não encontrado` 
-            });
-        }
-        
-        // Atualizar o pedido
-        const updatedOrder = await OrderService.update(orderId, req.body);
         
         res.status(200).json({ 
             success: true, 
             message: 'Pedido atualizado com sucesso', 
-            data: updatedOrder 
+            data: result.data 
         });
     } catch (error) {
         console.error("Erro ao atualizar pedido:", error.message);
@@ -102,34 +94,17 @@ const updateOrder = async (req, res) => {
     }
 };
 
-const deleteOrder = async (req, res) => {
-    console.log("Controller - orders.controller/deleteOrder");
+// Excluir um pedido
+const destroy = async (req, res) => {
+    console.log("Controller - OrderController/destroy");
     try {
-        const orderId = req.params.id;
+        const result = await OrderService.delete(req.params.id);
         
-        if (!orderId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'ID do pedido é obrigatório' 
-            });
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
         }
         
-        // Verificar se o pedido existe
-        const existingOrder = await OrderService.get(orderId);
-        if (!existingOrder) {
-            return res.status(404).json({ 
-                success: false, 
-                message: `Pedido com ID ${orderId} não encontrado` 
-            });
-        }
-        
-        // Excluir o pedido
-        await OrderService.delete(orderId);
-        
-        res.status(200).json({ 
-            success: true, 
-            message: `Pedido com ID ${orderId} foi excluído com sucesso`
-        });
+        res.status(200).json(result);
     } catch (error) {
         console.error("Erro ao excluir pedido:", error.message);
         res.status(500).json({ 
@@ -141,9 +116,9 @@ const deleteOrder = async (req, res) => {
 };
 
 module.exports = {
-    getOrders,
-    getOrderById,
-    addOrder,
-    updateOrder,
-    deleteOrder
+    index,
+    show,
+    store,
+    update,
+    destroy
 };

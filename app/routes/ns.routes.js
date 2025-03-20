@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { authorize } = require('../controllers/ns.controller');
+const NsController = require('../controllers/ns.controller');
 
-router.get('/install', authorize);
+router.get('/install', NsController.authorize);
 
 module.exports = router;

@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Definição do modelo Seller
-const Seller = sequelize.define('Seller', {
+// Definição do modelo Shopper
+const Shopper = sequelize.define('Shopper', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -47,70 +47,50 @@ const Seller = sequelize.define('Seller', {
       }
     }
   },
-  nuvemshop_api_token: {
+  payments_customer_id: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  app_status: {
+  payments_status: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  subaccount_id: {
+  name: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  subaccount_wallet_id: {
+  email: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  subaccount_api_key: {
+  cpfCnpj: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  app_start_date: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  Asaas_cpfCnpj: {
+  mobilePhone: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  Asaas_mobilePhone: {
+  address: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  Asaas_site: {
+  addressNumber: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  Asaas_incomeValue: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true
-  },
-  Asaas_address: {
+  province: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  Asaas_addressNumber: {
+  postalCode: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  Asaas_province: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_postalCode: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_loginEmail: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_birthDate: {
+  birthDate: {
     type: DataTypes.DATE,
     allowNull: true
   }
 });
 
-module.exports = Seller;
+module.exports = Shopper;

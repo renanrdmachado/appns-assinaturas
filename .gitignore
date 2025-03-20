@@ -26,6 +26,7 @@ dist/
 /.vscode/
 /.idea/
 /.DS_Store
+db-diagram.dbml
 
 # Optional ngrok configuration folder
 scripts/

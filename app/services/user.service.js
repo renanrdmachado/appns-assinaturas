@@ -2,21 +2,6 @@ const User = require('../models/User');
 const { formatError } = require('../utils/errorHandler');
 
 class UserService {
-    async get(id) {
-        try {
-            if (!id) {
-                return null;
-            }
-            
-            const user = await User.findByPk(id);
-            console.log("Service / User: ", user);
-            return user;
-        } catch (error) {
-            console.error('Erro ao buscar usuário:', error.message);
-            throw error;
-        }
-    }
-    
     async getAll(sellerId = null) {
         try {
             const whereClause = sellerId ? { seller_id: sellerId } : {};
@@ -25,10 +10,30 @@ class UserService {
             });
             
             console.log("Service / All Users count: ", users.length);
-            return users;
+            return { success: true, data: users };
         } catch (error) {
             console.error('Erro ao buscar usuários:', error.message);
-            throw error;
+            return formatError(error);
+        }
+    }
+
+    async get(id) {
+        try {
+            if (!id) {
+                return { success: false, message: 'ID é obrigatório', status: 400 };
+            }
+            
+            const user = await User.findByPk(id);
+            console.log("Service / User: ", user);
+            
+            if (!user) {
+                return { success: false, message: `Usuário com ID ${id} não encontrado`, status: 404 };
+            }
+            
+            return { success: true, data: user };
+        } catch (error) {
+            console.error('Erro ao buscar usuário:', error.message);
+            return formatError(error);
         }
     }
 
@@ -59,7 +64,7 @@ class UserService {
             const user = await User.findByPk(id);
             
             if (!user) {
-                throw new Error(`Usuário com ID ${id} não encontrado`);
+                return { success: false, message: `Usuário com ID ${id} não encontrado`, status: 404 };
             }
             
             await user.update({
@@ -76,13 +81,13 @@ class UserService {
             return formatError(error);
         }
     }
-    
+
     async delete(id) {
         try {
             const user = await User.findByPk(id);
             
             if (!user) {
-                throw new Error(`Usuário com ID ${id} não encontrado`);
+                return { success: false, message: `Usuário com ID ${id} não encontrado`, status: 404 };
             }
             
             await user.destroy();

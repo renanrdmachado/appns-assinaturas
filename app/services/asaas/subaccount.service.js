@@ -1,6 +1,6 @@
 require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
-const AsaasValidator = require('../../helpers/AsaasValidator');
+const AsaasValidator = require('../../validators/asaas-validator');
 const SellerService = require('../seller.service');
 const { formatError } = require('../../utils/errorHandler');
 
