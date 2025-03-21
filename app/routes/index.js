@@ -7,7 +7,7 @@ const orderRoutes = require('./order.routes');
 const sellerRoutes = require('./seller.routes');
 const userRoutes = require('./user.routes');
 const shopperRoutes = require('./shopper.routes');
-const sellerSubscriptionRoutes = require('./sellerSubscription.routes');
+const sellerSubscriptionRoutes = require('./seller-subscription.routes');
 const paymentRoutes = require('./payment.routes');
 
 // Rotas de integrações

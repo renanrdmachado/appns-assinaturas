@@ -1,4 +1,6 @@
 const Order = require('../models/Order');
+const Shopper = require('../models/Shopper');
+const Seller = require('../models/Seller');
 const { formatError } = require('../utils/errorHandler');
 const OrderValidator = require('../validators/order-validator');
 
@@ -53,6 +55,12 @@ class OrderService {
             // Validar dados do pedido
             OrderValidator.validateOrderData(data);
 
+            // Verificar se o comprador existe
+            await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
+
+            // Verificar se o vendedor existe
+            await OrderValidator.validateSellerExists(data.seller_id, Seller);
+
             const order = await Order.create({
                 seller_id: data.seller_id,
                 shopper_id: data.shopper_id,
@@ -87,6 +95,16 @@ class OrderService {
             
             // Validar dados de atualização
             OrderValidator.validateOrderUpdateData(data);
+            
+            // Se houver alteração no shopper_id, verificar se o novo comprador existe
+            if (data.shopper_id && data.shopper_id !== order.shopper_id) {
+                await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
+            }
+            
+            // Nota: Se houver um modelo Seller, também validar alterações no seller_id
+            // if (data.seller_id && data.seller_id !== order.seller_id) {
+            //     await OrderValidator.validateSellerExists(data.seller_id, Seller);
+            // }
             
             await order.update({
                 ...(data.seller_id && { seller_id: data.seller_id }),

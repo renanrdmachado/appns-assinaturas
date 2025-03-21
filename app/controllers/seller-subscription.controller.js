@@ -44,7 +44,11 @@ class SellerSubscriptionController {
   // Criar nova assinatura
   async store(req, res) {
     try {
-      const result = await SellerSubscriptionService.create(req.body);
+      const { seller_id } = req.params;
+      const subscriptionData = req.body;
+      
+      // Passar seller_id e dados da assinatura separadamente para o service
+      const result = await SellerSubscriptionService.create(seller_id, subscriptionData);
       
       if (!result.success) {
         return res.status(result.status || 400).json({

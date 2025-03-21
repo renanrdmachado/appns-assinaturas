@@ -54,11 +54,11 @@ class SellerSubscriptionService {
         }
     }
 
-    async create(data) {
+    async create(sellerId, data) {
         console.log('SellerSubscription - creating...');
         try {
             // Verificar se o vendedor existe
-            const seller = await Seller.findByPk(data.seller_id);
+            const seller = await Seller.findByPk(sellerId);
             console.log('Seller:', seller ? seller.id : 'not found');
             if (!seller) {
                 return { 
@@ -68,17 +68,23 @@ class SellerSubscriptionService {
                 };
             }
             
+            // Juntar o ID do vendedor com os dados da requisição
+            const subscriptionData = {
+                ...data,
+                seller_id: sellerId
+            };
+            
             // Criar padrão para data de início
-            if (!data.start_date) {
-                data.start_date = new Date();
+            if (!subscriptionData.start_date) {
+                subscriptionData.start_date = new Date();
             }
             
             // Status padrão
-            if (!data.status) {
-                data.status = 'pending';
+            if (!subscriptionData.status) {
+                subscriptionData.status = 'pending';
             }
             
-            const subscription = await SellerSubscription.create(data);
+            const subscription = await SellerSubscription.create(subscriptionData);
             
             console.log('SellerSubscription created:', subscription.id);
             return { success: true, data: subscription };

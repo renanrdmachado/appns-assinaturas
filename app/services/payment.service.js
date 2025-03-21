@@ -126,7 +126,7 @@ class PaymentService {
                 external_id: data.external_id,
                 payable_type: 'order',
                 payable_id: orderId,
-                order_id: orderId,
+                // Removida a referência a order_id
                 status: data.status || 'pending',
                 value: data.value,
                 net_value: data.net_value,
@@ -173,7 +173,7 @@ class PaymentService {
                 external_id: data.external_id,
                 payable_type: 'seller_subscription',
                 payable_id: subscriptionId,
-                order_id: null, // Não tem order_id relacionado
+                // Removida a referência a order_id
                 status: data.status || 'pending',
                 value: data.value,
                 net_value: data.net_value,

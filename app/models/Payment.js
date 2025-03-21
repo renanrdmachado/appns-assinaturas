@@ -24,11 +24,6 @@ const Payment = sequelize.define('Payment', {
     allowNull: false,
     comment: 'ID do objeto relacionado ao pagamento'
   },
-  order_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    comment: 'ID da assinatura/pedido relacionado'
-  },
   status: {
     type: DataTypes.ENUM('pending', 'confirmed', 'overdue', 'refunded', 'canceled', 'failed'),
     allowNull: false,

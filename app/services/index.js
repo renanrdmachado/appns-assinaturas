@@ -3,7 +3,7 @@ const SellerService = require('./seller.service');
 const ProductService = require('./product.service');
 const OrderService = require('./order.service');
 const ShopperService = require('./shopper.service');
-const SellerSubscriptionService = require('./sellerSubscription.service');
+const SellerSubscriptionService = require('./seller-subscription.service');
 const PaymentService = require('./payment.service');
 const NsService = require('./ns.service');
 

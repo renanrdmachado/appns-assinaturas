@@ -90,6 +90,54 @@ class OrderValidator {
 
         return true;
     }
+
+    /**
+     * Valida se o comprador existe no sistema
+     * @param {string|number} shopperId - ID do comprador
+     * @param {object} Shopper - Modelo Sequelize do Shopper
+     * @returns {Promise<boolean>} - Retorna true se o comprador existir
+     */
+    static async validateShopperExists(shopperId, Shopper) {
+        if (!shopperId) {
+            const error = new Error("ID do comprador é obrigatório");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const shopper = await Shopper.findByPk(shopperId);
+        
+        if (!shopper) {
+            const error = new Error(`Comprador com ID ${shopperId} não encontrado`);
+            error.statusCode = 404;
+            throw error;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Valida se o vendedor existe no sistema
+     * @param {string|number} sellerId - ID do vendedor
+     * @param {object} Seller - Modelo Sequelize do Seller
+     * @returns {Promise<boolean>} - Retorna true se o vendedor existir
+     */
+    static async validateSellerExists(sellerId, Seller) {
+        if (!sellerId) {
+            const error = new Error("ID do vendedor é obrigatório");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const seller = await Seller.findByPk(sellerId);
+        
+        if (!seller) {
+            const error = new Error(`Vendedor com ID ${sellerId} não encontrado`);
+            error.statusCode = 404;
+            throw error;
+        }
+        
+        return true;
+    }
 }
 
 module.exports = OrderValidator;
