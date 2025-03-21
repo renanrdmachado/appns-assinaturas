@@ -49,7 +49,8 @@ const Shopper = sequelize.define('Shopper', {
   },
   payments_customer_id: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    comment: 'ID do cliente no sistema de pagamento (Asaas)'
   },
   payments_status: {
     type: DataTypes.STRING,
@@ -65,7 +66,7 @@ const Shopper = sequelize.define('Shopper', {
   },
   cpfCnpj: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   mobilePhone: {
     type: DataTypes.STRING,

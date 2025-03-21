@@ -73,7 +73,7 @@ const Seller = sequelize.define('Seller', {
   },
   Asaas_cpfCnpj: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   Asaas_mobilePhone: {
     type: DataTypes.STRING,

@@ -12,4 +12,7 @@ router.delete('/:id', ShopperController.destroy);
 // Rota adicional para buscar pelo nuvemshop_id externo
 router.get('/external/:nuvemshop_id', ShopperController.findByNuvemshopId);
 
+// Rota para sincronização manual com o Asaas
+router.post('/:id/sync-asaas', ShopperController.syncWithAsaas);
+
 module.exports = router;

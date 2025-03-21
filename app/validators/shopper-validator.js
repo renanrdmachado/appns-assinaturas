@@ -49,44 +49,28 @@ class ShopperValidator {
         
         // Validar campos obrigatórios
         if (!data.nuvemshop_id) {
-            errors.push("O campo 'nuvemshop_id' é obrigatório.");
+            errors.push("O campo 'nuvemshop_id' é obrigatório");
         }
 
         if (!data.name) {
-            errors.push("O campo 'name' é obrigatório.");
+            errors.push("O campo 'name' é obrigatório");
         }
 
         if (!data.email) {
-            errors.push("O campo 'email' é obrigatório.");
+            errors.push("O campo 'email' é obrigatório");
         } else if (!this.isValidEmail(data.email)) {
-            errors.push("O campo 'email' deve ser um email válido.");
+            errors.push("O campo 'email' deve ser um email válido");
         }
 
         if (!data.cpfCnpj) {
-            errors.push("O campo 'cpfCnpj' é obrigatório.");
+            errors.push("O campo 'cpfCnpj' é obrigatório");
         } else if (!this.isValidCpfCnpj(data.cpfCnpj)) {
-            errors.push("O campo 'cpfCnpj' deve ser um CPF ou CNPJ válido.");
-        }
-
-        // Validar campos opcionais quando fornecidos
-        if (data.mobilePhone && !this.isValidPhone(data.mobilePhone)) {
-            errors.push("O campo 'mobilePhone' deve ser um telefone válido.");
-        }
-
-        if (data.birthDate) {
-            const dateObj = new Date(data.birthDate);
-            if (isNaN(dateObj.getTime())) {
-                errors.push("O campo 'birthDate' deve ser uma data válida.");
-            }
-        }
-
-        if (data.postalCode && !this.isValidPostalCode(data.postalCode)) {
-            errors.push("O campo 'postalCode' deve ser um CEP válido.");
+            errors.push("O campo 'cpfCnpj' deve ser um CPF ou CNPJ válido");
         }
 
         // Lançar erro com todas as validações que falharam
         if (errors.length > 0) {
-            const error = new Error(errors.join(" "));
+            const error = new Error(errors.join(". "));
             error.statusCode = 400;
             error.validationErrors = errors;
             throw error;
@@ -110,36 +94,24 @@ class ShopperValidator {
         
         // Nuvemshop ID não deve ser alterado
         if (data.nuvemshop_id !== undefined) {
-            errors.push("Não é permitido alterar o ID da Nuvemshop.");
+            errors.push("Não é permitido alterar o ID da Nuvemshop");
         }
 
-        // Validar campos opcionais quando fornecidos
+        // CPF/CNPJ não deve ser vazio se estiver sendo atualizado
+        if (data.cpfCnpj !== undefined && !data.cpfCnpj) {
+            errors.push("O campo 'cpfCnpj' não pode ser vazio");
+        } else if (data.cpfCnpj && !this.isValidCpfCnpj(data.cpfCnpj)) {
+            errors.push("O campo 'cpfCnpj' deve ser um CPF ou CNPJ válido");
+        }
+
+        // Validar outros campos quando fornecidos
         if (data.email !== undefined && !this.isValidEmail(data.email)) {
-            errors.push("O campo 'email' deve ser um email válido.");
-        }
-
-        if (data.cpfCnpj !== undefined && !this.isValidCpfCnpj(data.cpfCnpj)) {
-            errors.push("O campo 'cpfCnpj' deve ser um CPF ou CNPJ válido.");
-        }
-
-        if (data.mobilePhone !== undefined && !this.isValidPhone(data.mobilePhone)) {
-            errors.push("O campo 'mobilePhone' deve ser um telefone válido.");
-        }
-
-        if (data.birthDate !== undefined) {
-            const dateObj = new Date(data.birthDate);
-            if (isNaN(dateObj.getTime())) {
-                errors.push("O campo 'birthDate' deve ser uma data válida.");
-            }
-        }
-
-        if (data.postalCode !== undefined && !this.isValidPostalCode(data.postalCode)) {
-            errors.push("O campo 'postalCode' deve ser um CEP válido.");
+            errors.push("O campo 'email' deve ser um email válido");
         }
 
         // Lançar erro com todas as validações que falharam
         if (errors.length > 0) {
-            const error = new Error(errors.join(" "));
+            const error = new Error(errors.join(". "));
             error.statusCode = 400;
             error.validationErrors = errors;
             throw error;
@@ -148,7 +120,7 @@ class ShopperValidator {
         return true;
     }
 
-    // Métodos auxiliares para validação
+    // Métodos auxiliares de validação - reutilizados do AsaasValidator
     static isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
@@ -168,14 +140,6 @@ class ShopperValidator {
         
         // Verifica se tem entre 10 e 11 dígitos (com ou sem DDD)
         return numbers.length >= 10 && numbers.length <= 11;
-    }
-
-    static isValidPostalCode(postalCode) {
-        // Remove caracteres não numéricos
-        const numbers = postalCode.replace(/\D/g, '');
-        
-        // CEP brasileiro tem 8 dígitos
-        return numbers.length === 8;
     }
 }
 

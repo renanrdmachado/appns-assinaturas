@@ -1,12 +1,13 @@
 const Seller = require('../models/Seller');
 const { formatError } = require('../utils/errorHandler');
+const AsaasCustomerService = require('./asaas/customer.service');
+const SellerValidator = require('../validators/seller-validator');
 
 class SellerService {
     async get(id) {
         try {
-            if (!id) {
-                return { success: false, message: 'ID é obrigatório', status: 400 };
-            }
+            // Validação do ID
+            SellerValidator.validateId(id);
             
             const seller = await Seller.findByPk(id);
             console.log("Service / Seller: ", seller);
@@ -24,9 +25,8 @@ class SellerService {
     
     async getByNuvemshopId(nuvemshopId) {
         try {
-            if (!nuvemshopId) {
-                return { success: false, message: 'ID da Nuvemshop é obrigatório', status: 400 };
-            }
+            // Validação do nuvemshop_id
+            SellerValidator.validateNuvemshopId(nuvemshopId);
             
             const seller = await Seller.findOne({
                 where: { nuvemshop_id: nuvemshopId }
@@ -56,18 +56,21 @@ class SellerService {
         }
     }
 
+    /**
+     * Atualização do método create para sincronizar com o Asaas
+     */
     async create(data) {
         console.log("Seller - creating...");
         
         try {
-            if (!data.nuvemshop_id) {
-                return { success: false, message: 'nuvemshop_id é obrigatório', status: 400 };
-            }
+            // Validação dos dados
+            SellerValidator.validateSellerData(data);
             
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
             
+            // Criar ou atualizar o seller no banco de dados local
             const [seller, created] = await Seller.findOrCreate({
                 where: { nuvemshop_id: data.nuvemshop_id },
                 defaults: data
@@ -77,7 +80,24 @@ class SellerService {
                 await seller.update(data);
             }
             
-            return { success: true, data: seller };
+            // Se tiver CPF/CNPJ, tentar sincronizar com o Asaas
+            let asaasSync = { success: false, message: 'Sincronização com Asaas não realizada' };
+            try {
+                asaasSync = await this.syncWithAsaas(seller.id);
+            } catch (asaasError) {
+                console.error('Erro ao sincronizar com Asaas durante criação:', asaasError.message);
+                asaasSync = { 
+                    success: false, 
+                    message: 'Erro ao sincronizar com Asaas: ' + asaasError.message 
+                };
+                // Não impede a criação do seller se a sincronização falhar
+            }
+            
+            return { 
+                success: true, 
+                data: seller,
+                asaasSync
+            };
         } catch (error) {
             console.error('Erro ao criar vendedor - service:', error.message);
             return formatError(error);
@@ -107,22 +127,49 @@ class SellerService {
         }
     }
 
+    /**
+     * Atualização do método update para sincronizar com o Asaas
+     */
     async update(id, data) {
         try {
+            // Validação do ID
+            SellerValidator.validateId(id);
+            
             const seller = await Seller.findByPk(id);
             
             if (!seller) {
                 return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
             }
             
+            // Validação dos dados de atualização
+            SellerValidator.validateSellerUpdateData(data);
+            
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
             
+            // Atualizar o seller no banco de dados local
             await seller.update(data);
             
+            // Se tiver CPF/CNPJ, tentar sincronizar com o Asaas
+            let asaasSync = { success: false, message: 'Sincronização com Asaas não realizada' };
+            try {
+                asaasSync = await this.syncWithAsaas(seller.id);
+            } catch (asaasError) {
+                console.error('Erro ao sincronizar com Asaas durante atualização:', asaasError.message);
+                asaasSync = { 
+                    success: false, 
+                    message: 'Erro ao sincronizar com Asaas: ' + asaasError.message 
+                };
+                // Não impede a atualização do seller se a sincronização falhar
+            }
+            
             console.log('Seller updated:', seller.dataValues);
-            return { success: true, data: seller };
+            return { 
+                success: true, 
+                data: seller,
+                asaasSync
+            };
         } catch (error) {
             console.error('Erro ao atualizar vendedor:', error.message);
             return formatError(error);
@@ -223,6 +270,94 @@ class SellerService {
             console.error('Erro ao buscar vendedor por CPF/CNPJ:', error.message);
             return formatError(error);
         }
+    }
+
+    /**
+     * Sincroniza um vendedor com o Asaas
+     * @param {string} id - ID do vendedor
+     * @returns {Promise<Object>} - Resultado da operação
+     */
+    async syncWithAsaas(id) {
+        try {
+            const seller = await Seller.findByPk(id);
+            
+            if (!seller) {
+                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+            }
+            
+            // Valida se tem informações mínimas necessárias
+            if (!seller.Asaas_cpfCnpj) {
+                return { 
+                    success: false, 
+                    message: 'CPF/CNPJ é obrigatório para sincronizar com Asaas',
+                    status: 400 
+                };
+            }
+            
+            // Mapeia dados do seller para o formato do Asaas
+            const customerData = this._mapToAsaasCustomer(seller);
+            
+            // Cria ou atualiza o cliente no Asaas
+            const result = await AsaasCustomerService.createOrUpdate(
+                customerData, 
+                AsaasCustomerService.SELLER_GROUP
+            );
+            
+            if (result.success) {
+                // Sempre atualiza o ID do customer no seller - importante para garantir que temos o ID correto
+                await seller.update({ 
+                    payments_customer_id: result.data.id 
+                });
+                
+                // Recarregar o objeto depois da atualização
+                await seller.reload();
+                
+                console.log(`Seller ID ${id} atualizado com payments_customer_id: ${result.data.id}`);
+            }
+            
+            return { 
+                success: result.success,
+                data: {
+                    seller: seller,
+                    asaasCustomer: result.data
+                },
+                message: result.success ? 
+                    'Vendedor sincronizado com sucesso no Asaas' : 
+                    result.message
+            };
+        } catch (error) {
+            console.error('Erro ao sincronizar vendedor com Asaas:', error.message);
+            return formatError(error);
+        }
+    }
+    
+    /**
+     * Método auxiliar para mapear os dados do Seller para o formato do Customer do Asaas
+     * @private
+     * @param {Object} seller - Objeto do modelo Seller
+     * @returns {Object} - Dados no formato esperado pelo Asaas
+     */
+    _mapToAsaasCustomer(seller) {
+        // Extrair info da loja do JSON
+        const storeInfo = typeof seller.nuvemshop_info === 'string' 
+            ? JSON.parse(seller.nuvemshop_info) 
+            : seller.nuvemshop_info || {};
+        
+        // Montar objeto com os dados do Asaas
+        return {
+            name: storeInfo.name || storeInfo.storeName || 'Loja ' + seller.nuvemshop_id,
+            cpfCnpj: seller.Asaas_cpfCnpj,
+            email: seller.Asaas_loginEmail || storeInfo.email,
+            mobilePhone: seller.Asaas_mobilePhone,
+            address: seller.Asaas_address,
+            addressNumber: seller.Asaas_addressNumber,
+            province: seller.Asaas_province,
+            postalCode: seller.Asaas_postalCode,
+            externalReference: seller.nuvemshop_id.toString(),
+            groupName: AsaasCustomerService.SELLER_GROUP,
+            observations: `Vendedor da Nuvemshop ID: ${seller.nuvemshop_id}`,
+            notificationDisabled: false
+        };
     }
 }
 

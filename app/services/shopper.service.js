@@ -2,6 +2,7 @@ const Shopper = require('../models/Shopper');
 const { formatError } = require('../utils/errorHandler');
 const ShopperValidator = require('../validators/shopper-validator');
 const Order = require('../models/Order');
+const AsaasCustomerService = require('./asaas/customer.service');
 
 class ShopperService {
     async get(id) {
@@ -67,6 +68,9 @@ class ShopperService {
         }
     }
 
+    /**
+     * Atualização do método create para sincronizar com o Asaas
+     */
     async create(data) {
         console.log('Shopper - creating...');
         try {
@@ -83,16 +87,39 @@ class ShopperService {
                 };
             }
             
+            // Criar o shopper no banco de dados local
             const shopper = await Shopper.create(data);
-            
             console.log('Shopper created:', shopper.id);
-            return { success: true, data: shopper };
+            
+            // Se tiver CPF/CNPJ, tentar sincronizar com o Asaas
+            let asaasSync = { success: false, message: 'Sincronização com Asaas não realizada' };
+            if (data.cpfCnpj) {
+                try {
+                    asaasSync = await this.syncWithAsaas(shopper.id);
+                } catch (asaasError) {
+                    console.error('Erro ao sincronizar com Asaas durante criação:', asaasError.message);
+                    asaasSync = { 
+                        success: false, 
+                        message: 'Erro ao sincronizar com Asaas: ' + asaasError.message 
+                    };
+                    // Não impede a criação do shopper se a sincronização falhar
+                }
+            }
+            
+            return { 
+                success: true, 
+                data: shopper,
+                asaasSync
+            };
         } catch (error) {
             console.error('Erro ao criar comprador:', error.message);
             return formatError(error);
         }
     }
     
+    /**
+     * Atualização do método update para sincronizar com o Asaas
+     */
     async update(id, data) {
         try {
             // Validação do ID
@@ -111,10 +138,30 @@ class ShopperService {
             // Validação dos dados de atualização
             ShopperValidator.validateShopperUpdateData(data);
             
+            // Atualizar o shopper no banco de dados local
             await shopper.update(data);
-            
             console.log('Shopper updated:', shopper.id);
-            return { success: true, data: shopper };
+            
+            // Se tiver CPF/CNPJ, tentar sincronizar com o Asaas
+            let asaasSync = { success: false, message: 'Sincronização com Asaas não realizada' };
+            if (shopper.cpfCnpj || data.cpfCnpj) {
+                try {
+                    asaasSync = await this.syncWithAsaas(shopper.id);
+                } catch (asaasError) {
+                    console.error('Erro ao sincronizar com Asaas durante atualização:', asaasError.message);
+                    asaasSync = { 
+                        success: false, 
+                        message: 'Erro ao sincronizar com Asaas: ' + asaasError.message 
+                    };
+                    // Não impede a atualização do shopper se a sincronização falhar
+                }
+            }
+            
+            return { 
+                success: true, 
+                data: shopper,
+                asaasSync
+            };
         } catch (error) {
             console.error('Erro ao atualizar comprador:', error.message);
             return formatError(error);
@@ -156,6 +203,101 @@ class ShopperService {
             console.error('Erro ao excluir comprador:', error.message);
             return formatError(error);
         }
+    }
+
+    /**
+     * Sincroniza um comprador com o Asaas
+     * @param {string} id - ID do comprador
+     * @returns {Promise<Object>} - Resultado da operação
+     */
+    async syncWithAsaas(id) {
+        try {
+            // Validação do ID
+            ShopperValidator.validateId(id);
+            
+            const shopper = await Shopper.findByPk(id);
+            
+            if (!shopper) {
+                return { 
+                    success: false, 
+                    message: `Comprador com ID ${id} não encontrado`, 
+                    status: 404 
+                };
+            }
+            
+            // Valida se tem informações mínimas necessárias
+            if (!shopper.cpfCnpj) {
+                return { 
+                    success: false, 
+                    message: 'CPF/CNPJ é obrigatório para sincronizar com Asaas',
+                    status: 400 
+                };
+            }
+            
+            // Mapeia dados do shopper para o formato do Asaas
+            const customerData = this._mapToAsaasCustomer(shopper);
+            
+            // Cria ou atualiza o cliente no Asaas
+            const result = await AsaasCustomerService.createOrUpdate(
+                customerData, 
+                AsaasCustomerService.SHOPPER_GROUP
+            );
+            
+            if (result.success) {
+                // Atualiza o ID do customer no shopper se necessário
+                if (!shopper.payments_customer_id || shopper.payments_customer_id !== result.data.id) {
+                    await shopper.update({ payments_customer_id: result.data.id });
+                }
+                
+                // Recarregar o objeto depois da atualização
+                await shopper.reload();
+                
+                console.log(`Shopper ID ${id} atualizado com payments_customer_id: ${result.data.id}`);
+            }
+            
+            return { 
+                success: result.success,
+                data: {
+                    shopper: shopper,
+                    asaasCustomer: result.data
+                },
+                message: result.success ? 
+                    'Comprador sincronizado com sucesso no Asaas' : 
+                    result.message
+            };
+        } catch (error) {
+            console.error('Erro ao sincronizar comprador com Asaas:', error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Método auxiliar para mapear os dados do Shopper para o formato do Customer do Asaas
+     * @private
+     * @param {Object} shopper - Objeto do modelo Shopper
+     * @returns {Object} - Dados no formato esperado pelo Asaas
+     */
+    _mapToAsaasCustomer(shopper) {
+        // Extrair info do nuvemshop_info se existir
+        const shopperInfo = typeof shopper.nuvemshop_info === 'string' 
+            ? JSON.parse(shopper.nuvemshop_info) 
+            : shopper.nuvemshop_info || {};
+        
+        // Montar objeto com os dados do Asaas
+        return {
+            name: shopper.name || shopperInfo.name || 'Cliente ' + shopper.nuvemshop_id,
+            cpfCnpj: shopper.cpfCnpj,
+            email: shopper.email || shopperInfo.email,
+            mobilePhone: shopper.mobilePhone,
+            address: shopper.address,
+            addressNumber: shopper.addressNumber,
+            province: shopper.province,
+            postalCode: shopper.postalCode,
+            externalReference: shopper.nuvemshop_id.toString(),
+            groupName: AsaasCustomerService.SHOPPER_GROUP,
+            observations: `Comprador da Nuvemshop ID: ${shopper.nuvemshop_id}`,
+            notificationDisabled: false
+        };
     }
 }
 

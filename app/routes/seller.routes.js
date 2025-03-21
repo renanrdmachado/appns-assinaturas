@@ -10,5 +10,7 @@ router.delete('/:id', SellerController.destroy);
 
 // Rotas específicas para este controlador
 router.post('/:id/subaccount', SellerController.addSubAccount);
+// Nova rota para sincronização com o Asaas
+router.post('/:id/sync-asaas', SellerController.syncWithAsaas);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const { ShopperService } = require('../services');
+const ShopperService = require('../services/shopper.service');  // Importação correta
 
 class ShopperController {
   // Listar todos os compradores
@@ -153,6 +153,35 @@ class ShopperController {
       return res.status(500).json({ 
         success: false, 
         message: 'Erro ao buscar comprador',
+        error: error.message
+      });
+    }
+  }
+
+  // Sincronizar comprador com o Asaas
+  async syncWithAsaas(req, res) {
+    const { id } = req.params;
+    
+    try {
+      const result = await ShopperService.syncWithAsaas(id);
+      
+      if (!result.success) {
+        return res.status(result.status || 400).json({
+          success: false,
+          message: result.message
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Comprador sincronizado com sucesso no Asaas',
+        data: result.data
+      });
+    } catch (error) {
+      console.error(`Erro ao sincronizar comprador ID ${id} com Asaas:`, error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao sincronizar comprador com Asaas',
         error: error.message
       });
     }

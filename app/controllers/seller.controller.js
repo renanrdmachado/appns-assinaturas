@@ -113,11 +113,41 @@ const addSubAccount = async (req, res) => {
     }
 };
 
+// Sincronizar vendedor com o Asaas
+const syncWithAsaas = async (req, res) => {
+    console.log("Controller - SellerController/syncWithAsaas");
+    try {
+        const { id } = req.params;
+        const result = await SellerService.syncWithAsaas(id);
+        
+        if (!result.success) {
+            return res.status(result.status || 400).json({
+                success: false,
+                message: result.message
+            });
+        }
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Vendedor sincronizado com sucesso no Asaas',
+            data: result.data
+        });
+    } catch (error) {
+        console.error("Erro ao sincronizar vendedor com Asaas:", error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao sincronizar vendedor com Asaas', 
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     index,
     show,
     store,
     update,
     destroy,
-    addSubAccount
+    addSubAccount,
+    syncWithAsaas  // Adiciona o novo método ao módulo exportado
 };

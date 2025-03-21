@@ -1,1 +1,2045 @@
-{"_type":"export","__export_format":4,"__export_date":"2025-03-14T15:17:12.001Z","__export_source":"insomnia.desktop.app:v10.3.1","resources":[{"_id":"req_1979dc2c792843d0b1b7f2835f39d22d","parentId":"fld_6c39b7f3dc134a7c881b4eaa0f54f64a","modified":1740772411769,"created":1740772411769,"url":"{{ _.baseUrl }}/ns/install","name":"GET ns/install","description":"Endpoint for Nuvemshop app installation authorization","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417838,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"fld_6c39b7f3dc134a7c881b4eaa0f54f64a","parentId":"fld_585c9d8c277440e78111bb5bc0e8063d","modified":1740775175886,"created":1740772411764,"name":"Nuvemshop","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417817,"_type":"request_group"},{"_id":"fld_585c9d8c277440e78111bb5bc0e8063d","parentId":"wrk_1b606406d76849068dba00e60778cdb4","modified":1740772318385,"created":1740772307182,"name":"APPNS - Assinaturas","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417813,"_type":"request_group"},{"_id":"wrk_1b606406d76849068dba00e60778cdb4","parentId":null,"modified":1741695417808,"created":1741695417808,"name":"APPNS - Assinaturas","description":"","scope":"collection","_type":"workspace"},{"_id":"req_d9b9ffe46ed64e11bcbec90abfb4dd22","parentId":"fld_9f55263a034149738c1df65d87fb806f","modified":1740772411768,"created":1740772411768,"url":"{{ _.baseUrl }}/app/asaas/customers","name":"GET app/asaas/customers","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417837,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"fld_9f55263a034149738c1df65d87fb806f","parentId":"fld_585c9d8c277440e78111bb5bc0e8063d","modified":1740775175885,"created":1740772411763,"name":"Asaas","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417816,"_type":"request_group"},{"_id":"req_9fb0ff6eb04c497dbfce3a071c64cbec","parentId":"fld_9f55263a034149738c1df65d87fb806f","modified":1741706451001,"created":1740772411767,"url":"{{ _.baseUrl }}/app/asaas/subaccount/","name":"POST app/asaas/subaccount","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n    \"name\": \"M6\",\n    \"email\": \"m6@asaas.com.br\",\n    \"loginEmail\": \"m6@asaas.com.br\",\n    \"cpfCnpj\": \"702.480.844-61\",\n    \"mobilePhone\": \"84981343393\",\n    \"incomeValue\": 25000,\n    \"address\": \"Rua Fernando Orlandi\",\n    \"addressNumber\": \"544\",\n    \"province\": \"Jardim Pedra Branca\",\n    \"postalCode\": \"14079-452\",\n    \"companyType\": \"LIMITED\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417836,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_f3aa85adcda349c383762254d49022ab","parentId":"fld_9f55263a034149738c1df65d87fb806f","modified":1740772411765,"created":1740772411765,"url":"{{ _.baseUrl }}/app/asaas/subaccount","name":"GET app/asaas/subaccount","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417835,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_b4053e409455497bbebbfc183d11c4d2","parentId":"fld_9f55263a034149738c1df65d87fb806f","modified":1741704811364,"created":1740772411766,"url":"{{ _.baseUrl }}/app/asaas/subaccount/bycpfcnpj/51939519000170","name":"GET app/asaas/subaccount/bycpfcnpj/:cpfCnpj","description":"","method":"GET","body":{"mimeType":"application/json","text":"{\n\t\"cpf\" : \"01037892941\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417835,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_d6782411cc7e4589948c057ebf105871","parentId":"fld_9f55263a034149738c1df65d87fb806f","modified":1740772411764,"created":1740772411764,"url":"{{ _.baseUrl }}/app/asaas/customer","name":"POST app/asaas/customer","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n  \"name\": \"John Doe\",\n  \"cpfCnpj\": \"24971563792\",\n  \"email\": \"john.doe@asaas.com.br\",\n  \"phone\": \"4738010919\",\n  \"mobilePhone\": \"4799376637\",\n  \"postalCode\": \"01310-000\",\n  \"groupName\": \"Mensalidade\",\n  \"externalReference\": \"storeIDdaNuvemshop\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417834,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_46afdca8df4c4d98b11a4f10185ab278","parentId":"fld_61843d2b79bd4f988b024e5a496e7c64","modified":1740772367723,"created":1740772367723,"url":"{{ _.baseUrl }}/app/users/1","name":"DELETE app/users/:id","description":"","method":"DELETE","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417834,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"fld_61843d2b79bd4f988b024e5a496e7c64","parentId":"fld_585c9d8c277440e78111bb5bc0e8063d","modified":1740774004624,"created":1740772367718,"name":"Users","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417816,"_type":"request_group"},{"_id":"req_502a8e7cd6614c30aa24558564bf929b","parentId":"fld_61843d2b79bd4f988b024e5a496e7c64","modified":1740772367722,"created":1740772367722,"url":"{{ _.baseUrl }}/app/users/1","name":"PUT app/users/:id","description":"","method":"PUT","body":{"mimeType":"application/json","text":"{\n    \"username\": \"Renan Atualizado\",\n    \"email\": \"renan@mvlco.com.br\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417833,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_adcf0ff5a0ac4e529d69d14c64ad932f","parentId":"fld_61843d2b79bd4f988b024e5a496e7c64","modified":1740772367721,"created":1740772367721,"url":"{{ _.baseUrl }}/app/users","name":"POST app/users","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n    \"username\": \"Renan\",\n    \"email\": \"renan@mvlco.com.br\",\n    \"password\": \"mudar@123\",\n    \"seller_id\": \"1\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417832,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_42d0142d906f44c69333074eeac36e54","parentId":"fld_61843d2b79bd4f988b024e5a496e7c64","modified":1740772367720,"created":1740772367720,"url":"{{ _.baseUrl }}/app/users/1","name":"GET app/users/:id","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417832,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_3ba4d99e4e2a4803b373d23c72f8a992","parentId":"fld_61843d2b79bd4f988b024e5a496e7c64","modified":1740772367719,"created":1740772367719,"url":"{{ _.baseUrl }}/app/users","name":"GET app/users","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417831,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_ba75194a7f7746b4b9583b61d2da140c","parentId":"fld_ec74ea01fa654cceaa18080cd3e7c6d1","modified":1740772347879,"created":1740772347879,"url":"{{ _.baseUrl }}/app/orders/1","name":"DELETE app/orders/:id","description":"","method":"DELETE","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417825,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"fld_ec74ea01fa654cceaa18080cd3e7c6d1","parentId":"fld_585c9d8c277440e78111bb5bc0e8063d","modified":1740772347874,"created":1740772347874,"name":"Orders","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417815,"_type":"request_group"},{"_id":"req_f0e138bf9a5f4cfba5c8369761bc46c0","parentId":"fld_ec74ea01fa654cceaa18080cd3e7c6d1","modified":1740772347877,"created":1740772347877,"url":"{{ _.baseUrl }}/app/orders","name":"POST app/orders","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n    \"seller_id\": \"1\",\n    \"products\": [1],\n    \"customer_id\": \"{customer_id}\",\n    \"customer_info\": \"{customer_info}\",\n    \"nuvemshop\": \"{data.nuvemshop}\",\n    \"value\": \"49.9\",\n    \"cycle\": \"MONTHLY\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417824,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_d4afdc8d75ca4a13bd05473904f8cb87","parentId":"fld_ec74ea01fa654cceaa18080cd3e7c6d1","modified":1740772347878,"created":1740772347878,"url":"{{ _.baseUrl }}/app/orders/1","name":"PUT app/orders/:id","description":"","method":"PUT","body":{"mimeType":"application/json","text":"{\n    \"value\": \"59.9\",\n    \"cycle\": \"MONTHLY\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417824,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_74679802dc1e407795415313ca95cba6","parentId":"fld_ec74ea01fa654cceaa18080cd3e7c6d1","modified":1740772347876,"created":1740772347876,"url":"{{ _.baseUrl }}/app/orders/1","name":"GET app/orders/:id","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417823,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_e2d413151b2d4a0183a4042eaa89dc06","parentId":"fld_ec74ea01fa654cceaa18080cd3e7c6d1","modified":1740772347875,"created":1740772347875,"url":"{{ _.baseUrl }}/app/orders","name":"GET app/orders","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417822,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_e56b707f8225454e95103015128fd066","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1741705131915,"created":1740772385270,"url":"{{ _.baseUrl }}/app/sellers/2/subaccount","name":"POST app/sellers/:id/subaccount","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@asaas.com.br\",\n  \"loginEmail\": \"john.doe@asaas.com.br\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417831,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"fld_0d769f0371864b469ba1d1d20ecb42ec","parentId":"fld_585c9d8c277440e78111bb5bc0e8063d","modified":1740772609562,"created":1740772385262,"name":"Sellers","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417814,"_type":"request_group"},{"_id":"req_3478d600b3c9489f8badf3d9c6e83fb6","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1741705137914,"created":1740772385269,"url":"{{ _.baseUrl }}/app/sellers/2/subscriptions","name":"POST app/sellers/:id/subscriptions","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n  \"billingType\": \"CREDIT_CARD\",\n  \"cycle\": \"WEEKLY\",\n  \"customer\": \"cus_000006537949\",\n  \"value\": 49.9,\n  \"nextDueDate\": \"2025-02-26\",\n  \"description\": \"Assinatura do APP\",\n  \"externalReference\": \"5346813\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417830,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_6aa0ab14f26842b4bfc50cdd5fb87d3b","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1741705153318,"created":1740772385268,"url":"{{ _.baseUrl }}/app/sellers/2/subscriptions","name":"GET app/sellers/:id/subscriptions","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417829,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_3cb7856b4b1640adb78636797bc2c781","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1740772385267,"created":1740772385267,"url":"{{ _.baseUrl }}/app/sellers/1","name":"DELETE app/sellers/:id","description":"","method":"DELETE","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417829,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_b1e96ce5ada445aabd96fe4c90a3c4a1","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1740772385265,"created":1740772385265,"url":"{{ _.baseUrl }}/app/sellers","name":"POST app/sellers","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n  \"nuvemshop_id\": \"5346813\",\n  \"nuvemshop_info\": \"Store information\",\n  \"nuvemshop_api_token\": \"61181d08b7e328d256736hdcb671c3ce50b8af5\",\n  \"app_start_date\": \"2022-12-12\",\n  \"app_status\": \"pending\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417828,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_178357bd40494738863a76e56a6cb580","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1741705174193,"created":1740772385266,"url":"{{ _.baseUrl }}/app/sellers/2","name":"PUT app/sellers/:id","description":"","method":"PUT","body":{"mimeType":"application/json","text":"{\n  \"app_status\": \"active\"\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417828,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_ea9727663b4c47bca0cd23a07f680a47","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1741695570489,"created":1740772385264,"url":"{{ _.baseUrl }}/app/sellers/1","name":"GET app/sellers/:id","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417827,"isPrivate":false,"pathParameters":[],"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_a02f57404aa04db59582ff8db03ab75a","parentId":"fld_0d769f0371864b469ba1d1d20ecb42ec","modified":1740772385263,"created":1740772385263,"url":"{{ _.baseUrl }}/app/sellers","name":"GET app/sellers","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417826,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_dd6c1da510134b26a193203500a80402","parentId":"fld_b81d48d8ac314efabc95085ec20de120","modified":1740772329038,"created":1740772329038,"url":"{{ _.baseUrl }}/app/products/1","name":"DELETE app/products/:id","description":"","method":"DELETE","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417821,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"fld_b81d48d8ac314efabc95085ec20de120","parentId":"fld_585c9d8c277440e78111bb5bc0e8063d","modified":1741264266829,"created":1740772329032,"name":"Products","description":"","environment":{},"environmentPropertyOrder":null,"metaSortKey":-1741695417813,"_type":"request_group"},{"_id":"req_1baccffd82f34887bf2376f1e850176f","parentId":"fld_b81d48d8ac314efabc95085ec20de120","modified":1740772329037,"created":1740772329037,"url":"{{ _.baseUrl }}/app/products/1","name":"PUT app/products/:id","description":"","method":"PUT","body":{"mimeType":"application/json","text":"{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial atualizado\",\n    \"price\": 39.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n    \"images\": null\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417821,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_26cceaa826d74bb2b759a1033181b072","parentId":"fld_b81d48d8ac314efabc95085ec20de120","modified":1740772329036,"created":1740772329036,"url":"{{ _.baseUrl }}/app/products","name":"POST app/products","description":"","method":"POST","body":{"mimeType":"application/json","text":"{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"price\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n    \"images\": null\n}"},"parameters":[],"headers":[{"name":"Content-Type","value":"application/json"}],"authentication":{},"metaSortKey":-1741695417820,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_77df77c926174351ab1955ad200f04b0","parentId":"fld_b81d48d8ac314efabc95085ec20de120","modified":1740772329035,"created":1740772329035,"url":"{{ _.baseUrl }}/app/products/1/sync","name":"GET app/products/:id/sync","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417819,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_17038a1679ec48aa91cfc805abc5d547","parentId":"fld_b81d48d8ac314efabc95085ec20de120","modified":1740772329034,"created":1740772329034,"url":"{{ _.baseUrl }}/app/products/1","name":"GET app/products/:id","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417819,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"req_462c19101cc6467bb9a3b91da85a7dca","parentId":"fld_b81d48d8ac314efabc95085ec20de120","modified":1740772329033,"created":1740772329033,"url":"{{ _.baseUrl }}/app/products","name":"GET app/products","description":"","method":"GET","body":{},"parameters":[],"headers":[],"authentication":{},"metaSortKey":-1741695417818,"isPrivate":false,"settingStoreCookies":true,"settingSendCookies":true,"settingDisableRenderRequestBody":false,"settingEncodeUrl":true,"settingRebuildPath":true,"settingFollowRedirects":"global","_type":"request"},{"_id":"env_100de0e2c38446a785e66adecb7c953c","parentId":"wrk_1b606406d76849068dba00e60778cdb4","modified":1740772307183,"created":1740772307183,"name":"Base Environment","data":{"baseUrl":"http://localhost:10000"},"dataPropertyOrder":null,"color":null,"isPrivate":false,"metaSortKey":1741695417838,"_type":"environment"},{"_id":"jar_a58a823fd16adb7cbc8e9ab0b9099daf3258889c","parentId":"wrk_1b606406d76849068dba00e60778cdb4","modified":1741695419525,"created":1741695419525,"name":"Default Jar","cookies":[],"_type":"cookie_jar"}]}
+{
+    "_type": "export",
+    "__export_format": 4,
+    "__export_date": "2025-03-21T17:47:07.795Z",
+    "__export_source": "insomnia.desktop.app:v10.3.1",
+    "resources": [
+        {
+            "_id": "req_d6782411cc7e4589948c057ebf105871",
+            "parentId": "fld_700fb10eaa2240648ffedfe2b32ae063",
+            "modified": 1742404915789,
+            "created": 1740772411764,
+            "url": "{{ _.baseUrl }}/asaas/customer",
+            "name": "Create Customer",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"name\": \"John Doe\",\n  \"cpfCnpj\": \"24971563792\",\n  \"email\": \"john.doe@asaas.com.br\",\n  \"phone\": \"4738010919\",\n  \"mobilePhone\": \"4799376637\",\n  \"postalCode\": \"01310-000\",\n  \"groupName\": \"Mensalidade\",\n  \"externalReference\": \"storeIDdaNuvemshop\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742319671353,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_700fb10eaa2240648ffedfe2b32ae063",
+            "parentId": "fld_9f55263a034149738c1df65d87fb806f",
+            "modified": 1742567401637,
+            "created": 1742319659088,
+            "name": "Customers",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742326632805,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_9f55263a034149738c1df65d87fb806f",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1742479638949,
+            "created": 1740772411763,
+            "name": "Asaas",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742087523777.5,
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "parentId": "wrk_1b606406d76849068dba00e60778cdb4",
+            "modified": 1740772318385,
+            "created": 1740772307182,
+            "name": "APPNS - Assinaturas",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417813,
+            "_type": "request_group"
+        },
+        {
+            "_id": "wrk_1b606406d76849068dba00e60778cdb4",
+            "parentId": null,
+            "modified": 1741695417808,
+            "created": 1741695417808,
+            "name": "APPNS - Assinaturas",
+            "description": "",
+            "scope": "collection",
+            "_type": "workspace"
+        },
+        {
+            "_id": "req_e5ba664bf8c34bd18cdbbf4057f2e9d9",
+            "parentId": "fld_700fb10eaa2240648ffedfe2b32ae063",
+            "modified": 1742405334373,
+            "created": 1742320019116,
+            "url": "{{ _.baseUrl }}/asaas/customer/cus_000006562874",
+            "name": "Edit Customer",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"name\": \"John Doe\",\n  \"cpfCnpj\": \"24971563792\",\n  \"email\": \"john.doe@asaas.com.br\",\n  \"phone\": \"4738010919\",\n  \"mobilePhone\": \"4799376637\",\n  \"postalCode\": \"01310-000\",\n  \"groupName\": \"Sellers\",\n  \"externalReference\": \"storeIDdaNuvemshop\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742319671303,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_d9b9ffe46ed64e11bcbec90abfb4dd22",
+            "parentId": "fld_700fb10eaa2240648ffedfe2b32ae063",
+            "modified": 1742404959023,
+            "created": 1740772411768,
+            "url": "{{ _.baseUrl }}/asaas/customer",
+            "name": "List Customers",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1742319671253,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_1ba9f116185e4d20b66f3f41628d2f82",
+            "parentId": "fld_d5a13fa5b87d4ad9a52129423a296851",
+            "modified": 1742326727109,
+            "created": 1742326635722,
+            "url": "{{ _.baseUrl }}/asaas/shopper/subscription",
+            "name": "Create Subscription",
+            "description": "",
+            "method": "POST",
+            "body": {},
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742326635722,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_d5a13fa5b87d4ad9a52129423a296851",
+            "parentId": "fld_9f55263a034149738c1df65d87fb806f",
+            "modified": 1742326632705,
+            "created": 1742326632705,
+            "name": "Shoppers",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742326632705,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_9fb0ff6eb04c497dbfce3a071c64cbec",
+            "parentId": "fld_4c57ff9e806c4b07b3500412941de97f",
+            "modified": 1742405583694,
+            "created": 1740772411767,
+            "url": "{{ _.baseUrl }}/asaas/subaccount/",
+            "name": "Create Subaccount",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"name\": \"M6\",\n    \"email\": \"m6@asaas.com.br\",\n    \"loginEmail\": \"m6@asaas.com.br\",\n    \"cpfCnpj\": \"702.480.844-61\",\n    \"mobilePhone\": \"84981343393\",\n    \"incomeValue\": 25000,\n    \"address\": \"Rua Fernando Orlandi\",\n    \"addressNumber\": \"544\",\n    \"province\": \"Jardim Pedra Branca\",\n    \"postalCode\": \"14079-452\",\n    \"companyType\": \"LIMITED\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742319694593,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_4c57ff9e806c4b07b3500412941de97f",
+            "parentId": "fld_9f55263a034149738c1df65d87fb806f",
+            "modified": 1742326358510,
+            "created": 1742319685742,
+            "name": "Subaccount",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742319659288,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_f3aa85adcda349c383762254d49022ab",
+            "parentId": "fld_4c57ff9e806c4b07b3500412941de97f",
+            "modified": 1742405588548,
+            "created": 1740772411765,
+            "url": "{{ _.baseUrl }}/asaas/subaccount",
+            "name": "List Subaccounts",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1742319694493,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_b4053e409455497bbebbfc183d11c4d2",
+            "parentId": "fld_4c57ff9e806c4b07b3500412941de97f",
+            "modified": 1742405614526,
+            "created": 1740772411766,
+            "url": "{{ _.baseUrl }}/asaas/subaccount/bycpfcnpj/51939519000170",
+            "name": "Get Subaccount by CPF/CNPJ",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"cpf\" : \"01037892941\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742319694393,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_da17a3efd4d14473a0d11f1e27e94901",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405408825,
+            "created": 1742306149305,
+            "url": "https://1b5d-179-190-199-144.ngrok-free.app/asaas/webhook/receive",
+            "name": "Test Webhook by URL (Ngrok)",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"id\": \"evt_d26e303b238e509335ac9ba210e51b0f&8739812\",\n    \"event\": \"PAYMENT_RECEIVED\",\n    \"dateCreated\": \"2025-03-18 10:58:47\",\n    \"payment\": {\n        \"object\": \"payment\",\n        \"id\": \"pay_462rahh7mpep3w3h\",\n        \"dateCreated\": \"2025-03-18\",\n        \"customer\": \"cus_000006537949\",\n        \"paymentLink\": null,\n        \"value\": 20,\n        \"netValue\": 18.01,\n        \"originalValue\": null,\n        \"interestValue\": null,\n        \"description\": \"\",\n        \"billingType\": \"PIX\",\n        \"confirmedDate\": \"2025-03-18\",\n        \"pixTransaction\": \"d8170c04-e7c3-4fed-b0a7-7b3957bd076f\",\n        \"pixQrCodeId\": \"5dff3e25-bfa6-4101-b847-c20d3d6bfadd\",\n        \"status\": \"RECEIVED\",\n        \"dueDate\": \"2025-03-27\",\n        \"originalDueDate\": \"2025-03-27\",\n        \"paymentDate\": \"2025-03-18\",\n        \"clientPaymentDate\": \"2025-03-18\",\n        \"installmentNumber\": null,\n        \"invoiceUrl\": \"https://sandbox.asaas.com/i/462rahh7mpep3w3h\",\n        \"invoiceNumber\": \"08011469\",\n        \"externalReference\": null,\n        \"deleted\": false,\n        \"anticipated\": false,\n        \"anticipable\": false,\n        \"creditDate\": \"2025-03-18\",\n        \"estimatedCreditDate\": \"2025-03-18\",\n        \"transactionReceiptUrl\": \"https://sandbox.asaas.com/comprovantes/h/UEFZTUVOVF9SRUNFSVZFRDpwYXlfNDYycmFoaDdtcGVwM3czaA%3D%3D\",\n        \"nossoNumero\": null,\n        \"bankSlipUrl\": null,\n        \"lastInvoiceViewedDate\": null,\n        \"lastBankSlipViewedDate\": null,\n        \"discount\": {\n            \"value\": 0,\n            \"limitDate\": null,\n            \"dueDateLimitDays\": 0,\n            \"type\": \"PERCENTAGE\"\n        },\n        \"fine\": {\n            \"value\": 0,\n            \"type\": \"PERCENTAGE\"\n        },\n        \"interest\": {\n            \"value\": 0,\n            \"type\": \"PERCENTAGE\"\n        },\n        \"postalService\": false,\n        \"custody\": null,\n        \"escrow\": null,\n        \"refunds\": null\n    }\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741965629219,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "parentId": "fld_9f55263a034149738c1df65d87fb806f",
+            "modified": 1742319675976,
+            "created": 1741964772233,
+            "name": "Webhooks",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742319659188,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_2881f07acb1e473ea3810ce460f825b7",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405351468,
+            "created": 1741965629119,
+            "url": "{{ _.baseUrl }}/asaas/webhook/register",
+            "name": "Create Webhook",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741965629119,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_03e1416994bf4c548f88d92f7adddcd3",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405358746,
+            "created": 1741966017983,
+            "url": "{{ _.baseUrl }}/asaas/webhook/receive",
+            "name": "Receive Webhook",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{ \n \"event\": \"PAYMENT_RECEIVED\",\n  \"payment\": {\n    \"id\": \"test-payment-id\",\n    \"value\": 100.00,\n    \"customer\": \"test-customer-id\"\n  }\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741898076298.75,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_9d910bcbf150453582f0d09166072032",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405369184,
+            "created": 1741965772251,
+            "url": "{{ _.baseUrl }}/asaas/webhook",
+            "name": "List Webhooks",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741830523478.5,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_455f1ee895bf406db36ecc1a83fb26a9",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405375449,
+            "created": 1742323136194,
+            "url": "{{ _.baseUrl }}/asaas/webhook/ecca23a1-3c71-11ee-9200-020eef0f1bc4",
+            "name": "Get Webhook by Id",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741796747068.375,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_80250806ea5d4fcfa7f7bd973083b8ba",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405379804,
+            "created": 1741965827584,
+            "url": "{{ _.baseUrl }}/asaas/webhook/ecca23a1-3c71-11ee-9200-020eef0f1bc4",
+            "name": "Edit Webhook",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n\t\"url\": \"https://1b5d-179-190-199-144.ngrok-free.app/app/asaas/webhook/receive\",\n\t\"events\": [\n\t\t \"PAYMENT_CREDIT_CARD_CAPTURE_REFUSED\",\n\t\t\t\"PAYMENT_CHECKOUT_VIEWED\",\n\t\t\t\"PAYMENT_BANK_SLIP_VIEWED\",\n\t\t\t\"PAYMENT_DUNNING_REQUESTED\",\n\t\t\t\"PAYMENT_DUNNING_RECEIVED\",\n\t\t\t\"PAYMENT_AWAITING_CHARGEBACK_REVERSAL\",\n\t\t\t\"PAYMENT_CHARGEBACK_DISPUTE\",\n\t\t\t\"PAYMENT_CHARGEBACK_REQUESTED\",\n\t\t\t\"PAYMENT_RECEIVED_IN_CASH_UNDONE\",\n\t\t\t\"PAYMENT_REFUND_IN_PROGRESS\",\n\t\t\t\"PAYMENT_REFUNDED\",\n\t\t\t\"PAYMENT_RESTORED\",\n\t\t\t\"PAYMENT_DELETED\",\n\t\t\t\"PAYMENT_OVERDUE\",\n\t\t\t\"PAYMENT_ANTICIPATED\",\n\t\t\t\"PAYMENT_RECEIVED\",\n\t\t\t\"PAYMENT_CONFIRMED\",\n\t\t\t\"PAYMENT_UPDATED\",\n\t\t\t\"PAYMENT_CREATED\",\n\t\t\t\"PAYMENT_REPROVED_BY_RISK_ANALYSIS\",\n\t\t\t\"PAYMENT_APPROVED_BY_RISK_ANALYSIS\",\n\t\t\t\"PAYMENT_AWAITING_RISK_ANALYSIS\",\n\t\t\t\"PAYMENT_AUTHORIZED\",\n\t\t\t\"PAYMENT_REFUND_DENIED\",\n\t\t\t\"PAYMENT_PARTIALLY_REFUNDED\",\n\t\t\t\"PAYMENT_SPLIT_CANCELLED\",\n\t\t\t\"PAYMENT_SPLIT_DIVERGENCE_BLOCK_FINISHED\"\n\t]\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741762970658.25,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_6c74301f705445d9a893afb69a5e6be1",
+            "parentId": "fld_a95deba431ac4105aa251cdb3d14e6d3",
+            "modified": 1742405384103,
+            "created": 1741965983032,
+            "url": "{{ _.baseUrl }}/asaas/webhook/ecca23a1-3c71-11ee-9200-020eef0f1bc4",
+            "name": "Delete Webhook",
+            "description": "",
+            "method": "DELETE",
+            "body": {},
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741729194248.125,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_b2cdb6d72b4d4939a1c8625732a227d0",
+            "parentId": "fld_279d8320686243b4902bf47b77676e32",
+            "modified": 1742405710296,
+            "created": 1742310237859,
+            "url": " https://api.nuvemshop.com.br/v1/5346813/products",
+            "name": "List Products",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1",
+                    "id": "pair_7e564ab49bf04ee38404399b915abe0b"
+                },
+                {
+                    "id": "pair_965a345039a947f9a546dc3bc88d7157",
+                    "name": "Authentication",
+                    "value": "928391156e2dc4cca4808de63281af250325a720",
+                    "description": "",
+                    "disabled": false
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742405702766,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_279d8320686243b4902bf47b77676e32",
+            "parentId": "fld_6c39b7f3dc134a7c881b4eaa0f54f64a",
+            "modified": 1742405697062,
+            "created": 1742405697062,
+            "name": "Products",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742405697062,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_6c39b7f3dc134a7c881b4eaa0f54f64a",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1740775175886,
+            "created": 1740772411764,
+            "name": "Nuvemshop",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417817,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_0141fc9c3c254e4dbd632e7317274c13",
+            "parentId": "fld_00c0bd5c1f98405393ff155bb9e99e30",
+            "modified": 1742405674983,
+            "created": 1742310449457,
+            "url": " https://api.nuvemshop.com.br/v1/5346813/orders",
+            "name": "Create Order",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1",
+                    "id": "pair_7e564ab49bf04ee38404399b915abe0b"
+                },
+                {
+                    "id": "pair_965a345039a947f9a546dc3bc88d7157",
+                    "name": "Authentication",
+                    "value": "928391156e2dc4cca4808de63281af250325a720",
+                    "description": "",
+                    "disabled": false
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742405663940,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_00c0bd5c1f98405393ff155bb9e99e30",
+            "parentId": "fld_6c39b7f3dc134a7c881b4eaa0f54f64a",
+            "modified": 1742405657800,
+            "created": 1742405657800,
+            "name": "Orders",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742405657800,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_9459cb72347f46e6a406b9090ccbcb89",
+            "parentId": "fld_00c0bd5c1f98405393ff155bb9e99e30",
+            "modified": 1742405680939,
+            "created": 1742308640928,
+            "url": " https://api.nuvemshop.com.br/v1/5346813/orders",
+            "name": "List Orders",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1",
+                    "id": "pair_7e564ab49bf04ee38404399b915abe0b"
+                },
+                {
+                    "id": "pair_965a345039a947f9a546dc3bc88d7157",
+                    "name": "Authentication",
+                    "value": "928391156e2dc4cca4808de63281af250325a720",
+                    "description": "",
+                    "disabled": false
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742405663840,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_1979dc2c792843d0b1b7f2835f39d22d",
+            "parentId": "fld_6c39b7f3dc134a7c881b4eaa0f54f64a",
+            "modified": 1742326368676,
+            "created": 1740772411769,
+            "url": "{{ _.baseUrl }}/ns/install",
+            "name": "Install",
+            "description": "Endpoint for Nuvemshop app installation authorization",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "curl -H 'Authentication: bearer ACCESS_TOKEN' \\\n  -H 'User-Agent: MyApp (name@email.com)' \\\n  https://api.nuvemshop.com.br/v1/{store_id}/products"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742308641128,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_7062e2409323454bb9bd053bc9e64bd9",
+            "parentId": "fld_6c39b7f3dc134a7c881b4eaa0f54f64a",
+            "modified": 1742310228448,
+            "created": 1742310228448,
+            "url": " https://api.nuvemshop.com.br/v1/5346813/store",
+            "name": "Store",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "User-Agent",
+                    "value": "insomnia/10.3.1",
+                    "id": "pair_7e564ab49bf04ee38404399b915abe0b"
+                },
+                {
+                    "id": "pair_965a345039a947f9a546dc3bc88d7157",
+                    "name": "Authentication",
+                    "value": "928391156e2dc4cca4808de63281af250325a720",
+                    "description": "",
+                    "disabled": false
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742137135023.5,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_adcf0ff5a0ac4e529d69d14c64ad932f",
+            "parentId": "fld_61843d2b79bd4f988b024e5a496e7c64",
+            "modified": 1742405281592,
+            "created": 1740772367721,
+            "url": "{{ _.baseUrl }}/app/users",
+            "name": "Create User",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"username\": \"Renan\",\n    \"email\": \"renan@mvlco.com.br\",\n    \"password\": \"mudar@123\",\n    \"seller_id\": \"1\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417832,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_61843d2b79bd4f988b024e5a496e7c64",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1742479587431,
+            "created": 1740772367718,
+            "name": "Users",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417816,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_3ba4d99e4e2a4803b373d23c72f8a992",
+            "parentId": "fld_61843d2b79bd4f988b024e5a496e7c64",
+            "modified": 1742405291660,
+            "created": 1740772367719,
+            "url": "{{ _.baseUrl }}/app/users",
+            "name": "List Users",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417831,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_42d0142d906f44c69333074eeac36e54",
+            "parentId": "fld_61843d2b79bd4f988b024e5a496e7c64",
+            "modified": 1742405302623,
+            "created": 1740772367720,
+            "url": "{{ _.baseUrl }}/app/users/1",
+            "name": "Get User by Id",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417806,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_502a8e7cd6614c30aa24558564bf929b",
+            "parentId": "fld_61843d2b79bd4f988b024e5a496e7c64",
+            "modified": 1742405308293,
+            "created": 1740772367722,
+            "url": "{{ _.baseUrl }}/app/users/1",
+            "name": "Edit User",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"username\": \"Renan Atualizado\",\n    \"email\": \"renan@mvlco.com.br\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417781,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_46afdca8df4c4d98b11a4f10185ab278",
+            "parentId": "fld_61843d2b79bd4f988b024e5a496e7c64",
+            "modified": 1742405314204,
+            "created": 1740772367723,
+            "url": "{{ _.baseUrl }}/app/users/1",
+            "name": "Delete User",
+            "description": "",
+            "method": "DELETE",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417731,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_f0e138bf9a5f4cfba5c8369761bc46c0",
+            "parentId": "fld_ec74ea01fa654cceaa18080cd3e7c6d1",
+            "modified": 1742483188164,
+            "created": 1740772347877,
+            "url": "{{ _.baseUrl }}/app/orders",
+            "name": "Create Order",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": \"1\",\n\t\t\"shopper_id\": \"1\",\n    \"products\": [1],\n    \"customer_id\": \"cus_000006562874\",\n    \"customer_info\": \"{customer_info}\",\n    \"nuvemshop\": \"{data.nuvemshop}\",\n\t\t\"next_due_date\": \"2025-04-20T14:04:08.000Z\",\n    \"value\": \"49.9\",\n    \"cycle\": \"MONTHLY\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417824,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_ec74ea01fa654cceaa18080cd3e7c6d1",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1742484177727,
+            "created": 1740772347874,
+            "name": "Orders",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417815,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_e2d413151b2d4a0183a4042eaa89dc06",
+            "parentId": "fld_ec74ea01fa654cceaa18080cd3e7c6d1",
+            "modified": 1742405425523,
+            "created": 1740772347875,
+            "url": "{{ _.baseUrl }}/app/orders",
+            "name": "List Orders",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417822,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_74679802dc1e407795415313ca95cba6",
+            "parentId": "fld_ec74ea01fa654cceaa18080cd3e7c6d1",
+            "modified": 1742405444136,
+            "created": 1740772347876,
+            "url": "{{ _.baseUrl }}/app/orders/1",
+            "name": "Get Order by Id",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417797,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_d4afdc8d75ca4a13bd05473904f8cb87",
+            "parentId": "fld_ec74ea01fa654cceaa18080cd3e7c6d1",
+            "modified": 1742484167033,
+            "created": 1740772347878,
+            "url": "{{ _.baseUrl }}/app/orders/1",
+            "name": "Edit Order",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"value\": \"69.9\",\n    \"cycle\": \"MONTHLY\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417772,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_ba75194a7f7746b4b9583b61d2da140c",
+            "parentId": "fld_ec74ea01fa654cceaa18080cd3e7c6d1",
+            "modified": 1742405449542,
+            "created": 1740772347879,
+            "url": "{{ _.baseUrl }}/app/orders/1",
+            "name": "Delete Order",
+            "description": "",
+            "method": "DELETE",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417722,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_3478d600b3c9489f8badf3d9c6e83fb6",
+            "parentId": "fld_4d941b2a9c4c40e882810a839e575326",
+            "modified": 1742568447100,
+            "created": 1740772385269,
+            "url": "{{ _.baseUrl }}/app/seller-subscriptions/seller/1",
+            "name": "Create Subscription",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"plan_name\": \"Plano Semanal\",\n  \"value\": 49.9,\n  \"cycle\": \"WEEKLY\",\n  \"next_due_date\": \"2025-03-26\",\n  \"billing_type\": \"CREDIT_CARD\",\n  \"external_id\": \"cus_000006537949\",\n  \"metadata\": {\n    \"description\": \"Assinatura do APP\",\n    \"externalReference\": \"5346813\",\n    \"customer\": \"cus_000006537949\"\n  }\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742499201656,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_4d941b2a9c4c40e882810a839e575326",
+            "parentId": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "modified": 1742561712041,
+            "created": 1742499172491,
+            "name": "Subscriptions",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742499172491,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1740772609562,
+            "created": 1740772385262,
+            "name": "Sellers",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417814,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_f0cdf6198738472e9e817e84d9fe4c75",
+            "parentId": "fld_4d941b2a9c4c40e882810a839e575326",
+            "modified": 1742499342056,
+            "created": 1742499235372,
+            "url": "{{ _.baseUrl }}/app/seller-subscriptions",
+            "name": "List Subscriptions",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1742498894886.5,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_eaf3c4c629ad4dedb7df1ff6b53e9305",
+            "parentId": "fld_4d941b2a9c4c40e882810a839e575326",
+            "modified": 1742562139701,
+            "created": 1742499430396,
+            "url": "{{ _.baseUrl }}/app/seller-subscriptions/seller/1",
+            "name": "Get Subscription by Seller Id",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1742498818194.125,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_60beb32cb8e74069995a81004b7b49b8",
+            "parentId": "fld_4d941b2a9c4c40e882810a839e575326",
+            "modified": 1742499337533,
+            "created": 1742499327134,
+            "url": "{{ _.baseUrl }}/app/seller-subscriptions/1",
+            "name": "Get Subscription",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1742498741501.75,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_fa84202e57b84620a8ffc20db1a5c263",
+            "parentId": "fld_4d941b2a9c4c40e882810a839e575326",
+            "modified": 1742561685945,
+            "created": 1742499385334,
+            "url": "{{ _.baseUrl }}/app/seller-subscriptions/1",
+            "name": "Edit Subscription",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"billingType\": \"CREDIT_CARD\",\n  \"cycle\": \"WEEKLY\",\n  \"customer\": \"cus_000006537949\",\n  \"value\": 49.9\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742498741401.75,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_4579976341834f5abddbc51470f42db8",
+            "parentId": "fld_4d941b2a9c4c40e882810a839e575326",
+            "modified": 1742568477494,
+            "created": 1742499410193,
+            "url": "{{ _.baseUrl }}/app/seller-subscriptions/2",
+            "name": "Delete Subscription",
+            "description": "",
+            "method": "DELETE",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1742498664759.375,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_b1e96ce5ada445aabd96fe4c90a3c4a1",
+            "parentId": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "modified": 1742405467173,
+            "created": 1740772385265,
+            "url": "{{ _.baseUrl }}/app/sellers",
+            "name": "Create Seller",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"nuvemshop_id\": \"5346813\",\n  \"nuvemshop_info\": \"Store information\",\n  \"nuvemshop_api_token\": \"61181d08b7e328d256736hdcb671c3ce50b8af5\",\n  \"app_start_date\": \"2022-12-12\",\n  \"app_status\": \"pending\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417828,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_a02f57404aa04db59582ff8db03ab75a",
+            "parentId": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "modified": 1742405472651,
+            "created": 1740772385263,
+            "url": "{{ _.baseUrl }}/app/sellers",
+            "name": "List Sellers",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417827.5,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_ea9727663b4c47bca0cd23a07f680a47",
+            "parentId": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "modified": 1742479426899,
+            "created": 1740772385264,
+            "url": "{{ _.baseUrl }}/app/sellers/1",
+            "name": "Get Sellers by Id",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417827,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_178357bd40494738863a76e56a6cb580",
+            "parentId": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "modified": 1742405484984,
+            "created": 1740772385266,
+            "url": "{{ _.baseUrl }}/app/sellers/2",
+            "name": "Edit Seller",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"app_status\": \"active\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417776,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_3cb7856b4b1640adb78636797bc2c781",
+            "parentId": "fld_0d769f0371864b469ba1d1d20ecb42ec",
+            "modified": 1742405489921,
+            "created": 1740772385267,
+            "url": "{{ _.baseUrl }}/app/sellers/1",
+            "name": "Delete Seller",
+            "description": "",
+            "method": "DELETE",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417726,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_06223cbe230f4bc8be2c8bbdcdcb45a4",
+            "parentId": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "modified": 1742498186300,
+            "created": 1742492556450,
+            "url": "{{ _.baseUrl }}/app/shoppers",
+            "name": "Create Shopper",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"nuvemshop_id\": \"shp_12345abcde\",\n    \"nuvemshop_info\": \"{\\\"customer_since\\\":\\\"2023-05-15\\\",\\\"total_purchases\\\":8,\\\"preferred_payment\\\":\\\"credit_card\\\"}\",\n    \"name\": \"Maria Oliveira Silva\",\n    \"email\": \"maria.oliveira@email.com\",\n    \"cpfCnpj\": \"123.456.789-00\",\n    \"mobilePhone\": \"(11) 98765-4321\",\n    \"address\": \"Rua das Flores\",\n    \"addressNumber\": \"123\",\n    \"province\": \"São Paulo\",\n    \"postalCode\": \"01234-567\",\n    \"birthDate\": \"1985-07-22T00:00:00.000Z\",\n    \"created_at\": \"2023-05-15T14:30:22.000Z\",\n    \"updated_at\": \"2024-03-10T09:15:45.000Z\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742492560693,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1742498545063,
+            "created": 1742479629738,
+            "name": "Shoppers",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417813.75,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_5673ae29680b466e80ae0610c02431f6",
+            "parentId": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "modified": 1742494749138,
+            "created": 1742494736275,
+            "url": "{{ _.baseUrl }}/app/shoppers",
+            "name": "List Shoppers",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742487895107,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_ef44660b4c15477dab776d170128548f",
+            "parentId": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "modified": 1742494826505,
+            "created": 1742494771427,
+            "url": "{{ _.baseUrl }}/app/shoppers/1",
+            "name": "Get Shoppers by Id",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742485562314,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_e7c86025fe8547f9839614e8added3ac",
+            "parentId": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "modified": 1742498260488,
+            "created": 1742498260488,
+            "url": "{{ _.baseUrl }}/app/shoppers/1",
+            "name": "Get Shoppers by NuvemShop Id",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742484979115.75,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_3c06bf0e9d4b4b4e91b97b3b6c48ecef",
+            "parentId": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "modified": 1742494806652,
+            "created": 1742494782500,
+            "url": "{{ _.baseUrl }}/app/shoppers/1",
+            "name": "Edit Shopper",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"shopper_id\": \"shp_12345absde\",\n    \"shopper_info\": \"{\\\"customer_since\\\":\\\"2023-05-15\\\",\\\"total_purchases\\\":8,\\\"preferred_payment\\\":\\\"credit_card\\\"}\",\n    \"name\": \"Maria Oliveira Silva\",\n    \"email\": \"maria.oliveira@email.com\",\n    \"cpfCnpj\": \"123.456.789-00\",\n    \"mobilePhone\": \"(11) 98765-4321\",\n    \"address\": \"Rua das Flores\",\n    \"addressNumber\": \"123\",\n    \"province\": \"São Paulo\",\n    \"postalCode\": \"01234-567\",\n    \"birthDate\": \"1985-07-22T00:00:00.000Z\",\n    \"created_at\": \"2023-05-15T14:30:22.000Z\",\n    \"updated_at\": \"2024-03-10T09:15:45.000Z\"\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742484395917.5,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_6e08a67ad0d241b09ca49dbe6520b377",
+            "parentId": "fld_449ead28a5a748fc980ddd7bffe3262d",
+            "modified": 1742498227341,
+            "created": 1742494850856,
+            "url": "{{ _.baseUrl }}/app/shoppers/1",
+            "name": "Delete Shopper",
+            "description": "",
+            "method": "DELETE",
+            "body": {
+                "mimeType": "application/json",
+                "text": ""
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742483812719.25,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_0f716e5b297c46b790c8720aa9138b5b",
+            "parentId": "fld_c763caf594ae4da09734fd26a94184d0",
+            "modified": 1742483539744,
+            "created": 1742482318939,
+            "url": "{{ _.baseUrl }}/app/payments/order/1",
+            "name": "Create Payment",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"value\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n\t\t\"due_date\": \"2025-03-21T14:04:08.000Z\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742483229521,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_c763caf594ae4da09734fd26a94184d0",
+            "parentId": "fld_4b1c0b77323a4a4daa35d93b3771f05d",
+            "modified": 1742498859687,
+            "created": 1742483223034,
+            "name": "For Orders",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742483223234,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_4b1c0b77323a4a4daa35d93b3771f05d",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1742498906401,
+            "created": 1742479525250,
+            "name": "Payments",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417813.5,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_4cf8bfe8466e4a788632555f3736df07",
+            "parentId": "fld_c763caf594ae4da09734fd26a94184d0",
+            "modified": 1742568023548,
+            "created": 1742498609608,
+            "url": "{{ _.baseUrl }}/app/payments/order/1",
+            "name": "Get Payments",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"value\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n\t\t\"due_date\": \"2025-03-21T14:04:08.000Z\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742483229421,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_ba826c819d2d4aa699628f9398ab2d34",
+            "parentId": "fld_fc7ae702ec6f4509a7890080a162c420",
+            "modified": 1742568077248,
+            "created": 1742498585899,
+            "url": "{{ _.baseUrl }}/app/payments/subscription/1",
+            "name": "Create Payment",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"external_id\": \"pay_123456789abcdef\",\n  \"status\": \"pending\",\n  \"value\": 49.90,\n  \"net_value\": 47.40,\n  \"payment_date\": null,\n  \"due_date\": \"2025-04-02T10:00:00.000Z\",\n  \"payment_method\": \"credit_card\",\n  \"invoice_url\": \"https://sandbox.asaas.com/i/123456789abcdef\",\n  \"description\": \"Pagamento da assinatura mensal - Plano Premium\",\n  \"transaction_data\": {\n    \"card\": {\n      \"brand\": \"Mastercard\",\n      \"last4\": \"4321\",\n      \"holder_name\": \"PEDRO A SILVA\"\n    },\n    \"installments\": 1,\n    \"processor_response\": {\n      \"code\": \"00\",\n      \"message\": \"Transação autorizada\"\n    },\n    \"gateway_id\": \"tx_987654321fedcba\",\n    \"authorization_code\": \"A12345\"\n  }\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742498588117,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_fc7ae702ec6f4509a7890080a162c420",
+            "parentId": "fld_4b1c0b77323a4a4daa35d93b3771f05d",
+            "modified": 1742498861289,
+            "created": 1742479570630,
+            "name": "For Sellers Subscriptions",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1742483223184,
+            "environmentType": "kv",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_20894e38053c4d05902437b5372fc05a",
+            "parentId": "fld_fc7ae702ec6f4509a7890080a162c420",
+            "modified": 1742568012179,
+            "created": 1742498725944,
+            "url": "{{ _.baseUrl }}/app/payments/subscription/1",
+            "name": "Get Payments",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"value\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n\t\t\"due_date\": \"2025-03-21T14:04:08.000Z\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742498588017,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_04614567d0a54c8697193ded4443200b",
+            "parentId": "fld_4b1c0b77323a4a4daa35d93b3771f05d",
+            "modified": 1742498787412,
+            "created": 1742498780782,
+            "url": "{{ _.baseUrl }}/app/payments/",
+            "name": "List Payments",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"value\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n\t\t\"due_date\": \"2025-03-21T14:04:08.000Z\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742483223134,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_e1bcb6419b434adf85a093583a27ae69",
+            "parentId": "fld_4b1c0b77323a4a4daa35d93b3771f05d",
+            "modified": 1742498811509,
+            "created": 1742498804599,
+            "url": "{{ _.baseUrl }}/app/payments/1",
+            "name": "Get Payment by Id",
+            "description": "",
+            "method": "GET",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"value\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n\t\t\"due_date\": \"2025-03-21T14:04:08.000Z\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742483223084,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_2d0e268484b04c3aba4e65f47c6d29e7",
+            "parentId": "fld_4b1c0b77323a4a4daa35d93b3771f05d",
+            "modified": 1742498839525,
+            "created": 1742498834968,
+            "url": "{{ _.baseUrl }}/app/payments/1",
+            "name": "Edit Payment",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"value\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n\t\t\"due_date\": \"2025-03-21T14:04:08.000Z\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1742483223059,
+            "isPrivate": false,
+            "pathParameters": [],
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_26cceaa826d74bb2b759a1033181b072",
+            "parentId": "fld_b81d48d8ac314efabc95085ec20de120",
+            "modified": 1742405508484,
+            "created": 1740772329036,
+            "url": "{{ _.baseUrl }}/app/products",
+            "name": "Create Product",
+            "description": "",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial\",\n    \"price\": 34.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417820,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_b81d48d8ac314efabc95085ec20de120",
+            "parentId": "fld_585c9d8c277440e78111bb5bc0e8063d",
+            "modified": 1741264266829,
+            "created": 1740772329032,
+            "name": "Products",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1741695417813,
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_462c19101cc6467bb9a3b91da85a7dca",
+            "parentId": "fld_b81d48d8ac314efabc95085ec20de120",
+            "modified": 1742405514306,
+            "created": 1740772329033,
+            "url": "{{ _.baseUrl }}/app/products",
+            "name": "List Products",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417819.5,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_17038a1679ec48aa91cfc805abc5d547",
+            "parentId": "fld_b81d48d8ac314efabc95085ec20de120",
+            "modified": 1742405524896,
+            "created": 1740772329034,
+            "url": "{{ _.baseUrl }}/app/products/1",
+            "name": "Get Products by Id",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417819.25,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_77df77c926174351ab1955ad200f04b0",
+            "parentId": "fld_b81d48d8ac314efabc95085ec20de120",
+            "modified": 1742405554487,
+            "created": 1740772329035,
+            "url": "{{ _.baseUrl }}/app/products/1/sync",
+            "name": "Sync Product by Id (NS)",
+            "description": "",
+            "method": "GET",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417819,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_1baccffd82f34887bf2376f1e850176f",
+            "parentId": "fld_b81d48d8ac314efabc95085ec20de120",
+            "modified": 1742405531496,
+            "created": 1740772329037,
+            "url": "{{ _.baseUrl }}/app/products/1",
+            "name": "Edit Product",
+            "description": "",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n    \"seller_id\": 1,\n    \"name\": \"Café colonial atualizado\",\n    \"price\": 39.9,\n    \"stock\": 100,\n    \"sku\": \"cafe-colonial-01234\",\n    \"description\": \"Café da melhor qualidade para sua casa, toda semana!\",\n    \"categories\": \"Cafés > Colonial > Torra média\",\n    \"images\": null\n}"
+            },
+            "parameters": [],
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "authentication": {},
+            "metaSortKey": -1741695417768,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "req_dd6c1da510134b26a193203500a80402",
+            "parentId": "fld_b81d48d8ac314efabc95085ec20de120",
+            "modified": 1742405538010,
+            "created": 1740772329038,
+            "url": "{{ _.baseUrl }}/app/products/1",
+            "name": "Delete Product",
+            "description": "",
+            "method": "DELETE",
+            "body": {},
+            "parameters": [],
+            "headers": [],
+            "authentication": {},
+            "metaSortKey": -1741695417718,
+            "isPrivate": false,
+            "settingStoreCookies": true,
+            "settingSendCookies": true,
+            "settingDisableRenderRequestBody": false,
+            "settingEncodeUrl": true,
+            "settingRebuildPath": true,
+            "settingFollowRedirects": "global",
+            "_type": "request"
+        },
+        {
+            "_id": "env_100de0e2c38446a785e66adecb7c953c",
+            "parentId": "wrk_1b606406d76849068dba00e60778cdb4",
+            "modified": 1740772307183,
+            "created": 1740772307183,
+            "name": "Base Environment",
+            "data": {
+                "baseUrl": "http://localhost:10000"
+            },
+            "dataPropertyOrder": null,
+            "color": null,
+            "isPrivate": false,
+            "metaSortKey": 1741695417838,
+            "_type": "environment"
+        },
+        {
+            "_id": "jar_a58a823fd16adb7cbc8e9ab0b9099daf3258889c",
+            "parentId": "wrk_1b606406d76849068dba00e60778cdb4",
+            "modified": 1742310128222,
+            "created": 1741695419525,
+            "name": "Default Jar",
+            "cookies": [
+                {
+                    "key": "__cf_bm",
+                    "value": "IfNmoI5WaPFcYlKa4BGQ_bof9ULf2sjNhCsplohXyw4-1742310136-1.0.1.1-VHWdKWqvCoGF8vZ.o7FYbMuSyrubf997D7wRbUmPlZ55QPcuMaYY1BeKQ02HR8Luh2mHqCzem02dzeQV.FAz5vYNq16yu0xVJolGEyzESxQ",
+                    "expires": "2025-03-18T15:32:16.000Z",
+                    "domain": "nuvemshop.com.br",
+                    "path": "/",
+                    "secure": true,
+                    "httpOnly": true,
+                    "hostOnly": false,
+                    "creation": "2025-03-18T15:02:08.218Z",
+                    "lastAccessed": "2025-03-18T15:02:08.218Z",
+                    "sameSite": "none",
+                    "id": "52fadde8-59ce-41e6-86dd-4bf72bd681fa"
+                }
+            ],
+            "_type": "cookie_jar"
+        }
+    ]
+}
