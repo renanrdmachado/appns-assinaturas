@@ -9,9 +9,7 @@ class SellerSubscriptionService {
                 return null;
             }
             
-            const subscription = await SellerSubscription.findByPk(id, {
-                include: [{ model: Seller, as: 'seller' }]
-            });
+            const subscription = await SellerSubscription.findByPk(id);
             console.log("Service / SellerSubscription: ", subscription ? subscription.id : 'not found');
             return subscription;
         } catch (error) {
@@ -22,9 +20,7 @@ class SellerSubscriptionService {
     
     async getAll() {
         try {
-            const subscriptions = await SellerSubscription.findAll({
-                include: [{ model: Seller, as: 'seller' }]
-            });
+            const subscriptions = await SellerSubscription.findAll();
             
             console.log("Service / All SellerSubscriptions count: ", subscriptions.length);
             return subscriptions;
@@ -63,6 +59,7 @@ class SellerSubscriptionService {
         try {
             // Verificar se o vendedor existe
             const seller = await Seller.findByPk(data.seller_id);
+            console.log('Seller:', seller ? seller.id : 'not found');
             if (!seller) {
                 return { 
                     success: false, 

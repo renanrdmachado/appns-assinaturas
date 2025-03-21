@@ -9,8 +9,6 @@ router.put('/:id', SellerController.update);
 router.delete('/:id', SellerController.destroy);
 
 // Rotas específicas para este controlador
-router.get('/:id/subscriptions', SellerController.getSubscriptions);
-router.post('/:id/subscriptions', SellerController.addSubscription);
 router.post('/:id/subaccount', SellerController.addSubAccount);
 
 module.exports = router;

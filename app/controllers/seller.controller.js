@@ -92,40 +92,6 @@ const destroy = async (req, res) => {
     }
 };
 
-// Obter assinaturas de um vendedor
-const getSubscriptions = async (req, res) => {
-    console.log("Controller - SellerController/getSubscriptions");
-    try {
-        // Adapte esta chamada para seu serviço
-        const subscriptions = await SellerService.getSubscriptions(req.params.id);
-        res.status(200).json(subscriptions);
-    } catch (error) {
-        console.error('Erro ao buscar assinaturas do vendedor:', error.message);
-        res.status(500).json({ error: 'Falha ao buscar assinaturas do vendedor' });
-    }
-};
-
-// Adicionar assinatura a um vendedor
-const addSubscription = async (req, res) => {
-    console.log("Controller - SellerController/addSubscription");
-    try {
-        // Adapte esta chamada para seu serviço
-        const subscription = await SellerService.addSubscription(req.params.id, req.body);
-        res.status(201).json({ 
-            success: true,
-            message: 'Assinatura adicionada com sucesso', 
-            data: subscription 
-        });
-    } catch (error) {
-        console.error('Erro ao adicionar assinatura:', error.message);
-        res.status(500).json({
-            success: false, 
-            message: 'Falha ao adicionar assinatura',
-            error: error.message
-        });
-    }
-};
-
 // Adicionar subconta a um vendedor
 const addSubAccount = async (req, res) => {
     console.log("Controller - SellerController/addSubAccount");
@@ -153,7 +119,5 @@ module.exports = {
     store,
     update,
     destroy,
-    getSubscriptions,
-    addSubscription,
     addSubAccount
 };

@@ -18,11 +18,23 @@
 - ✅ GET `/app/sellers` - Obter todos os vendedores
 - ✅ GET `/app/sellers/:id` - Obter vendedor por ID
 - ✅ POST `/app/sellers` - Criar novo vendedor
-- ✅ GET `/app/sellers/:id/subscriptions` - Obter assinaturas do vendedor
-- ✅ POST `/app/sellers/:id/subscriptions` - Adicionar assinatura ao vendedor
 - ✅ POST `/app/sellers/:id/subaccount` - Adicionar subconta ao vendedor
 - ✅ PUT `/app/sellers/:id` - Atualizar vendedor
 - ✅ DELETE `/app/sellers/:id` - Excluir vendedor
+
+## Rotas de Inscrições dos Vendedores
+- ✅ POST `app/seller-subscriptions` - Criar nova assinatura para o vendedor (seller_id no corpo da requisição)
+- ✅ GET `app/seller-subscriptions` - Obter todas as assinaturas dos vendedores
+- ✅ GET `app/seller-subscriptions/seller/:id` - Obter assinatura do vendedor por ID
+- ✅ PUT `app/seller-subscriptions/:id` - Atualizar assinatura
+- ✅ DELETE `app/seller-subscriptions/:id` - Excluir assinatura
+
+## Rotas de Compradores
+- ✅ POST `/app/shoppers` - Criar novo comprador
+- ✅ GET `/app/shoppers` - Obter todos os compradores
+- ✅ GET `/app/shoppers/:id` - Obter comprador por ID
+- ✅ PUT `/app/shoppers/:id` - Atualizar comprador
+- ✅ DELETE `/app/shoppers/:id` - Excluir comprador
 
 ## Rotas de Usuários
 - ✅ GET `/app/users` - Obter todos os usuários
@@ -58,24 +70,12 @@
 - ✅ PUT `/asaas/webhook/:id` - Atualizar webhook
 - ✅ DELETE `/asaas/webhook/:id` - Deletar webhook
 
-
 # Ajustes da API
-
-## Shoppers
-- ⏳ user_id_ns
-- ⏳ seller_id_ns
-- ⏳ cus_id_asaas
-- ⏳ token_credit_card
-- ⏳ email
 
 ## Asaas/Customers
 - ✅ "customers" na api do asaas separados por grupo "shoppers" e "sellers"
 - ✅ PUT `/asaas/customers/:id` -  Atualizar cliente no Asaas
 - ✅ POST `/asaas/shoppers/subscription` - Criar uma assinatura para os shoppers
-
-## Payments CRUD
-- ✅ payments_sellers
-- ✅ payments_shoppers
 
 ## Nuvemshop
 - ⏳ vincular webhook do asaas para criar uma order no ns toda vez que se criar um novo pagamento
