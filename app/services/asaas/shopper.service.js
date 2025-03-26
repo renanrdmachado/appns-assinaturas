@@ -1,6 +1,7 @@
 require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
-const { formatError } = require('../../utils/errorHandler');
+const { formatError, createError } = require('../../utils/errorHandler');
+const AsaasValidator = require('../../validators/asaas-validator');
 
 class ShopperService {
     /**
@@ -10,9 +11,17 @@ class ShopperService {
      */
     async createShopperSubscription(subscriptionData) {
         try {
-            // Validate required fields
-            if (!subscriptionData.customer || !subscriptionData.billingType || !subscriptionData.value) {
-                throw new Error('Missing required fields: customer, billingType, or value');
+            // Validar dados usando o validator
+            if (!subscriptionData.customer) {
+                return createError('ID do cliente (customer) é obrigatório', 400);
+            }
+            
+            if (!subscriptionData.billingType) {
+                return createError('Tipo de cobrança (billingType) é obrigatório', 400);
+            }
+            
+            if (!subscriptionData.value) {
+                return createError('Valor (value) é obrigatório', 400);
             }
 
             // Set default cycle to MONTHLY if not specified

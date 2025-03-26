@@ -1,12 +1,13 @@
 require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
 const SellerService = require('../seller.service');
-const { formatError } = require('../../utils/errorHandler');
+const { formatError, createError } = require('../../utils/errorHandler');
+const AsaasValidator = require('../../validators/asaas-validator'); // Importar o validator
 
 class WebhookService {
     async registerWebhook(webhookData) {
         try {
-            // Validate required fields
+            // Usar validator para validar os dados do webhook
             if (!webhookData.url) {
                 throw new Error('URL é obrigatória para o webhook');
             }
@@ -110,8 +111,8 @@ class WebhookService {
             console.log('Webhook event received:', JSON.stringify(eventData));
             
             if (!eventData.payment || !eventData.payment.id) {
-                console.error('Invalid webhook data: Missing payment information');
-                return { success: false, message: 'Invalid webhook data' };
+                console.error('Dados de webhook inválidos: Informações de pagamento ausentes');
+                return createError('Dados de webhook inválidos: Informações de pagamento ausentes', 400);
             }
 
             // Find the related entity (seller or customer) based on payment information
@@ -121,53 +122,53 @@ class WebhookService {
             // Process the webhook event based on its type
             switch(eventData.event) {
                 case 'PAYMENT_CREATED':
-                    console.log(`Payment created: ${paymentInfo.id}`);
+                    console.log(`Pagamento criado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Payment ${paymentInfo.id} belongs to ${entityInfo.type} ${entityInfo.entity.id}`);
+                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'PENDING');
                     } else {
-                        console.warn(`Could not find entity for payment ${paymentInfo.id}`);
+                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
                     }
                     break;
                     
                 case 'PAYMENT_RECEIVED':
                 case 'PAYMENT_CONFIRMED':
-                    console.log(`Payment confirmed: ${paymentInfo.id}`);
+                    console.log(`Pagamento confirmado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Payment ${paymentInfo.id} belongs to ${entityInfo.type} ${entityInfo.entity.id}`);
+                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'RECEIVED');
                     } else {
-                        console.warn(`Could not find entity for payment ${paymentInfo.id}`);
+                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
                     }
                     break;
                     
                 case 'PAYMENT_OVERDUE':
-                    console.log(`Payment overdue: ${paymentInfo.id}`);
+                    console.log(`Pagamento atrasado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Payment ${paymentInfo.id} belongs to ${entityInfo.type} ${entityInfo.entity.id}`);
+                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'OVERDUE');
                     } else {
-                        console.warn(`Could not find entity for payment ${paymentInfo.id}`);
+                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
                     }
                     break;
                 
                 case 'PAYMENT_REFUNDED':
-                    console.log(`Payment refunded: ${paymentInfo.id}`);
+                    console.log(`Pagamento reembolsado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Payment ${paymentInfo.id} belongs to ${entityInfo.type} ${entityInfo.entity.id}`);
+                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'REFUNDED');
                     } else {
-                        console.warn(`Could not find entity for payment ${paymentInfo.id}`);
+                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
                     }
                     break;
                 
                 default:
-                    console.warn(`Unhandled event type: ${eventData.event}`);
+                    console.warn(`Tipo de evento não tratado: ${eventData.event}`);
             }
             
             return { success: true };
         } catch (error) {
-            console.error('Error processing webhook:', error);
+            console.error('Erro ao processar webhook:', error);
             return formatError(error);
         }
     }
@@ -181,17 +182,17 @@ class WebhookService {
         try {
             // First priority: Check if payment belongs to a seller by customer ID
             if (paymentInfo.customer) {
-                console.log(`Looking for seller with payments_customer_id: ${paymentInfo.customer}`);
+                console.log(`Procurando vendedor com payments_customer_id: ${paymentInfo.customer}`);
                 
                 // Get all sellers to find one with matching customer ID
                 const sellers = await SellerService.getAll();
                 
                 if (sellers && sellers.length > 0) {
                     // Log all customer IDs to help with debugging
-                    console.log('Available customer IDs in our database:');
+                    console.log('IDs de cliente disponíveis em nossa base de dados:');
                     sellers.forEach(s => {
                         if (s.payments_customer_id) {
-                            console.log(`Seller ID ${s.id}, customer ID: ${s.payments_customer_id}`);
+                            console.log(`Vendedor ID ${s.id}, ID do cliente: ${s.payments_customer_id}`);
                         }
                     });
                     
@@ -201,21 +202,21 @@ class WebhookService {
                     );
                     
                     if (sellerWithCustomerId) {
-                        console.log(`Found seller by customer ID ${paymentInfo.customer}: Seller ID ${sellerWithCustomerId.id}`);
+                        console.log(`Vendedor encontrado pelo ID do cliente ${paymentInfo.customer}: Vendedor ID ${sellerWithCustomerId.id}`);
                         return { entity: sellerWithCustomerId, type: 'seller' };
                     } else {
-                        console.log(`No seller found with customer ID ${paymentInfo.customer}`);
+                        console.log(`Nenhum vendedor encontrado com ID de cliente ${paymentInfo.customer}`);
                     }
                 } else {
-                    console.log('No sellers found in database');
+                    console.log('Nenhum vendedor encontrado na base de dados');
                 }
             } else {
-                console.log('Warning: Payment info does not contain customer ID');
+                console.log('Aviso: Informação de pagamento não contém ID do cliente');
             }
 
             // Second priority: Check if payment matches a payment/subscription ID
             if (paymentInfo.id) {
-                console.log(`Looking for seller with payments_subscription_id: ${paymentInfo.id}`);
+                console.log(`Procurando vendedor com payments_subscription_id: ${paymentInfo.id}`);
                 
                 const sellers = await SellerService.getAll();
                 
@@ -225,16 +226,16 @@ class WebhookService {
                 );
                 
                 if (sellerWithSubId) {
-                    console.log(`Found seller by payment ID ${paymentInfo.id}: Seller ID ${sellerWithSubId.id}`);
+                    console.log(`Vendedor encontrado pelo ID do pagamento ${paymentInfo.id}: Vendedor ID ${sellerWithSubId.id}`);
                     return { entity: sellerWithSubId, type: 'seller' };
                 } else {
-                    console.log(`No seller found with payment ID ${paymentInfo.id}`);
+                    console.log(`Nenhum vendedor encontrado com ID de pagamento ${paymentInfo.id}`);
                 }
             }
 
             // Third priority: Try to extract seller ID from description if it exists
             if (paymentInfo.description && paymentInfo.description.trim() !== '') {
-                console.log(`Checking description field: "${paymentInfo.description}"`);
+                console.log(`Verificando campo de descrição: "${paymentInfo.description}"`);
                 
                 // If description is formatted as seller ID or contains it
                 const descMatch = paymentInfo.description.match(/seller[_-]?id[:\s]?(\d+)/i);
@@ -242,18 +243,18 @@ class WebhookService {
                     const sellerId = descMatch[1];
                     const seller = await SellerService.get(sellerId);
                     if (seller) {
-                        console.log(`Found seller by description reference ${sellerId}: Seller ID ${seller.id}`);
+                        console.log(`Vendedor encontrado pela referência na descrição ${sellerId}: Vendedor ID ${seller.id}`);
                         return { entity: seller, type: 'seller' };
                     }
                 }
             }
 
             // If no entity found
-            console.warn(`No entity found for payment ID ${paymentInfo.id}, customer ${paymentInfo.customer}`);
-            console.warn('Please verify that the customer ID in the webhook matches the payments_customer_id stored in your database');
+            console.warn(`Nenhuma entidade encontrada para o pagamento ID ${paymentInfo.id}, cliente ${paymentInfo.customer}`);
+            console.warn('Verifique se o ID do cliente no webhook corresponde ao payments_customer_id armazenado em sua base de dados');
             return { entity: null, type: null };
         } catch (error) {
-            console.error('Error finding entity for payment:', error);
+            console.error('Erro ao encontrar entidade para o pagamento:', error);
             return { entity: null, type: null };
         }
     }

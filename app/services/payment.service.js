@@ -1,20 +1,20 @@
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const SellerSubscription = require('../models/SellerSubscription');
-const { formatError } = require('../utils/errorHandler');
+const { formatError, createError } = require('../utils/errorHandler');
 const PaymentValidator = require('../validators/payment-validator');
 
 class PaymentService {
     async get(id) {
         try {
             if (!id) {
-                return null;
+                return createError('ID é obrigatório', 400);
             }
             
             const payment = await Payment.findByPk(id);
             
             if (!payment) {
-                return null;
+                return createError(`Pagamento com ID ${id} não encontrado`, 404);
             }
             
             // Buscar objeto relacionado (polimórfico)
@@ -26,7 +26,7 @@ class PaymentService {
             }
             
             console.log("Service / Payment: ", payment.id);
-            return { payment, relatedObject };
+            return { success: true, data: { payment, relatedObject } };
         } catch (error) {
             console.error('Erro ao buscar pagamento:', error.message);
             return formatError(error);
@@ -105,11 +105,7 @@ class PaymentService {
             // Verificar se o pedido existe
             const order = await Order.findByPk(orderId);
             if (!order) {
-                return { 
-                    success: false, 
-                    message: 'Pedido não encontrado',
-                    status: 404
-                };
+                return createError('Pedido não encontrado', 404);
             }
             
             // Preparar dados completos para validação
@@ -120,13 +116,16 @@ class PaymentService {
             };
             
             // Validar dados do pagamento para pedido
-            PaymentValidator.validateOrderPaymentData(paymentData);
+            try {
+                PaymentValidator.validateOrderPaymentData(paymentData);
+            } catch (validationError) {
+                return formatError(validationError);
+            }
             
             const payment = await Payment.create({
                 external_id: data.external_id,
                 payable_type: 'order',
                 payable_id: orderId,
-                // Removida a referência a order_id
                 status: data.status || 'pending',
                 value: data.value,
                 net_value: data.net_value,
@@ -198,15 +197,15 @@ class PaymentService {
             const payment = await Payment.findByPk(id);
             
             if (!payment) {
-                return { 
-                    success: false, 
-                    message: `Pagamento com ID ${id} não encontrado`,
-                    status: 404
-                };
+                return createError(`Pagamento com ID ${id} não encontrado`, 404);
             }
             
             // Validar dados de atualização
-            PaymentValidator.validatePaymentUpdateData(data);
+            try {
+                PaymentValidator.validatePaymentUpdateData(data);
+            } catch (validationError) {
+                return formatError(validationError);
+            }
             
             await payment.update(data);
             

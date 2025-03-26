@@ -2,18 +2,17 @@ require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
 const AsaasValidator = require('../../validators/asaas-validator');
 const SellerService = require('../seller.service');
-const { formatError } = require('../../utils/errorHandler');
+const { formatError, createError } = require('../../utils/errorHandler');
 
 class SubAccountService {
     async addSubAccount(accountData) {
         try {
+            // Usar o validator para validar os dados da subconta
             AsaasValidator.validateSubAccountData(accountData);
 
             const existingSeller = await SellerService.findByCpfCnpj(accountData.cpfCnpj);
-            if (existingSeller && existingSeller.subaccount_id) {
-                const error = new Error('Subconta já existe para este CPF/CNPJ');
-                error.statusCode = 400;
-                throw error;
+            if (existingSeller && existingSeller.data && existingSeller.data.subaccount_id) {
+                return createError('Subconta já existe para este CPF/CNPJ', 400);
             }
 
             const params = new URLSearchParams();
@@ -35,7 +34,7 @@ class SubAccountService {
                 subAccountData = items.data[0];
             }
 
-            return subAccountData;
+            return { success: true, data: subAccountData };
         } catch (error) {
             return formatError(error);
         }

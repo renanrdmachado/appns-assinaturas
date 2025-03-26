@@ -1,7 +1,7 @@
 require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
 const AsaasValidator = require('../../validators/asaas-validator');
-const { formatError } = require('../../utils/errorHandler');
+const { formatError, createError } = require('../../utils/errorHandler');
 
 class AsaasCustomerService {
     constructor() {
@@ -18,30 +18,11 @@ class AsaasCustomerService {
      */
     async createOrUpdate(customerData, groupName) {
         try {
-            // Validação básica
-            if (!customerData) {
-                return {
-                    success: false,
-                    message: 'Dados do cliente são obrigatórios',
-                    status: 400
-                };
-            }
+            // Usar o validator para validar os dados do cliente
+            AsaasValidator.validateCustomerData(customerData);
 
-            if (!customerData.name || !customerData.cpfCnpj) {
-                return {
-                    success: false,
-                    message: 'Nome e CPF/CNPJ são obrigatórios',
-                    status: 400
-                };
-            }
-
-            // Validação do CPF/CNPJ
-            if (!this._isValidCpfCnpj(customerData.cpfCnpj)) {
-                return {
-                    success: false,
-                    message: 'CPF/CNPJ inválido',
-                    status: 400
-                };
+            if (!groupName) {
+                return createError(`Grupo é obrigatório. Use '${this.SELLER_GROUP}' ou '${this.SHOPPER_GROUP}'`, 400);
             }
 
             // Sempre definir o grupo correto
@@ -227,6 +208,42 @@ class AsaasCustomerService {
     }
 
     /**
+     * Lista todos os clientes no Asaas sem filtro de grupo
+     * @param {Object} filters - Filtros adicionais (offset, limit, etc)
+     * @returns {Promise<Object>} - Resultado da operação
+     */
+    async listAll(filters = {}) {
+        try {
+            // Parâmetros da busca - não incluímos groupName para listar todos
+            const params = new URLSearchParams();
+            
+            // Adicionar filtros adicionais
+            for (const key in filters) {
+                if (filters[key]) {
+                    params.append(key, filters[key]);
+                }
+            }
+
+            // Chamada para API do Asaas
+            const result = await AsaasApiClient.request({
+                method: 'get',
+                endpoint: 'customers',
+                params
+            });
+
+            return { 
+                success: true, 
+                data: result.data || [],
+                hasMore: result.hasMore,
+                totalCount: result.totalCount
+            };
+        } catch (error) {
+            console.error('Erro ao listar todos os clientes:', error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
      * Remove um cliente no Asaas
      * @param {string} id - ID do cliente no Asaas
      * @returns {Promise<Object>} - Resultado da operação
@@ -255,13 +272,9 @@ class AsaasCustomerService {
         }
     }
 
-    // Método auxiliar para validação de CPF/CNPJ
+    // Método auxiliar para validação de CPF/CNPJ - substitui pelo método do validator
     _isValidCpfCnpj(cpfCnpj) {
-        // Remove caracteres não numéricos
-        const numbers = cpfCnpj.replace(/\D/g, '');
-        
-        // Verifica se é CPF (11 dígitos) ou CNPJ (14 dígitos)
-        return numbers.length === 11 || numbers.length === 14;
+        return AsaasValidator.isValidCpfCnpj(cpfCnpj);
     }
 }
 

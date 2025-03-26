@@ -78,6 +78,33 @@ const listByGroup = async (req, res) => {
 };
 
 /**
+ * Listar todos os clientes sem filtro de grupo
+ */
+const listAll = async (req, res) => {
+    try {
+        const filters = req.query; // offset, limit, etc.
+        
+        const result = await AsaasCustomerService.listAll(filters);
+        
+        if (!result.success) {
+            return res.status(result.status || 400).json({
+                success: false,
+                message: result.message
+            });
+        }
+        
+        return res.json(result);
+    } catch (error) {
+        console.error('Erro ao listar todos os clientes:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao listar clientes no Asaas',
+            error: error.message
+        });
+    }
+};
+
+/**
  * Buscar cliente por CPF/CNPJ
  */
 const findByCpfCnpj = async (req, res) => {
@@ -206,5 +233,6 @@ module.exports = {
     listByGroup,
     findByCpfCnpj,
     findByExternalReference,
-    remove
+    remove,
+    listAll // Adicionar o novo método ao objeto exportado
 };

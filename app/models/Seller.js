@@ -110,6 +110,11 @@ const Seller = sequelize.define('Seller', {
   Asaas_birthDate: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  payments_customer_id: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'ID do cliente no sistema de pagamento (Asaas)'
   }
 });
 

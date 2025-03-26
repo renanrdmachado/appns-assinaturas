@@ -1,21 +1,21 @@
 const Order = require('../models/Order');
 const Shopper = require('../models/Shopper');
 const Seller = require('../models/Seller');
-const { formatError } = require('../utils/errorHandler');
+const { formatError, createError } = require('../utils/errorHandler');
 const OrderValidator = require('../validators/order-validator');
 
 class OrderService {
     async get(id) {
         try {
             if (!id) {
-                return { success: false, message: 'ID é obrigatório', status: 400 };
+                return createError('ID é obrigatório', 400);
             }
             
             const order = await Order.findByPk(id);
             console.log("Service / Order: ", order);
             
             if (!order) {
-                return { success: false, message: `Pedido com ID ${id} não encontrado`, status: 404 };
+                return createError(`Pedido com ID ${id} não encontrado`, 404);
             }
             
             return { success: true, data: order };
@@ -52,14 +52,18 @@ class OrderService {
     async create(data) {
         console.log('Order - creating...');
         try {
-            // Validar dados do pedido
-            OrderValidator.validateOrderData(data);
-
-            // Verificar se o comprador existe
-            await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
-
-            // Verificar se o vendedor existe
-            await OrderValidator.validateSellerExists(data.seller_id, Seller);
+            // Validar dados do pedido usando o validator
+            try {
+                OrderValidator.validateOrderData(data);
+                
+                // Verificar se o comprador existe
+                await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
+    
+                // Verificar se o vendedor existe
+                await OrderValidator.validateSellerExists(data.seller_id, Seller);
+            } catch (validationError) {
+                return formatError(validationError);
+            }
 
             const order = await Order.create({
                 seller_id: data.seller_id,
@@ -90,21 +94,24 @@ class OrderService {
             const order = await Order.findByPk(id);
             
             if (!order) {
-                return { success: false, message: `Pedido com ID ${id} não encontrado`, status: 404 };
+                return createError(`Pedido com ID ${id} não encontrado`, 404);
             }
             
-            // Validar dados de atualização
-            OrderValidator.validateOrderUpdateData(data);
-            
-            // Se houver alteração no shopper_id, verificar se o novo comprador existe
-            if (data.shopper_id && data.shopper_id !== order.shopper_id) {
-                await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
+            // Validar dados de atualização usando o validator
+            try {
+                OrderValidator.validateOrderUpdateData(data);
+                
+                // Se houver alteração no shopper_id, verificar se o novo comprador existe
+                if (data.shopper_id && data.shopper_id !== order.shopper_id) {
+                    await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
+                }
+                
+                if (data.seller_id && data.seller_id !== order.seller_id) {
+                    await OrderValidator.validateSellerExists(data.seller_id, Seller);
+                }
+            } catch (validationError) {
+                return formatError(validationError);
             }
-            
-            // Nota: Se houver um modelo Seller, também validar alterações no seller_id
-            // if (data.seller_id && data.seller_id !== order.seller_id) {
-            //     await OrderValidator.validateSellerExists(data.seller_id, Seller);
-            // }
             
             await order.update({
                 ...(data.seller_id && { seller_id: data.seller_id }),

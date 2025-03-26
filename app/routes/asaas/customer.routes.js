@@ -3,6 +3,14 @@ const router = express.Router();
 const CustomerController = require('../../controllers/asaas/customer.controller');
 
 /**
+ * @route GET /asaas/customer/
+ * @description Lista todos os clientes sem filtro de grupo
+ * @query offset, limit - Paginação
+ * @access Private
+ */
+router.get('/', CustomerController.listAll);
+
+/**
  * @route POST /asaas/customer/:groupName
  * @description Cria ou atualiza um cliente no Asaas no grupo especificado
  * @param {string} groupName - SELLERS ou SHOPPERS

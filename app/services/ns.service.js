@@ -1,13 +1,13 @@
 require('dotenv').config();
 const axios = require('axios');
 const SellerService = require('./seller.service');
-const { formatError } = require('../utils/errorHandler');
+const { formatError, createError } = require('../utils/errorHandler');
 
 class NsService {
     async authorize(code) {
         try {
             if (!code) {
-                return { success: false, message: 'Código de autorização é obrigatório', status: 400 };
+                return createError('Código de autorização é obrigatório', 400);
             }
             
             const response = await axios.post('https://www.nuvemshop.com.br/apps/authorize/token', {
@@ -19,12 +19,12 @@ class NsService {
             
             const data = response.data;
             
-            if (data.access_token) {
-                await this.getAndSaveStoreInfo(data);
-                return { success: true, data };
+            if (!data.access_token) {
+                return createError('Falha na autorização: Token não recebido', 400);
             }
             
-            return { success: false, message: 'Falha na autorização', data };
+            await this.getAndSaveStoreInfo(data);
+            return { success: true, data };
         } catch (error) {
             console.error('Erro na autorização Nuvemshop:', error.message);
             return formatError(error);
@@ -34,7 +34,7 @@ class NsService {
     async getAndSaveStoreInfo(store) {
         try {
             if (!store || !store.user_id || !store.access_token) {
-                return { success: false, message: 'Informações da loja são obrigatórias', status: 400 };
+                return createError('Informações da loja são obrigatórias', 400);
             }
             
             const options = {
@@ -48,6 +48,10 @@ class NsService {
 
             const response = await axios(options);
             const result = await SellerService.updateStoreInfo(store.user_id, store.access_token, response.data);
+            
+            if (!result.success) {
+                return result; // Propagar erro do SellerService
+            }
             
             return { success: true, data: response.data };
         } catch (error) {

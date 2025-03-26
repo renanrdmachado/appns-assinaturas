@@ -1,17 +1,23 @@
 const SellerSubscription = require('../models/SellerSubscription');
 const Seller = require('../models/Seller');
-const { formatError } = require('../utils/errorHandler');
+const { formatError, createError } = require('../utils/errorHandler');
+const SellerValidator = require('../validators/seller-validator');
 
 class SellerSubscriptionService {
     async get(id) {
         try {
             if (!id) {
-                return null;
+                return createError('ID é obrigatório', 400);
             }
             
             const subscription = await SellerSubscription.findByPk(id);
             console.log("Service / SellerSubscription: ", subscription ? subscription.id : 'not found');
-            return subscription;
+            
+            if (!subscription) {
+                return createError(`Assinatura com ID ${id} não encontrada`, 404);
+            }
+            
+            return { success: true, data: subscription };
         } catch (error) {
             console.error('Erro ao buscar assinatura de vendedor:', error.message);
             return formatError(error);
@@ -23,7 +29,7 @@ class SellerSubscriptionService {
             const subscriptions = await SellerSubscription.findAll();
             
             console.log("Service / All SellerSubscriptions count: ", subscriptions.length);
-            return subscriptions;
+            return { success: true, data: subscriptions };
         } catch (error) {
             console.error('Erro ao buscar assinaturas de vendedores:', error.message);
             return formatError(error);
@@ -33,13 +39,15 @@ class SellerSubscriptionService {
     async getBySellerId(sellerId) {
         try {
             // Verificar se o vendedor existe
+            try {
+                SellerValidator.validateId(sellerId);
+            } catch (validationError) {
+                return formatError(validationError);
+            }
+            
             const seller = await Seller.findByPk(sellerId);
             if (!seller) {
-                return { 
-                    success: false, 
-                    message: 'Vendedor não encontrado',
-                    status: 404
-                };
+                return createError('Vendedor não encontrado', 404);
             }
             
             const subscriptions = await SellerSubscription.findAll({
@@ -58,14 +66,16 @@ class SellerSubscriptionService {
         console.log('SellerSubscription - creating...');
         try {
             // Verificar se o vendedor existe
+            try {
+                SellerValidator.validateId(sellerId);
+            } catch (validationError) {
+                return formatError(validationError);
+            }
+            
             const seller = await Seller.findByPk(sellerId);
             console.log('Seller:', seller ? seller.id : 'not found');
             if (!seller) {
-                return { 
-                    success: false, 
-                    message: 'Vendedor não encontrado',
-                    status: 404
-                };
+                return createError('Vendedor não encontrado', 404);
             }
             
             // Juntar o ID do vendedor com os dados da requisição
@@ -96,14 +106,14 @@ class SellerSubscriptionService {
     
     async update(id, data) {
         try {
+            if (!id) {
+                return createError('ID é obrigatório', 400);
+            }
+            
             const subscription = await SellerSubscription.findByPk(id);
             
             if (!subscription) {
-                return { 
-                    success: false, 
-                    message: `Assinatura com ID ${id} não encontrada`,
-                    status: 404
-                };
+                return createError(`Assinatura com ID ${id} não encontrada`, 404);
             }
             
             await subscription.update(data);
@@ -118,14 +128,14 @@ class SellerSubscriptionService {
     
     async delete(id) {
         try {
+            if (!id) {
+                return createError('ID é obrigatório', 400);
+            }
+            
             const subscription = await SellerSubscription.findByPk(id);
             
             if (!subscription) {
-                return { 
-                    success: false, 
-                    message: `Assinatura com ID ${id} não encontrada`,
-                    status: 404
-                };
+                return createError(`Assinatura com ID ${id} não encontrada`, 404);
             }
             
             await subscription.destroy();

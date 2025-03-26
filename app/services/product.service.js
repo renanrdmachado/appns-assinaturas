@@ -1,11 +1,11 @@
 const Product = require('../models/Product');
-const { formatError } = require('../utils/errorHandler');
+const { formatError, createError } = require('../utils/errorHandler');
 
 class ProductService {
     async get(id) {
         try {
             if (!id) {
-                return { success: false, message: 'ID é obrigatório', status: 400 };
+                return createError('ID é obrigatório', 400);
             }
             
             const product = await Product.findOne({
@@ -14,7 +14,7 @@ class ProductService {
             console.log("Service / Product: ", product);
             
             if (!product) {
-                return { success: false, message: `Produto com ID ${id} não encontrado`, status: 404 };
+                return createError(`Produto com ID ${id} não encontrado`, 404);
             }
             
             return { success: true, data: product };
@@ -42,6 +42,15 @@ class ProductService {
     async create(data) {
         console.log('Product - creating...');
         try {
+            // Validação básica de campos obrigatórios
+            if (!data.name) {
+                return createError('Nome do produto é obrigatório', 400);
+            }
+            
+            if (!data.price || isNaN(parseFloat(data.price))) {
+                return createError('Preço deve ser um valor numérico válido', 400);
+            }
+            
             const product = await Product.create({
                 seller_id: data.seller_id,
                 name: data.name,
@@ -63,10 +72,19 @@ class ProductService {
     
     async update(id, data) {
         try {
+            if (!id) {
+                return createError('ID é obrigatório', 400);
+            }
+            
             const product = await Product.findByPk(id);
             
             if (!product) {
-                return { success: false, message: `Produto com ID ${id} não encontrado`, status: 404 };
+                return createError(`Produto com ID ${id} não encontrado`, 404);
+            }
+            
+            // Validação básica
+            if (data.price !== undefined && isNaN(parseFloat(data.price))) {
+                return createError('Preço deve ser um valor numérico válido', 400);
             }
             
             await product.update({
@@ -90,10 +108,14 @@ class ProductService {
     
     async delete(id) {
         try {
+            if (!id) {
+                return createError('ID é obrigatório', 400);
+            }
+            
             const product = await Product.findByPk(id);
             
             if (!product) {
-                return { success: false, message: `Produto com ID ${id} não encontrado`, status: 404 };
+                return createError(`Produto com ID ${id} não encontrado`, 404);
             }
             
             await product.destroy();

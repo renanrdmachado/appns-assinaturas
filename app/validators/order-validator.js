@@ -1,58 +1,40 @@
-class OrderValidator {
+const BaseValidator = require('./base-validator');
+
+class OrderValidator extends BaseValidator {
     static validateOrderData(orderData) {
         const errors = [];
 
+        if (!orderData) {
+            this.throwError("Dados do pedido são obrigatórios", 400);
+        }
+
         // Validar campos obrigatórios
-        if (!orderData.seller_id) {
-            errors.push("O campo 'seller_id' é obrigatório.");
-        }
-
-        if (!orderData.shopper_id) {
-            errors.push("O campo 'shopper_id' é obrigatório.");
-        }
-
-        if (!orderData.products) {
-            errors.push("O campo 'products' é obrigatório.");
-        } else if (!Array.isArray(orderData.products) && typeof orderData.products !== 'object') {
+        const requiredFields = ['seller_id', 'shopper_id', 'products', 'customer_info', 
+                             'value', 'cycle', 'next_due_date'];
+        errors.push(...this.validateRequiredFields(orderData, requiredFields, 'pedido'));
+        
+        // Validações específicas
+        if (orderData.products && (!Array.isArray(orderData.products) && typeof orderData.products !== 'object')) {
             errors.push("O campo 'products' deve ser um array ou objeto válido.");
         }
 
-        if (!orderData.customer_info) {
-            errors.push("O campo 'customer_info' é obrigatório.");
-        }
-
-        if (!orderData.value) {
-            errors.push("O campo 'value' é obrigatório.");
-        } else if (isNaN(parseFloat(orderData.value))) {
+        if (orderData.value && isNaN(parseFloat(orderData.value))) {
             errors.push("O campo 'value' deve ser um número válido.");
         }
 
-        if (!orderData.cycle) {
-            errors.push("O campo 'cycle' é obrigatório.");
+        if (orderData.next_due_date && !this.isValidDate(orderData.next_due_date)) {
+            errors.push("O campo 'next_due_date' deve ser uma data válida.");
         }
 
-        if (!orderData.next_due_date) {
-            errors.push("O campo 'next_due_date' é obrigatório.");
-        } else {
-            const dateObj = new Date(orderData.next_due_date);
-            if (isNaN(dateObj.getTime())) {
-                errors.push("O campo 'next_due_date' deve ser uma data válida.");
-            }
-        }
-
-        // Lançar erro com todas as validações que falharam
-        if (errors.length > 0) {
-            const error = new Error(errors.join(" "));
-            error.statusCode = 400;
-            error.validationErrors = errors;
-            throw error;
-        }
-
-        return true;
+        return this.throwValidationErrors(errors);
     }
 
     static validateOrderUpdateData(orderData) {
         const errors = [];
+
+        if (!orderData || Object.keys(orderData).length === 0) {
+            this.throwError("Nenhum dado fornecido para atualização do pedido", 400);
+        }
 
         // Para atualizações, validamos apenas os campos que foram fornecidos
         if (orderData.seller_id === "") {
@@ -73,22 +55,11 @@ class OrderValidator {
             errors.push("O campo 'value' deve ser um número válido.");
         }
 
-        if (orderData.next_due_date !== undefined) {
-            const dateObj = new Date(orderData.next_due_date);
-            if (isNaN(dateObj.getTime())) {
-                errors.push("O campo 'next_due_date' deve ser uma data válida.");
-            }
+        if (orderData.next_due_date !== undefined && !this.isValidDate(orderData.next_due_date)) {
+            errors.push("O campo 'next_due_date' deve ser uma data válida.");
         }
 
-        // Lançar erro com todas as validações que falharam
-        if (errors.length > 0) {
-            const error = new Error(errors.join(" "));
-            error.statusCode = 400;
-            error.validationErrors = errors;
-            throw error;
-        }
-
-        return true;
+        return this.throwValidationErrors(errors);
     }
 
     /**
@@ -99,17 +70,13 @@ class OrderValidator {
      */
     static async validateShopperExists(shopperId, Shopper) {
         if (!shopperId) {
-            const error = new Error("ID do comprador é obrigatório");
-            error.statusCode = 400;
-            throw error;
+            this.throwError("ID do comprador é obrigatório", 400);
         }
 
         const shopper = await Shopper.findByPk(shopperId);
         
         if (!shopper) {
-            const error = new Error(`Comprador com ID ${shopperId} não encontrado`);
-            error.statusCode = 404;
-            throw error;
+            this.throwError(`Comprador com ID ${shopperId} não encontrado`, 404);
         }
         
         return true;
@@ -123,17 +90,13 @@ class OrderValidator {
      */
     static async validateSellerExists(sellerId, Seller) {
         if (!sellerId) {
-            const error = new Error("ID do vendedor é obrigatório");
-            error.statusCode = 400;
-            throw error;
+            this.throwError("ID do vendedor é obrigatório", 400);
         }
 
         const seller = await Seller.findByPk(sellerId);
         
         if (!seller) {
-            const error = new Error(`Vendedor com ID ${sellerId} não encontrado`);
-            error.statusCode = 404;
-            throw error;
+            this.throwError(`Vendedor com ID ${sellerId} não encontrado`, 404);
         }
         
         return true;
