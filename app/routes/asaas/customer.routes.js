@@ -34,11 +34,7 @@ router.get('/group/:groupName', CustomerController.listByGroup);
  * @param {string} cpfCnpj - CPF ou CNPJ do cliente
  * @access Private
  */
-router.get('/:groupName/cpfcnpj/:cpfCnpj', (req, res) => {
-    // Incluir o groupName da URL nos query params para compatibilidade
-    req.query.groupName = req.params.groupName;
-    CustomerController.findByCpfCnpj(req, res);
-});
+router.get('/:groupName/cpfcnpj/:cpfCnpj', CustomerController.findByCpfCnpj);
 
 /**
  * @route GET /asaas/customer/:groupName/external/:externalId
@@ -47,11 +43,7 @@ router.get('/:groupName/cpfcnpj/:cpfCnpj', (req, res) => {
  * @param {string} externalId - ID externo (nuvemshop_id)
  * @access Private
  */
-router.get('/:groupName/external/:externalId', (req, res) => {
-    // Incluir o groupName da URL nos query params para compatibilidade
-    req.query.groupName = req.params.groupName;
-    CustomerController.findByExternalReference(req, res);
-});
+router.get('/:groupName/external/:externalId',   CustomerController.findByExternalReference);
 
 /**
  * @route DELETE /asaas/customer/:id

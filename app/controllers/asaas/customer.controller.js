@@ -1,238 +1,211 @@
 require('dotenv').config();
 const AsaasCustomerService = require('../../services/asaas/customer.service');
+const { formatError, createError } = require('../../utils/errorHandler');
 
 /**
- * Criar ou atualizar cliente no Asaas
+ * Controller para gerenciar clientes no Asaas, seguindo padrão RESTful
  */
-const createOrUpdate = async (req, res) => {
-    try {
-        const { groupName } = req.params;
-        const customerData = req.body;
-        
-        if (!groupName || ![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
-            return res.status(400).json({
-                success: false,
-                message: `Grupo inválido. Use ${AsaasCustomerService.SELLER_GROUP} ou ${AsaasCustomerService.SHOPPER_GROUP}`
+class CustomerController {
+    /**
+     * Lista todos os clientes do Asaas
+     */
+    async listAll(req, res) {
+        try {
+            // Extrair filtros da query
+            const filters = { ...req.query };
+            
+            const result = await AsaasCustomerService.getAll(filters);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
             });
+        } catch (error) {
+            console.error('Erro ao listar clientes:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        const result = await AsaasCustomerService.createOrUpdate(customerData, groupName);
-        
-        if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
-            });
-        }
-        
-        return res.status(result.isNew ? 201 : 200).json({
-            success: true,
-            message: result.isNew ? 
-                `Cliente criado com sucesso no grupo ${groupName}` : 
-                `Cliente atualizado com sucesso no grupo ${groupName}`,
-            data: result.data
-        });
-    } catch (error) {
-        console.error('Erro ao criar/atualizar cliente no Asaas:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao processar a solicitação',
-            error: error.message
-        });
     }
-};
-
-/**
- * Listar clientes por grupo
- */
-const listByGroup = async (req, res) => {
-    try {
-        const { groupName } = req.params;
-        const filters = req.query; // offset, limit, etc.
-        
-        if (!groupName || ![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
-            return res.status(400).json({
-                success: false,
-                message: `Grupo inválido. Use ${AsaasCustomerService.SELLER_GROUP} ou ${AsaasCustomerService.SHOPPER_GROUP}`
+    
+    /**
+     * Obtém detalhes de um cliente específico
+     */
+    async show(req, res) {
+        try {
+            const { id } = req.params;
+            
+            if (!id) {
+                return res.status(400).json(createError('ID do cliente é obrigatório', 400));
+            }
+            
+            const result = await AsaasCustomerService.get(id);
+            
+            if (!result.success) {
+                return res.status(result.status || 404).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
             });
+        } catch (error) {
+            console.error(`Erro ao buscar cliente ID ${req.params.id}:`, error);
+            return res.status(500).json(formatError(error));
         }
-        
-        const result = await AsaasCustomerService.listByGroup(groupName, filters);
-        
-        if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
-            });
-        }
-        
-        return res.json(result);
-    } catch (error) {
-        console.error('Erro ao listar clientes por grupo:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao listar clientes no Asaas',
-            error: error.message
-        });
     }
-};
-
-/**
- * Listar todos os clientes sem filtro de grupo
- */
-const listAll = async (req, res) => {
-    try {
-        const filters = req.query; // offset, limit, etc.
-        
-        const result = await AsaasCustomerService.listAll(filters);
-        
-        if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
+    
+    /**
+     * Cria ou atualiza um cliente no Asaas
+     */
+    async createOrUpdate(req, res) {
+        try {
+            const customerData = req.body;
+            const { groupName } = req.params;
+            
+            const result = await AsaasCustomerService.createOrUpdate(customerData, groupName);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Cliente criado ou atualizado com sucesso',
+                data: result.data
             });
+        } catch (error) {
+            console.error('Erro ao criar ou atualizar cliente:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        return res.json(result);
-    } catch (error) {
-        console.error('Erro ao listar todos os clientes:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao listar clientes no Asaas',
-            error: error.message
-        });
     }
-};
-
-/**
- * Buscar cliente por CPF/CNPJ
- */
-const findByCpfCnpj = async (req, res) => {
-    try {
-        const { cpfCnpj } = req.params;
-        const { groupName } = req.query;
-        
-        // Verificar se o groupName está presente na query
-        if (!groupName) {
-            return res.status(400).json({
-                success: false,
-                message: `O parâmetro 'groupName' é obrigatório. Use '${AsaasCustomerService.SELLER_GROUP}' ou '${AsaasCustomerService.SHOPPER_GROUP}'`
+    
+    /**
+     * Remove um cliente do Asaas
+     */
+    async remove(req, res) {
+        try {
+            const { id } = req.params;
+            
+            if (!id) {
+                return res.status(400).json(createError('ID do cliente é obrigatório', 400));
+            }
+            
+            const result = await AsaasCustomerService.delete(id);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                message: 'Cliente removido com sucesso'
             });
+        } catch (error) {
+            console.error(`Erro ao remover cliente ID ${req.params.id}:`, error);
+            return res.status(500).json(formatError(error));
         }
-        
-        if (![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
-            return res.status(400).json({
-                success: false,
-                message: `Grupo inválido. Use '${AsaasCustomerService.SELLER_GROUP}' ou '${AsaasCustomerService.SHOPPER_GROUP}'`
-            });
-        }
-        
-        const result = await AsaasCustomerService.findByCpfCnpj(cpfCnpj, groupName);
-        
-        if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
-            });
-        }
-        
-        return res.json(result);
-    } catch (error) {
-        console.error('Erro ao buscar cliente por CPF/CNPJ no Asaas:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao buscar cliente no Asaas',
-            error: error.message
-        });
     }
-};
-
-/**
- * Buscar cliente por referência externa (nuvemshop_id)
- */
-const findByExternalReference = async (req, res) => {
-    try {
-        const { externalId } = req.params;
-        const { groupName } = req.query;
-        
-        // Verificar se o groupName está presente na query
-        if (!groupName) {
-            return res.status(400).json({
-                success: false,
-                message: `O parâmetro 'groupName' é obrigatório. Use '${AsaasCustomerService.SELLER_GROUP}' ou '${AsaasCustomerService.SHOPPER_GROUP}'`
+    
+    /**
+     * Busca cliente por CPF/CNPJ
+     */
+    async findByCpfCnpj(req, res) {
+        try {
+            const { cpfCnpj } = req.params;
+            const { groupName } = req.query;
+            
+            // Validar grupo se fornecido
+            if (groupName && 
+                ![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
+                return res.status(400).json(createError(
+                    `Grupo inválido. Use ${AsaasCustomerService.SELLER_GROUP} ou ${AsaasCustomerService.SHOPPER_GROUP}`,
+                    400
+                ));
+            }
+            
+            const result = await AsaasCustomerService.findByCpfCnpj(cpfCnpj, groupName);
+            
+            if (!result.success) {
+                return res.status(result.status || 404).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
             });
+        } catch (error) {
+            console.error('Erro ao buscar cliente por CPF/CNPJ:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        if (![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
-            return res.status(400).json({
-                success: false,
-                message: `Grupo inválido. Use '${AsaasCustomerService.SELLER_GROUP}' ou '${AsaasCustomerService.SHOPPER_GROUP}'`
-            });
-        }
-        
-        const result = await AsaasCustomerService.findByExternalReference(externalId, groupName);
-        
-        if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
-            });
-        }
-        
-        return res.json(result);
-    } catch (error) {
-        console.error('Erro ao buscar cliente por referência externa no Asaas:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao buscar cliente no Asaas',
-            error: error.message
-        });
     }
-};
-
-/**
- * Remover cliente do Asaas
- */
-const remove = async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: 'ID do cliente é obrigatório'
+    
+    /**
+     * Lista clientes por grupo
+     */
+    async listByGroup(req, res) {
+        try {
+            const { groupName } = req.params;
+            const filters = { ...req.query }; // outros filtros
+            
+            if (!groupName || 
+                ![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
+                return res.status(400).json(createError(
+                    `Grupo inválido. Use ${AsaasCustomerService.SELLER_GROUP} ou ${AsaasCustomerService.SHOPPER_GROUP}`,
+                    400
+                ));
+            }
+            
+            const result = await AsaasCustomerService.listByGroup(groupName, filters);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
             });
+        } catch (error) {
+            console.error('Erro ao listar clientes por grupo:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        const result = await AsaasCustomerService.remove(id);
-        
-        if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
-            });
-        }
-        
-        return res.json({
-            success: true,
-            message: 'Cliente removido com sucesso no Asaas',
-            data: result.data
-        });
-    } catch (error) {
-        console.error('Erro ao remover cliente no Asaas:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao remover cliente no Asaas',
-            error: error.message
-        });
     }
-};
+    
+    /**
+     * Busca cliente por referência externa
+     */
+    async findByExternalReference(req, res) {
+        try {
+            const { externalId } = req.params;
+            const { groupName } = req.query;
+            
+            // Validar grupo se fornecido
+            if (groupName && 
+                ![AsaasCustomerService.SELLER_GROUP, AsaasCustomerService.SHOPPER_GROUP].includes(groupName)) {
+                return res.status(400).json(createError(
+                    `Grupo inválido. Use ${AsaasCustomerService.SELLER_GROUP} ou ${AsaasCustomerService.SHOPPER_GROUP}`,
+                    400
+                ));
+            }
+            
+            const result = await AsaasCustomerService.findByExternalReference(externalId, groupName);
+            
+            if (!result.success) {
+                return res.status(result.status || 404).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
+            });
+        } catch (error) {
+            console.error('Erro ao buscar cliente por referência externa:', error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+}
 
-module.exports = {
-    createOrUpdate,
-    listByGroup,
-    findByCpfCnpj,
-    findByExternalReference,
-    remove,
-    listAll // Adicionar o novo método ao objeto exportado
-};
+module.exports = new CustomerController();

@@ -1,18 +1,24 @@
 const { SellerSubscriptionService } = require('../services');
+const { formatError } = require('../utils/errorHandler');
 
 class SellerSubscriptionController {
   // Listar todas as assinaturas de vendedores
   async index(req, res) {
     try {
-      const subscriptions = await SellerSubscriptionService.getAll();
-      return res.json({ success: true, data: subscriptions });
+      const result = await SellerSubscriptionService.getAll();
+      
+      // Verificar se a operação foi bem-sucedida
+      if (!result.success) {
+        return res.status(result.status || 400).json(result);
+      }
+      
+      return res.json({ 
+        success: true, 
+        data: result.data 
+      });
     } catch (error) {
       console.error('Erro ao listar assinaturas de vendedores:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erro ao buscar assinaturas de vendedores',
-        error: error.message
-      });
+      return res.status(500).json(formatError(error));
     }
   }
 
@@ -21,23 +27,20 @@ class SellerSubscriptionController {
     const { id } = req.params;
     
     try {
-      const subscription = await SellerSubscriptionService.get(id);
+      const result = await SellerSubscriptionService.get(id);
       
-      if (!subscription) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Assinatura não encontrada' 
-        });
+      // Verificar se a operação foi bem-sucedida
+      if (!result.success) {
+        return res.status(result.status || 400).json(result);
       }
       
-      return res.json({ success: true, data: subscription });
+      return res.json({ 
+        success: true, 
+        data: result.data 
+      });
     } catch (error) {
       console.error(`Erro ao buscar assinatura ID ${id}:`, error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erro ao buscar assinatura',
-        error: error.message
-      });
+      return res.status(500).json(formatError(error));
     }
   }
 
@@ -50,11 +53,9 @@ class SellerSubscriptionController {
       // Passar seller_id e dados da assinatura separadamente para o service
       const result = await SellerSubscriptionService.create(seller_id, subscriptionData);
       
+      // Verificar se a operação foi bem-sucedida
       if (!result.success) {
-        return res.status(result.status || 400).json({
-          success: false,
-          message: result.message
-        });
+        return res.status(result.status || 400).json(result);
       }
 
       return res.status(201).json({
@@ -64,11 +65,7 @@ class SellerSubscriptionController {
       });
     } catch (error) {
       console.error('Erro ao criar assinatura:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erro ao criar assinatura',
-        error: error.message
-      });
+      return res.status(500).json(formatError(error));
     }
   }
 
@@ -79,11 +76,9 @@ class SellerSubscriptionController {
     try {
       const result = await SellerSubscriptionService.update(id, req.body);
       
+      // Verificar se a operação foi bem-sucedida
       if (!result.success) {
-        return res.status(result.status || 400).json({
-          success: false,
-          message: result.message
-        });
+        return res.status(result.status || 400).json(result);
       }
       
       return res.json({
@@ -93,11 +88,7 @@ class SellerSubscriptionController {
       });
     } catch (error) {
       console.error(`Erro ao atualizar assinatura ID ${id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erro ao atualizar assinatura',
-        error: error.message
-      });
+      return res.status(500).json(formatError(error));
     }
   }
 
@@ -108,11 +99,9 @@ class SellerSubscriptionController {
     try {
       const result = await SellerSubscriptionService.delete(id);
       
+      // Verificar se a operação foi bem-sucedida
       if (!result.success) {
-        return res.status(result.status || 400).json({
-          success: false,
-          message: result.message
-        });
+        return res.status(result.status || 400).json(result);
       }
       
       return res.json({
@@ -121,11 +110,7 @@ class SellerSubscriptionController {
       });
     } catch (error) {
       console.error(`Erro ao remover assinatura ID ${id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erro ao remover assinatura',
-        error: error.message
-      });
+      return res.status(500).json(formatError(error));
     }
   }
 
@@ -136,21 +121,18 @@ class SellerSubscriptionController {
     try {
       const result = await SellerSubscriptionService.getBySellerId(seller_id);
       
+      // Verificar se a operação foi bem-sucedida
       if (!result.success) {
-        return res.status(result.status || 400).json({
-          success: false,
-          message: result.message
-        });
+        return res.status(result.status || 400).json(result);
       }
       
-      return res.json({ success: true, data: result.data });
+      return res.json({ 
+        success: true, 
+        data: result.data 
+      });
     } catch (error) {
       console.error(`Erro ao listar assinaturas do vendedor ID ${seller_id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erro ao buscar assinaturas do vendedor',
-        error: error.message
-      });
+      return res.status(500).json(formatError(error));
     }
   }
 }

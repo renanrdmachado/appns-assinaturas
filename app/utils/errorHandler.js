@@ -1,98 +1,66 @@
 /**
- * Formata erros de forma padronizada para respostas da API
+ * Formata um erro para retornar na API
  * @param {Error} error - Objeto de erro
- * @param {string} defaultMessage - Mensagem padrão se não houver mensagem no erro
- * @returns {Object} - Objeto formatado para resposta da API
+ * @returns {Object} - Erro formatado
  */
-function formatError(error, defaultMessage = 'Ocorreu um erro durante o processamento') {
-    // Se o erro já tiver um formato padronizado, apenas retorná-lo
-    if (error.success === false && (error.message || error.error)) {
-        return error;
-    }
-    
-    // Verificar se o erro possui um código de status HTTP
-    const statusCode = error.statusCode || 
-                      (error.response && error.response.status) || 
-                      500;
-    
-    // Verificar se há erros de validação
-    const validationErrors = error.validationErrors || 
-                           (error.response && error.response.data && error.response.data.errors) ||
-                           null;
-    
-    // Construir a resposta padronizada
-    const formattedError = {
+const formatError = (error) => {
+    // Objeto base de resposta
+    const errorResponse = {
         success: false,
-        message: error.message || defaultMessage,
-        status: statusCode
+        message: error.message || 'Erro interno do servidor'
     };
     
-    // Adicionar detalhes de erro quando disponíveis
-    if (error.name && error.name !== 'Error') {
-        formattedError.error = error.name;
+    // Se for um erro do Asaas com detalhes específicos
+    if (error.asaasError) {
+        errorResponse.status = error.status || 400;
+        errorResponse.errors = error.asaasError.errors || [];
+        
+        // Evita redundância - não incluir originalError se for igual ao errors
+        if (error.asaasError.originalError && 
+            JSON.stringify(error.asaasError.originalError) !== JSON.stringify({ errors: errorResponse.errors })) {
+            errorResponse.asaasDetails = error.asaasError.originalError;
+        }
+    }
+    // Se for um erro de validação com errors
+    else if (error.validationErrors) {
+        errorResponse.status = error.statusCode || 400;
+        errorResponse.errors = error.validationErrors;
+    }
+    // Se for um erro com statusCode
+    else if (error.statusCode) {
+        errorResponse.status = error.statusCode;
+    }
+    // Erro genérico
+    else {
+        console.error('Erro não tratado:', error);
+        errorResponse.status = 500;
     }
     
-    // Adicionar erros de validação quando disponíveis
-    if (validationErrors) {
-        formattedError.validationErrors = validationErrors;
-    }
-    
-    // Adicionar detalhes do erro de resposta da API
-    if (error.response && error.response.data) {
-        formattedError.details = error.response.data;
-    }
-    
-    // Adicionar stack trace em desenvolvimento (opcional)
-    if (process.env.NODE_ENV === 'development' && error.stack) {
-        formattedError.stack = error.stack;
-    }
-    
-    return formattedError;
-}
+    return errorResponse;
+};
 
 /**
- * Cria um erro formatado diretamente
+ * Cria um objeto de erro para retornar na API
  * @param {string} message - Mensagem de erro
- * @param {number} status - Código de status HTTP
- * @param {Array|Object} validationErrors - Erros de validação (opcional)
- * @returns {Object} - Objeto formatado para resposta da API
+ * @param {number} status - Status HTTP
+ * @param {Array} errors - Lista de erros específicos (opcional)
+ * @returns {Object} - Objeto de erro formatado
  */
-function createError(message, status = 400, validationErrors = null) {
-    const error = {
+const createError = (message, status = 400, errors = null) => {
+    const errorObj = {
         success: false,
-        message: message,
-        status: status
+        status,
+        message
     };
     
-    if (validationErrors) {
-        error.validationErrors = validationErrors;
+    if (errors) {
+        errorObj.errors = Array.isArray(errors) ? errors : [errors];
     }
     
-    return error;
-}
-
-/**
- * Verifica se o resultado de uma operação foi bem-sucedido
- * @param {Object} result - Resultado da operação
- * @param {Object} res - Objeto de resposta do Express
- * @returns {boolean} - true se foi enviada uma resposta
- */
-function handleOperationResult(result, res) {
-    if (!result) {
-        res.status(500).json(createError('Ocorreu um erro interno no servidor'));
-        return true;
-    }
-    
-    if (!result.success) {
-        res.status(result.status || 400).json(result);
-        return true;
-    }
-    
-    return false;
-}
+    return errorObj;
+};
 
 module.exports = {
     formatError,
-    createError,
-    handleOperationResult
+    createError
 };

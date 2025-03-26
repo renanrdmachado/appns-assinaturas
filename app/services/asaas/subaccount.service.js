@@ -36,6 +36,8 @@ class SubAccountService {
 
             return { success: true, data: subAccountData };
         } catch (error) {
+            // Garantir que os erros da API do Asaas sejam capturados corretamente
+            console.error('Erro ao adicionar subconta no Asaas:', error);
             return formatError(error);
         }
     }
@@ -46,7 +48,9 @@ class SubAccountService {
                 method: 'GET',
                 endpoint: 'accounts'
             });
-            return items.totalCount > 0 ? items.data : [];
+            
+            const data = items.totalCount > 0 ? items.data : [];
+            return { success: true, data: data };
         } catch (error) {
             return formatError(error);
         }
@@ -55,16 +59,23 @@ class SubAccountService {
     async getSubAccountByCpfCnpj(cpfCnpj) {
         try {
             if (!cpfCnpj) {
-                throw new Error('CPF/CNPJ é obrigatório');
+                return createError('CPF/CNPJ é obrigatório', 400);
             }
+            
             const params = new URLSearchParams();
             params.append('cpfCnpj', cpfCnpj);
+            
             const items = await AsaasApiClient.request({
                 method: 'GET',
                 endpoint: 'accounts',
                 params
             });
-            return items.totalCount > 0 ? items.data[0] : null;
+            
+            if (items.totalCount === 0) {
+                return createError('Nenhuma subconta encontrada para o CPF/CNPJ informado', 404);
+            }
+            
+            return { success: true, data: items.data[0] };
         } catch (error) {
             return formatError(error);
         }

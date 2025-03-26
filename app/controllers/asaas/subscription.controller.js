@@ -1,13 +1,21 @@
-const ShopperService = require('../services/shopper.service');
-const { formatError } = require('../utils/errorHandler');
+const SubscriptionService = require('../../services/asaas/subscription.service');
+const { formatError } = require('../../utils/errorHandler');
 
-class ShopperController {
+class SubscriptionController {
     /**
-     * Lista todos os shoppers
+     * Lista todas as assinaturas no Asaas
      */
     async index(req, res) {
         try {
-            const result = await ShopperService.getAll();
+            // Extrair filtros da query
+            const filters = {
+                customer: req.query.customer,
+                billingType: req.query.billingType,
+                offset: req.query.offset,
+                limit: req.query.limit
+            };
+            
+            const result = await SubscriptionService.getAll(filters);
             
             // Verificar se a operação foi bem-sucedida
             if (!result.success) {
@@ -19,19 +27,19 @@ class ShopperController {
                 data: result.data
             });
         } catch (error) {
-            console.error('Erro ao listar shoppers:', error);
+            console.error('Erro ao listar assinaturas:', error);
             return res.status(500).json(formatError(error));
         }
     }
     
     /**
-     * Busca um shopper específico
+     * Obtém detalhes de uma assinatura específica do Asaas
      */
     async show(req, res) {
         try {
             const { id } = req.params;
             
-            const result = await ShopperService.get(id);
+            const result = await SubscriptionService.get(id);
             
             // Verificar se a operação foi bem-sucedida
             if (!result.success) {
@@ -43,43 +51,18 @@ class ShopperController {
                 data: result.data
             });
         } catch (error) {
-            console.error(`Erro ao buscar shopper ID ${req.params.id}:`, error);
+            console.error(`Erro ao buscar assinatura ID ${req.params.id}:`, error);
             return res.status(500).json(formatError(error));
         }
     }
     
     /**
-     * Busca um shopper por ID da Nuvemshop
-     */
-    async showByNuvemshopId(req, res) {
-        try {
-            const { nuvemshopId } = req.params;
-            
-            const result = await ShopperService.getByNuvemshopId(nuvemshopId);
-            
-            // Verificar se a operação foi bem-sucedida
-            if (!result.success) {
-                return res.status(result.status || 400).json(result);
-            }
-            
-            return res.json({
-                success: true,
-                data: result.data
-            });
-        } catch (error) {
-            console.error(`Erro ao buscar shopper por Nuvemshop ID ${req.params.nuvemshopId}:`, error);
-            return res.status(500).json(formatError(error));
-        }
-    }
-    
-    /**
-     * Cria um novo shopper
+     * Cria uma nova assinatura no Asaas
      */
     async store(req, res) {
         try {
-            const shopperData = req.body;
-            
-            const result = await ShopperService.create(shopperData);
+            const subscriptionData = req.body;
+            const result = await SubscriptionService.create(subscriptionData);
             
             // Verificar se a operação foi bem-sucedida
             if (!result.success) {
@@ -88,24 +71,24 @@ class ShopperController {
             
             return res.status(201).json({
                 success: true,
-                message: 'Shopper criado com sucesso',
+                message: 'Assinatura criada com sucesso',
                 data: result.data
             });
         } catch (error) {
-            console.error('Erro ao criar shopper:', error);
+            console.error('Erro ao criar assinatura:', error);
             return res.status(500).json(formatError(error));
         }
     }
     
     /**
-     * Atualiza um shopper existente
+     * Atualiza uma assinatura existente no Asaas
      */
     async update(req, res) {
         try {
             const { id } = req.params;
-            const shopperData = req.body;
+            const subscriptionData = req.body;
             
-            const result = await ShopperService.update(id, shopperData);
+            const result = await SubscriptionService.update(id, subscriptionData);
             
             // Verificar se a operação foi bem-sucedida
             if (!result.success) {
@@ -114,23 +97,23 @@ class ShopperController {
             
             return res.json({
                 success: true,
-                message: 'Shopper atualizado com sucesso',
+                message: 'Assinatura atualizada com sucesso',
                 data: result.data
             });
         } catch (error) {
-            console.error(`Erro ao atualizar shopper ID ${req.params.id}:`, error);
+            console.error(`Erro ao atualizar assinatura ID ${req.params.id}:`, error);
             return res.status(500).json(formatError(error));
         }
     }
     
     /**
-     * Remove um shopper
+     * Remove uma assinatura do Asaas
      */
     async destroy(req, res) {
         try {
             const { id } = req.params;
             
-            const result = await ShopperService.delete(id);
+            const result = await SubscriptionService.delete(id);
             
             // Verificar se a operação foi bem-sucedida
             if (!result.success) {
@@ -139,22 +122,22 @@ class ShopperController {
             
             return res.json({
                 success: true,
-                message: 'Shopper removido com sucesso'
+                message: 'Assinatura removida com sucesso'
             });
         } catch (error) {
-            console.error(`Erro ao remover shopper ID ${req.params.id}:`, error);
+            console.error(`Erro ao remover assinatura ID ${req.params.id}:`, error);
             return res.status(500).json(formatError(error));
         }
     }
     
     /**
-     * Sincroniza um shopper com o Asaas
+     * Lista assinaturas por cliente
      */
-    async syncWithAsaas(req, res) {
+    async listByCustomer(req, res) {
         try {
-            const { id } = req.params;
+            const { customer_id } = req.params;
             
-            const result = await ShopperService.syncWithAsaas(id);
+            const result = await SubscriptionService.getByCustomerId(customer_id);
             
             // Verificar se a operação foi bem-sucedida
             if (!result.success) {
@@ -163,14 +146,13 @@ class ShopperController {
             
             return res.json({
                 success: true,
-                message: 'Shopper sincronizado com sucesso no Asaas',
                 data: result.data
             });
         } catch (error) {
-            console.error(`Erro ao sincronizar shopper ID ${req.params.id} com Asaas:`, error);
+            console.error(`Erro ao listar assinaturas do cliente ID ${req.params.customer_id}:`, error);
             return res.status(500).json(formatError(error));
         }
     }
 }
 
-module.exports = new ShopperController();
+module.exports = new SubscriptionController();

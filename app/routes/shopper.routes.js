@@ -2,17 +2,13 @@ const express = require('express');
 const router = express.Router();
 const ShopperController = require('../controllers/shopper.controller');
 
-// Rotas padrão RESTful para Shoppers
+// Rotas para shoppers
 router.get('/', ShopperController.index);
-router.get('/:id', ShopperController.show);
 router.post('/', ShopperController.store);
+router.get('/nuvemshop/:nuvemshopId', ShopperController.showByNuvemshopId);
+router.get('/:id', ShopperController.show);
 router.put('/:id', ShopperController.update);
 router.delete('/:id', ShopperController.destroy);
-
-// Rota adicional para buscar pelo nuvemshop_id externo
-router.get('/external/:nuvemshop_id', ShopperController.findByNuvemshopId);
-
-// Rota para sincronização manual com o Asaas
 router.post('/:id/sync-asaas', ShopperController.syncWithAsaas);
 
 module.exports = router;

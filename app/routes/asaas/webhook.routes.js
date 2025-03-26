@@ -1,13 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {
-    registerWebhook,
-    getWebhooks,
-    getWebhookById,
-    updateWebhook,
-    deleteWebhook,
-    receiveWebhook
-} = require('../../controllers/asaas/webhook.controller');
+const WebhookController = require('../../controllers/asaas/webhook.controller');
 
 /**
  * @route POST /asaas/webhook/register
@@ -30,7 +23,7 @@ const {
  * }
  * @flow System setup - configures Asaas to notify the application about payment events
  */
-router.post('/register', registerWebhook);
+router.post('/register', WebhookController.store);
 
 /**
  * @route GET /asaas/webhook
@@ -42,7 +35,7 @@ router.post('/register', registerWebhook);
  *   "message": "Error message"
  * }
  */
-router.get('/', getWebhooks);
+router.get('/', WebhookController.index);
 
 /**
  * @route GET /asaas/webhook/:id
@@ -55,7 +48,7 @@ router.get('/', getWebhooks);
  *   "message": "Error message"
  * }
  */
-router.get('/:id', getWebhookById);
+router.get('/:id', WebhookController.show);
 
 /**
  * @route PUT /asaas/webhook/:id
@@ -69,7 +62,7 @@ router.get('/:id', getWebhookById);
  *   "message": "Error message"
  * }
  */
-router.put('/:id', updateWebhook);
+router.put('/:id', WebhookController.update);
 
 /**
  * @route DELETE /asaas/webhook/:id
@@ -82,7 +75,7 @@ router.put('/:id', updateWebhook);
  *   "message": "Error message"
  * }
  */
-router.delete('/:id', deleteWebhook);
+router.delete('/:id', WebhookController.destroy);
 
 /**
  * @route POST /asaas/webhook/receive
@@ -95,6 +88,6 @@ router.delete('/:id', deleteWebhook);
  * }
  * @flow Payment processing - handles payment status updates from Asaas
  */
-router.post('/receive', receiveWebhook);
+router.post('/receive', WebhookController.receiveWebhook);
 
 module.exports = router;

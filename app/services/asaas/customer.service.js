@@ -1,11 +1,10 @@
 require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
-const AsaasValidator = require('../../validators/asaas-validator');
 const { formatError, createError } = require('../../utils/errorHandler');
 
-class AsaasCustomerService {
+class CustomerService {
     constructor() {
-        // Defina as constantes como propriedades da instância
+        // Constantes para grupos de cliente
         this.SELLER_GROUP = 'SELLERS';
         this.SHOPPER_GROUP = 'SHOPPERS';
     }
@@ -13,269 +12,285 @@ class AsaasCustomerService {
     /**
      * Cria ou atualiza um cliente no Asaas
      * @param {Object} customerData - Dados do cliente
-     * @param {string} groupName - Nome do grupo (SELLERS ou SHOPPERS)
-     * @returns {Promise<Object>} - Resultado da operação
+     * @param {string} groupName - Nome do grupo de clientes
+     * @returns {Object} - Resultado da operação
      */
-    async createOrUpdate(customerData, groupName) {
+    async createOrUpdate(customerData, groupName = '') {
         try {
-            // Usar o validator para validar os dados do cliente
-            AsaasValidator.validateCustomerData(customerData);
-
-            if (!groupName) {
-                return createError(`Grupo é obrigatório. Use '${this.SELLER_GROUP}' ou '${this.SHOPPER_GROUP}'`, 400);
+            // Verificar se o cliente já existe pelo CPF/CNPJ
+            if (customerData.cpfCnpj) {
+                const existingCustomer = await this.findByCpfCnpj(customerData.cpfCnpj, groupName);
+                
+                if (existingCustomer.success && existingCustomer.data) {
+                    // Cliente existe, atualizar
+                    console.log(`Cliente com CPF/CNPJ ${customerData.cpfCnpj} encontrado no Asaas. Atualizando...`);
+                    
+                    // Adiciona groupName se fornecido
+                    if (groupName) {
+                        customerData.groupName = groupName;
+                    }
+                    
+                    return await this.update(existingCustomer.data.id, customerData);
+                }
             }
-
-            // Sempre definir o grupo correto
-            customerData.groupName = groupName;
-
-            // Verificar se o cliente já existe por CPF/CNPJ
-            const existingCustomer = await this.findByCpfCnpj(customerData.cpfCnpj, groupName);
-
-            if (existingCustomer.success) {
-                // Se existe, atualiza
-                const result = await AsaasApiClient.request({
-                    method: 'put',
-                    endpoint: `customers/${existingCustomer.data.id}`,
-                    data: customerData
-                });
-
-                console.log(`Cliente do grupo ${groupName} atualizado no Asaas:`, result.id);
-                return { success: true, data: result, isNew: false };
-            } else {
-                // Se não existe, cria
-                const result = await AsaasApiClient.request({
-                    method: 'post',
-                    endpoint: 'customers',
-                    data: customerData
-                });
-
-                console.log(`Cliente do grupo ${groupName} criado no Asaas:`, result.id);
-                return { success: true, data: result, isNew: true };
+            
+            // Cliente não existe, criar novo
+            // Adiciona groupName se fornecido
+            if (groupName) {
+                customerData.groupName = groupName;
             }
+            
+            return await this.create(customerData);
         } catch (error) {
-            console.error(`Erro ao criar/atualizar cliente no grupo ${groupName}:`, error.message);
+            console.error('Erro ao criar ou atualizar cliente no Asaas:', error);
             return formatError(error);
         }
     }
 
     /**
-     * Busca um cliente no Asaas por CPF/CNPJ
-     * @param {string} cpfCnpj - CPF ou CNPJ do cliente
-     * @param {string} groupName - Nome do grupo (SELLERS ou SHOPPERS)
-     * @returns {Promise<Object>} - Resultado da operação
+     * Cria um cliente no Asaas
+     * @param {Object} customerData - Dados do cliente
+     * @returns {Object} - Resultado da operação
      */
-    async findByCpfCnpj(cpfCnpj, groupName) {
+    async create(customerData) {
+        try {
+            // Validações básicas
+            if (!customerData.name) {
+                return createError('Nome do cliente é obrigatório', 400);
+            }
+            
+            if (!customerData.cpfCnpj) {
+                return createError('CPF/CNPJ do cliente é obrigatório', 400);
+            }
+            
+            // Criar cliente no Asaas
+            const customer = await AsaasApiClient.request({
+                method: 'POST',
+                endpoint: 'customers',
+                data: customerData
+            });
+            
+            return { success: true, data: customer };
+        } catch (error) {
+            console.error('Erro ao criar cliente no Asaas:', error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Atualiza um cliente no Asaas
+     * @param {string} id - ID do cliente no Asaas
+     * @param {Object} customerData - Dados do cliente
+     * @returns {Object} - Resultado da operação
+     */
+    async update(id, customerData) {
+        try {
+            if (!id) {
+                return createError('ID do cliente é obrigatório', 400);
+            }
+            
+            // Atualizar cliente no Asaas
+            const customer = await AsaasApiClient.request({
+                method: 'POST',
+                endpoint: `customers/${id}`,
+                data: customerData
+            });
+            
+            return { success: true, data: customer };
+        } catch (error) {
+            console.error(`Erro ao atualizar cliente ${id} no Asaas:`, error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Busca um cliente pelo CPF/CNPJ no Asaas
+     * @param {string} cpfCnpj - CPF ou CNPJ do cliente
+     * @param {string} groupName - Nome do grupo de clientes
+     * @returns {Object} - Resultado da operação
+     */
+    async findByCpfCnpj(cpfCnpj, groupName = '') {
         try {
             if (!cpfCnpj) {
-                return {
-                    success: false,
-                    message: 'CPF/CNPJ é obrigatório',
-                    status: 400
-                };
+                return createError('CPF/CNPJ é obrigatório', 400);
             }
-
-            if (!groupName) {
-                return {
-                    success: false,
-                    message: `Grupo é obrigatório. Use '${this.SELLER_GROUP}' ou '${this.SHOPPER_GROUP}'`,
-                    status: 400
-                };
+            
+            // Remover caracteres não numéricos do CPF/CNPJ
+            const cleanCpfCnpj = cpfCnpj.replace(/\D/g, '');
+            
+            // Parâmetros de busca
+            const params = new URLSearchParams();
+            params.append('cpfCnpj', cleanCpfCnpj);
+            
+            // Adicionar grupo se fornecido
+            if (groupName) {
+                params.append('groupName', groupName);
             }
-
-            // Parâmetros da busca
-            const params = new URLSearchParams({ cpfCnpj });
-            params.append('groupName', groupName);
-
-            // Chamada para API do Asaas
-            const result = await AsaasApiClient.request({
-                method: 'get',
+            
+            // Buscar clientes no Asaas
+            const customers = await AsaasApiClient.request({
+                method: 'GET',
                 endpoint: 'customers',
                 params
             });
-
-            // Verificar se encontrou algum cliente
-            if (!result.data || result.data.length === 0) {
-                return {
-                    success: false,
-                    message: `Cliente com CPF/CNPJ ${cpfCnpj} não encontrado no grupo ${groupName}`,
-                    status: 404
-                };
+            
+            if (customers.data && customers.data.length > 0) {
+                return { success: true, data: customers.data[0] };
             }
-
-            // Retornar o primeiro cliente encontrado (normalmente apenas um)
-            return { success: true, data: result.data[0] };
+            
+            return { success: false, message: `Nenhum cliente encontrado com CPF/CNPJ ${cpfCnpj}` };
         } catch (error) {
-            console.error('Erro ao buscar cliente no Asaas por CPF/CNPJ:', error.message);
+            console.error(`Erro ao buscar cliente por CPF/CNPJ ${cpfCnpj} no Asaas:`, error);
             return formatError(error);
         }
     }
 
     /**
-     * Busca um cliente no Asaas por ID externo (nuvemshop_id)
-     * @param {string} externalId - ID externo do cliente
-     * @param {string} groupName - Nome do grupo (SELLERS ou SHOPPERS)
-     * @returns {Promise<Object>} - Resultado da operação
+     * Obtém um cliente pelo ID no Asaas
+     * @param {string} id - ID do cliente no Asaas
+     * @returns {Object} - Resultado da operação
      */
-    async findByExternalReference(externalId, groupName) {
+    async get(id) {
         try {
-            if (!externalId) {
-                return {
-                    success: false,
-                    message: 'ID externo é obrigatório',
-                    status: 400
-                };
+            if (!id) {
+                return createError('ID do cliente é obrigatório', 400);
             }
-
-            if (!groupName) {
-                return {
-                    success: false,
-                    message: `Grupo é obrigatório. Use '${this.SELLER_GROUP}' ou '${this.SHOPPER_GROUP}'`,
-                    status: 400
-                };
-            }
-
-            // Parâmetros da busca
-            const params = new URLSearchParams({ externalReference: externalId });
-            params.append('groupName', groupName);
-
-            // Chamada para API do Asaas
-            const result = await AsaasApiClient.request({
-                method: 'get',
-                endpoint: 'customers',
-                params
+            
+            // Buscar cliente no Asaas
+            const customer = await AsaasApiClient.request({
+                method: 'GET',
+                endpoint: `customers/${id}`
             });
-
-            // Verificar se encontrou algum cliente
-            if (!result.data || result.data.length === 0) {
-                return {
-                    success: false, 
-                    message: `Cliente com referência externa ${externalId} não encontrado no grupo ${groupName}`,
-                    status: 404
-                };
-            }
-
-            // Retornar o primeiro cliente encontrado
-            return { success: true, data: result.data[0] };
+            
+            return { success: true, data: customer };
         } catch (error) {
-            console.error('Erro ao buscar cliente no Asaas por ID externo:', error.message);
+            console.error(`Erro ao buscar cliente ${id} no Asaas:`, error);
             return formatError(error);
         }
     }
 
     /**
-     * Lista clientes no Asaas por grupo
-     * @param {string} groupName - Nome do grupo (SELLERS ou SHOPPERS)
-     * @param {Object} filters - Filtros adicionais (offset, limit, etc)
-     * @returns {Promise<Object>} - Resultado da operação
+     * Lista todos os clientes no Asaas
+     * @param {Object} filters - Filtros para a listagem
+     * @returns {Object} - Resultado da operação
+     */
+    async getAll(filters = {}) {
+        try {
+            // Parâmetros de busca
+            const params = new URLSearchParams();
+            
+            // Adicionar filtros
+            if (filters.name) params.append('name', filters.name);
+            if (filters.email) params.append('email', filters.email);
+            if (filters.cpfCnpj) params.append('cpfCnpj', filters.cpfCnpj);
+            if (filters.groupName) params.append('groupName', filters.groupName);
+            if (filters.externalReference) params.append('externalReference', filters.externalReference);
+            if (filters.offset) params.append('offset', filters.offset);
+            if (filters.limit) params.append('limit', filters.limit);
+            
+            // Buscar clientes no Asaas
+            const customers = await AsaasApiClient.request({
+                method: 'GET',
+                endpoint: 'customers',
+                params
+            });
+            
+            return { success: true, data: customers };
+        } catch (error) {
+            console.error('Erro ao listar clientes no Asaas:', error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Exclui um cliente no Asaas
+     * @param {string} id - ID do cliente no Asaas
+     * @returns {Object} - Resultado da operação
+     */
+    async delete(id) {
+        try {
+            if (!id) {
+                return createError('ID do cliente é obrigatório', 400);
+            }
+            
+            // Excluir cliente no Asaas
+            await AsaasApiClient.request({
+                method: 'DELETE',
+                endpoint: `customers/${id}`
+            });
+            
+            return { success: true, message: 'Cliente excluído com sucesso' };
+        } catch (error) {
+            console.error(`Erro ao excluir cliente ${id} no Asaas:`, error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Lista clientes por grupo
+     * @param {string} groupName - Nome do grupo de clientes
+     * @param {Object} filters - Filtros adicionais
+     * @returns {Object} - Resultado da operação
      */
     async listByGroup(groupName, filters = {}) {
         try {
             if (!groupName) {
-                return {
-                    success: false,
-                    message: 'Nome do grupo é obrigatório',
-                    status: 400
-                };
+                return createError('Nome do grupo é obrigatório', 400);
             }
-
-            // Parâmetros da busca
-            const params = new URLSearchParams({ groupName });
             
-            // Adicionar filtros adicionais
-            for (const key in filters) {
-                if (filters[key]) {
-                    params.append(key, filters[key]);
-                }
-            }
-
-            // Chamada para API do Asaas
-            const result = await AsaasApiClient.request({
-                method: 'get',
-                endpoint: 'customers',
-                params
-            });
-
-            return { 
-                success: true, 
-                data: result.data || [],
-                hasMore: result.hasMore,
-                totalCount: result.totalCount
+            // Combinar filtros existentes com o groupName
+            const combinedFilters = {
+                ...filters,
+                groupName
             };
+            
+            // Usar o método getAll com o filtro de grupo
+            return await this.getAll(combinedFilters);
         } catch (error) {
-            console.error(`Erro ao listar clientes do grupo ${groupName}:`, error.message);
+            console.error(`Erro ao listar clientes do grupo ${groupName} no Asaas:`, error);
             return formatError(error);
         }
     }
 
     /**
-     * Lista todos os clientes no Asaas sem filtro de grupo
-     * @param {Object} filters - Filtros adicionais (offset, limit, etc)
-     * @returns {Promise<Object>} - Resultado da operação
+     * Busca um cliente pela referência externa no Asaas
+     * @param {string} externalReference - Referência externa do cliente
+     * @param {string} groupName - Nome do grupo de clientes
+     * @returns {Object} - Resultado da operação
      */
-    async listAll(filters = {}) {
+    async findByExternalReference(externalReference, groupName = '') {
         try {
-            // Parâmetros da busca - não incluímos groupName para listar todos
-            const params = new URLSearchParams();
-            
-            // Adicionar filtros adicionais
-            for (const key in filters) {
-                if (filters[key]) {
-                    params.append(key, filters[key]);
-                }
+            if (!externalReference) {
+                return createError('Referência externa é obrigatória', 400);
             }
-
-            // Chamada para API do Asaas
-            const result = await AsaasApiClient.request({
-                method: 'get',
-                endpoint: 'customers',
-                params
-            });
-
+            
+            // Parâmetros de busca
+            const filters = {
+                externalReference
+            };
+            
+            // Adicionar grupo se fornecido
+            if (groupName) {
+                filters.groupName = groupName;
+            }
+            
+            // Usar o método getAll com o filtro de referência externa
+            const result = await this.getAll(filters);
+            
+            if (result.success && result.data && result.data.data && result.data.data.length > 0) {
+                return { success: true, data: result.data.data[0] };
+            }
+            
             return { 
-                success: true, 
-                data: result.data || [],
-                hasMore: result.hasMore,
-                totalCount: result.totalCount
+                success: false, 
+                message: `Nenhum cliente encontrado com referência externa ${externalReference}`,
+                status: 404
             };
         } catch (error) {
-            console.error('Erro ao listar todos os clientes:', error.message);
+            console.error(`Erro ao buscar cliente por referência externa ${externalReference} no Asaas:`, error);
             return formatError(error);
         }
-    }
-
-    /**
-     * Remove um cliente no Asaas
-     * @param {string} id - ID do cliente no Asaas
-     * @returns {Promise<Object>} - Resultado da operação
-     */
-    async remove(id) {
-        try {
-            if (!id) {
-                return {
-                    success: false,
-                    message: 'ID do cliente é obrigatório',
-                    status: 400
-                };
-            }
-
-            // Chamada para API do Asaas
-            const result = await AsaasApiClient.request({
-                method: 'delete',
-                endpoint: `customers/${id}`
-            });
-
-            console.log(`Cliente removido no Asaas:`, id);
-            return { success: true, data: result };
-        } catch (error) {
-            console.error('Erro ao remover cliente no Asaas:', error.message);
-            return formatError(error);
-        }
-    }
-
-    // Método auxiliar para validação de CPF/CNPJ - substitui pelo método do validator
-    _isValidCpfCnpj(cpfCnpj) {
-        return AsaasValidator.isValidCpfCnpj(cpfCnpj);
     }
 }
 
-module.exports = new AsaasCustomerService();
+module.exports = new CustomerService();

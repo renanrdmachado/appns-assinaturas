@@ -7,17 +7,17 @@ const AsaasValidator = require('../../validators/asaas-validator'); // Importar 
 class WebhookService {
     async registerWebhook(webhookData) {
         try {
-            // Usar validator para validar os dados do webhook
+            // Validar dados do webhook
             if (!webhookData.url) {
-                throw new Error('URL é obrigatória para o webhook');
+                return createError('URL é obrigatória para o webhook', 400);
             }
 
-            // Ensure 'events' is provided as an array
+            // Garantir que 'events' seja fornecido como um array
             if (!Array.isArray(webhookData.events) || webhookData.events.length === 0) {
-                throw new Error('Pelo menos um evento deve ser especificado');
+                return createError('Pelo menos um evento deve ser especificado', 400);
             }
 
-            // Set defaults if not provided
+            // Definir valores padrão se não forem fornecidos
             const webhook = {
                 name: webhookData.name || 'Assinaturas App Webhook',
                 url: webhookData.url,
@@ -37,6 +37,7 @@ class WebhookService {
 
             return { success: true, data: created };
         } catch (error) {
+            console.error('Erro ao registrar webhook:', error);
             return formatError(error);
         }
     }
@@ -49,6 +50,7 @@ class WebhookService {
             });
             return { success: true, data: webhooks };
         } catch (error) {
+            console.error('Erro ao listar webhooks:', error);
             return formatError(error);
         }
     }
@@ -56,7 +58,7 @@ class WebhookService {
     async getWebhookById(id) {
         try {
             if (!id) {
-                throw new Error('ID do webhook é obrigatório');
+                return createError('ID do webhook é obrigatório', 400);
             }
             
             const webhook = await AsaasApiClient.request({
@@ -66,6 +68,7 @@ class WebhookService {
             
             return { success: true, data: webhook };
         } catch (error) {
+            console.error(`Erro ao buscar webhook ${id}:`, error);
             return formatError(error);
         }
     }
@@ -73,7 +76,7 @@ class WebhookService {
     async updateWebhook(id, webhookData) {
         try {
             if (!id) {
-                throw new Error('ID do webhook é obrigatório');
+                return createError('ID do webhook é obrigatório', 400);
             }
 
             const updated = await AsaasApiClient.request({
@@ -84,6 +87,7 @@ class WebhookService {
 
             return { success: true, data: updated };
         } catch (error) {
+            console.error(`Erro ao atualizar webhook ${id}:`, error);
             return formatError(error);
         }
     }
@@ -91,7 +95,7 @@ class WebhookService {
     async deleteWebhook(id) {
         try {
             if (!id) {
-                throw new Error('ID do webhook é obrigatório');
+                return createError('ID do webhook é obrigatório', 400);
             }
 
             await AsaasApiClient.request({
@@ -101,25 +105,25 @@ class WebhookService {
 
             return { success: true, message: 'Webhook excluído com sucesso' };
         } catch (error) {
+            console.error(`Erro ao excluir webhook ${id}:`, error);
             return formatError(error);
         }
     }
 
     async processWebhookEvent(eventData) {
         try {
-            // Log the webhook event
+            // Registrar o evento de webhook
             console.log('Webhook event received:', JSON.stringify(eventData));
             
             if (!eventData.payment || !eventData.payment.id) {
-                console.error('Dados de webhook inválidos: Informações de pagamento ausentes');
                 return createError('Dados de webhook inválidos: Informações de pagamento ausentes', 400);
             }
 
-            // Find the related entity (seller or customer) based on payment information
+            // Encontrar a entidade relacionada (vendedor ou cliente) com base nas informações de pagamento
             const paymentInfo = eventData.payment;
             const entityInfo = await this.findEntityByPayment(paymentInfo);
             
-            // Process the webhook event based on its type
+            // Processar o evento de webhook com base em seu tipo
             switch(eventData.event) {
                 case 'PAYMENT_CREATED':
                     console.log(`Pagamento criado: ${paymentInfo.id}`);
@@ -166,7 +170,7 @@ class WebhookService {
                     console.warn(`Tipo de evento não tratado: ${eventData.event}`);
             }
             
-            return { success: true };
+            return { success: true, message: 'Evento de webhook processado com sucesso' };
         } catch (error) {
             console.error('Erro ao processar webhook:', error);
             return formatError(error);

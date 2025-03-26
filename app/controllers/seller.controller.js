@@ -1,16 +1,25 @@
 require('dotenv').config();
 const SellerService = require('../services/seller.service');
+const { formatError } = require('../utils/errorHandler');
 
 // Listar todos os vendedores
 const index = async (req, res) => {
     console.log("Controller - SellerController/index");
     try {
-        // Adapte esta chamada para seu serviço
-        const sellers = await SellerService.getAll();
-        res.status(200).json(sellers);
+        const result = await SellerService.getAll();
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({
+            success: true,
+            data: result.data
+        });
     } catch (error) {
-        console.error('Erro ao buscar vendedores:', error.message);
-        res.status(500).json({ error: 'Falha ao buscar vendedores' });
+        console.error('Erro ao buscar vendedores:', error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -18,15 +27,20 @@ const index = async (req, res) => {
 const show = async (req, res) => {
     console.log("Controller - SellerController/show");
     try {
-        // Adapte esta chamada para seu serviço
-        const seller = await SellerService.get(req.params.id);
-        if (!seller) {
-            return res.status(404).json({ message: 'Vendedor não encontrado' });
+        const result = await SellerService.get(req.params.id);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
         }
-        res.status(200).json(seller);
+        
+        return res.status(200).json({
+            success: true,
+            data: result.data
+        });
     } catch (error) {
-        console.error('Erro ao buscar vendedor:', error.message);
-        res.status(500).json({ error: 'Falha ao buscar vendedor' });
+        console.error('Erro ao buscar vendedor:', error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -34,20 +48,21 @@ const show = async (req, res) => {
 const store = async (req, res) => {
     console.log("Controller - SellerController/store");
     try {
-        // Adapte esta chamada para seu serviço
-        const seller = await SellerService.create(req.body);
-        res.status(201).json({ 
+        const result = await SellerService.create(req.body);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(201).json({ 
             success: true,
             message: 'Vendedor criado com sucesso', 
-            data: seller 
+            data: result.data 
         });
     } catch (error) {
-        console.error('Erro ao criar vendedor:', error.message);
-        res.status(500).json({
-            success: false, 
-            message: 'Falha ao criar vendedor',
-            error: error.message
-        });
+        console.error('Erro ao criar vendedor:', error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -55,20 +70,21 @@ const store = async (req, res) => {
 const update = async (req, res) => {
     console.log("Controller - SellerController/update");
     try {
-        // Adapte esta chamada para seu serviço
-        const updatedSeller = await SellerService.update(req.params.id, req.body);
-        res.status(200).json({ 
+        const result = await SellerService.update(req.params.id, req.body);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({ 
             success: true, 
             message: 'Vendedor atualizado com sucesso', 
-            data: updatedSeller 
+            data: result.data 
         });
     } catch (error) {
-        console.error("Erro ao atualizar vendedor:", error.message);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao atualizar vendedor', 
-            error: error.message
-        });
+        console.error("Erro ao atualizar vendedor:", error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -76,19 +92,20 @@ const update = async (req, res) => {
 const destroy = async (req, res) => {
     console.log("Controller - SellerController/destroy");
     try {
-        // Adapte esta chamada para seu serviço
-        await SellerService.delete(req.params.id);
-        res.status(200).json({ 
+        const result = await SellerService.delete(req.params.id);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({ 
             success: true, 
             message: `Vendedor excluído com sucesso`
         });
     } catch (error) {
-        console.error("Erro ao excluir vendedor:", error.message);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao excluir vendedor', 
-            error: error.message
-        });
+        console.error("Erro ao excluir vendedor:", error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -96,20 +113,21 @@ const destroy = async (req, res) => {
 const addSubAccount = async (req, res) => {
     console.log("Controller - SellerController/addSubAccount");
     try {
-        // Adapte esta chamada para seu serviço
-        const subAccount = await SellerService.addSubAccount(req.params.id, req.body);
-        res.status(201).json({ 
+        const result = await SellerService.addSubAccount(req.params.id, req.body);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(201).json({ 
             success: true,
             message: 'Subconta adicionada com sucesso', 
-            data: subAccount 
+            data: result.data 
         });
     } catch (error) {
-        console.error('Erro ao adicionar subconta:', error.message);
-        res.status(500).json({
-            success: false, 
-            message: 'Falha ao adicionar subconta',
-            error: error.message
-        });
+        console.error('Erro ao adicionar subconta:', error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -120,11 +138,9 @@ const syncWithAsaas = async (req, res) => {
         const { id } = req.params;
         const result = await SellerService.syncWithAsaas(id);
         
+        // Verificar se a operação foi bem-sucedida
         if (!result.success) {
-            return res.status(result.status || 400).json({
-                success: false,
-                message: result.message
-            });
+            return res.status(result.status || 400).json(result);
         }
         
         return res.status(200).json({
@@ -133,12 +149,8 @@ const syncWithAsaas = async (req, res) => {
             data: result.data
         });
     } catch (error) {
-        console.error("Erro ao sincronizar vendedor com Asaas:", error.message);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao sincronizar vendedor com Asaas', 
-            error: error.message
-        });
+        console.error("Erro ao sincronizar vendedor com Asaas:", error);
+        return res.status(500).json(formatError(error));
     }
 };
 
@@ -149,5 +161,5 @@ module.exports = {
     update,
     destroy,
     addSubAccount,
-    syncWithAsaas  // Adiciona o novo método ao módulo exportado
+    syncWithAsaas
 };

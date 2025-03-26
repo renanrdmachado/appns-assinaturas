@@ -1,132 +1,175 @@
 require('dotenv').config();
-const AsaasService = require('../../services/asaas/webhook.service');
+const AsaasWebhookService = require('../../services/asaas/webhook.service');
+const { formatError, createError } = require('../../utils/errorHandler');
 
-const registerWebhook = async (req, res) => {
-    try {
-        const webhookData = req.body;
-        const result = await AsaasService.registerWebhook(webhookData);
-        
-        if (result.success) {
-            res.status(201).json(result);
-        } else {
-            res.status(400).json(result);
-        }
-    } catch (error) {
-        console.error('Erro ao registrar webhook:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Erro ao registrar webhook',
-            error: error.message
-        });
-    }
-};
-
-const getWebhooks = async (req, res) => {
-    try {
-        const result = await AsaasService.getWebhooks();
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Erro ao buscar webhooks:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Erro ao buscar webhooks',
-            error: error.message
-        });
-    }
-};
-
-const updateWebhook = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const webhookData = req.body;
-        
-        const result = await AsaasService.updateWebhook(id, webhookData);
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Erro ao atualizar webhook:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Erro ao atualizar webhook',
-            error: error.message
-        });
-    }
-};
-
-const deleteWebhook = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await AsaasService.deleteWebhook(id);
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Erro ao excluir webhook:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Erro ao excluir webhook',
-            error: error.message
-        });
-    }
-};
-
-const receiveWebhook = async (req, res) => {
-    console.log('Webhook received');
-    try {
-        const eventData = req.body;
-        console.log('Webhook received:', JSON.stringify(eventData, null, 2)); // Improved logging
-        
-        // Process webhook normally
-        const result = await AsaasService.processWebhookEvent(eventData);
-        
-        // Always return 200 OK to Asaas to acknowledge receipt
-        res.status(200).json({ 
-            success: true, 
-            message: 'Webhook processed successfully'
-        });
-    } catch (error) {
-        console.error('Erro ao processar evento de webhook:', error.message);
-        // Still return 200 to prevent Asaas from retrying
-        res.status(200).json({ 
-            success: false, 
-            message: 'Erro ao processar evento de webhook',
-            error: error.message 
-        });
-    }
-};
-
-const getWebhookById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: 'ID do webhook é obrigatório'
+/**
+ * Controller para gerenciar webhooks no Asaas, seguindo padrão RESTful
+ */
+class WebhookController {
+    /**
+     * Registra um novo webhook no Asaas
+     */
+    async store(req, res) {
+        try {
+            const webhookData = req.body;
+            const result = await AsaasWebhookService.registerWebhook(webhookData);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.status(201).json({
+                success: true,
+                message: 'Webhook registrado com sucesso',
+                data: result.data
             });
+        } catch (error) {
+            console.error('Erro ao registrar webhook:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        const result = await AsaasService.getWebhookById(id);
-        
-        if (result && result.success) {
-            res.status(200).json(result);
-        } else {
-            res.status(404).json({
-                success: false,
-                message: 'Webhook não encontrado'
-            });
-        }
-    } catch (error) {
-        console.error('Erro ao buscar webhook por ID:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Erro ao buscar webhook por ID',
-            error: error.message
-        });
     }
-};
 
-module.exports = {
-    registerWebhook,
-    getWebhooks,
-    updateWebhook,
-    deleteWebhook,
-    receiveWebhook,
-    getWebhookById
-};
+    /**
+     * Lista todos os webhooks registrados no Asaas
+     */
+    async index(req, res) {
+        try {
+            const result = await AsaasWebhookService.getWebhooks();
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
+            });
+        } catch (error) {
+            console.error('Erro ao buscar webhooks:', error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Obtém detalhes de um webhook específico
+     */
+    async show(req, res) {
+        try {
+            const { id } = req.params;
+            
+            if (!id) {
+                return res.status(400).json(createError('ID do webhook é obrigatório', 400));
+            }
+            
+            const result = await AsaasWebhookService.getWebhookById(id);
+            
+            if (!result.success) {
+                return res.status(result.status || 404).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
+            });
+        } catch (error) {
+            console.error(`Erro ao buscar webhook ID ${req.params.id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Atualiza um webhook existente
+     */
+    async update(req, res) {
+        try {
+            const { id } = req.params;
+            const webhookData = req.body;
+            
+            if (!id) {
+                return res.status(400).json(createError('ID do webhook é obrigatório', 400));
+            }
+            
+            const result = await AsaasWebhookService.updateWebhook(id, webhookData);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                message: 'Webhook atualizado com sucesso',
+                data: result.data
+            });
+        } catch (error) {
+            console.error(`Erro ao atualizar webhook ID ${req.params.id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Remove um webhook
+     */
+    async destroy(req, res) {
+        try {
+            const { id } = req.params;
+            
+            if (!id) {
+                return res.status(400).json(createError('ID do webhook é obrigatório', 400));
+            }
+            
+            const result = await AsaasWebhookService.deleteWebhook(id);
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                message: 'Webhook removido com sucesso'
+            });
+        } catch (error) {
+            console.error(`Erro ao remover webhook ID ${req.params.id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Recebe e processa eventos de webhook do Asaas
+     */
+    async receiveWebhook(req, res) {
+        console.log('Webhook recebido');
+        try {
+            const eventData = req.body;
+            console.log('Dados do webhook:', JSON.stringify(eventData, null, 2));
+            
+            // Processar o webhook
+            const result = await AsaasWebhookService.processWebhookEvent(eventData);
+            
+            // Sempre retorna 200 OK para o Asaas, mesmo em caso de erro
+            // para evitar que o Asaas faça novas tentativas
+            if (!result.success) {
+                console.warn('Erro processando webhook, mas retornando 200 OK:', result.message);
+                return res.status(200).json({ 
+                    success: false, 
+                    message: result.message,
+                    processed: false
+                });
+            }
+            
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Webhook processado com sucesso',
+                processed: true
+            });
+        } catch (error) {
+            console.error('Erro ao processar evento de webhook:', error);
+            // Ainda retorna 200 para prevenir que o Asaas tente novamente
+            return res.status(200).json(Object.assign(
+                formatError(error),
+                { processed: false }
+            ));
+        }
+    }
+}
+
+module.exports = new WebhookController();

@@ -101,6 +101,13 @@ class SellerService {
                 };
             }
             
+            // DEBUG: Dados do vendedor antes de sincronizar com Asaas
+            console.log('DEBUG - Dados do vendedor para sincronização com Asaas:', {
+                nuvemshop_id: data.nuvemshop_id,
+                cpfCnpj: data.Asaas_cpfCnpj,
+                email: data.Asaas_loginEmail || 'não especificado'
+            });
+            
             // 3. Verificar se já existe um cliente com este CPF/CNPJ no Asaas
             console.log(`Verificando se já existe cliente com CPF/CNPJ ${data.Asaas_cpfCnpj} no Asaas...`);
             const existingAsaasCustomer = await AsaasCustomerService.findByCpfCnpj(data.Asaas_cpfCnpj, AsaasCustomerService.SELLER_GROUP);
@@ -111,6 +118,13 @@ class SellerService {
                 // Se já existe cliente no Asaas, usamos o ID existente
                 console.log(`Cliente já existe no Asaas com ID: ${existingAsaasCustomer.data.id}`);
                 asaasCustomerId = existingAsaasCustomer.data.id;
+                
+                // DEBUG: Informações do cliente existente no Asaas
+                console.log('DEBUG - Cliente existente no Asaas:', {
+                    id: existingAsaasCustomer.data.id,
+                    name: existingAsaasCustomer.data.name,
+                    cpfCnpj: existingAsaasCustomer.data.cpfCnpj
+                });
                 
                 // Verificar se há um vendedor vinculado a este ID do Asaas
                 const sellerWithAsaasId = await Seller.findOne({ 
@@ -151,11 +165,25 @@ class SellerService {
                 
                 console.log('Criando novo cliente no Asaas para vendedor...');
                 
+                // DEBUG: Dados do cliente a ser criado no Asaas
+                console.log('DEBUG - Dados do cliente a ser criado no Asaas:', {
+                    name: customerData.name,
+                    cpfCnpj: customerData.cpfCnpj,
+                    email: customerData.email || 'não especificado',
+                    groupName: customerData.groupName
+                });
+                
                 // Tentar criar cliente no Asaas
                 const asaasResult = await AsaasCustomerService.createOrUpdate(
                     customerData, 
                     AsaasCustomerService.SELLER_GROUP
                 );
+                
+                // DEBUG: Resposta do Asaas para criação de cliente
+                console.log('DEBUG - Resposta do Asaas para criação de cliente:', 
+                    asaasResult.success ? 
+                    { id: asaasResult.data.id, name: asaasResult.data.name } : 
+                    { error: asaasResult.message });
                 
                 // Se falhar no Asaas, não cria no banco local
                 if (!asaasResult.success) {

@@ -15,10 +15,45 @@ class AsaasApiClient {
                 },
                 data
             };
+            
             const response = await axios(config);
             return response.data;
         } catch (error) {
-            throw error;
+            // Capturar e formatar o erro da API Asaas
+            if (error.response) {
+                // Extrair informações úteis
+                const status = error.response.status;
+                const asaasResponse = error.response.data;
+                
+                // Verificar se tem o formato padrão de erros do Asaas
+                const hasStandardErrors = asaasResponse && 
+                                        asaasResponse.errors && 
+                                        Array.isArray(asaasResponse.errors);
+                
+                // Criar mensagem de erro amigável
+                const errorMessage = hasStandardErrors
+                    ? asaasResponse.errors.map(e => e.description).join(', ')
+                    : (asaasResponse.message || error.response.statusText || error.message);
+                
+                // Criar um novo erro com os detalhes do Asaas
+                const enhancedError = new Error(errorMessage);
+                enhancedError.asaasError = {
+                    status,
+                    errors: hasStandardErrors ? asaasResponse.errors : [],
+                    originalError: asaasResponse
+                };
+                enhancedError.status = status;
+                
+                throw enhancedError;
+            } else if (error.request) {
+                // A requisição foi feita mas não houve resposta
+                const networkError = new Error('Sem resposta do servidor Asaas');
+                networkError.request = error.request;
+                throw networkError;
+            } else {
+                // Erro ao configurar a requisição
+                throw error;
+            }
         }
     }
 }
