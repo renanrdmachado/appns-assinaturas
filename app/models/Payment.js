@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Definição do modelo Payment
+// Definição do modelo Payment para pagamentos
 const Payment = sequelize.define('Payment', {
   id: {
     type: DataTypes.INTEGER,
@@ -13,16 +13,16 @@ const Payment = sequelize.define('Payment', {
     allowNull: true,
     comment: 'ID do pagamento na plataforma de pagamento'
   },
-  // Campos polimórficos para relacionar o pagamento
+  // Campo polimórfico para relacionar com diferentes tipos de entidades
   payable_type: {
-    type: DataTypes.ENUM('order', 'seller_subscription'),
+    type: DataTypes.ENUM('seller_subscription', 'shopper_subscription'),
     allowNull: false,
-    comment: 'Tipo do objeto relacionado ao pagamento'
+    comment: 'Tipo de entidade relacionada (seller_subscription ou shopper_subscription)'
   },
   payable_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    comment: 'ID do objeto relacionado ao pagamento'
+    comment: 'ID da entidade relacionada'
   },
   status: {
     type: DataTypes.ENUM('pending', 'confirmed', 'overdue', 'refunded', 'canceled', 'failed'),
@@ -36,12 +36,11 @@ const Payment = sequelize.define('Payment', {
   net_value: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
-    comment: 'Valor líquido após taxas'
+    comment: 'Valor líquido após descontar taxas'
   },
   payment_date: {
     type: DataTypes.DATE,
-    allowNull: true,
-    comment: 'Data em que o pagamento foi efetuado'
+    allowNull: true
   },
   due_date: {
     type: DataTypes.DATE,
@@ -53,7 +52,8 @@ const Payment = sequelize.define('Payment', {
   },
   invoice_url: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    comment: 'URL para visualização/pagamento da fatura'
   },
   description: {
     type: DataTypes.STRING,
@@ -62,7 +62,7 @@ const Payment = sequelize.define('Payment', {
   transaction_data: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Dados da transação retornados pela API de pagamento'
+    comment: 'Dados completos da transação de pagamento'
   }
 });
 
