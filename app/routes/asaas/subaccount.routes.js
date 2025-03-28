@@ -1,10 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    addSubAccount, 
-    getAllSubAccounts, 
-    getSubAccountByCpfCnpj 
-} = require('../../controllers/asaas/subaccount.controller');
+const AsaasSubaccountController = require('../../controllers/asaas/subaccount.controller');
 
 /**
  * @route POST /asaas/subaccount
@@ -34,7 +30,7 @@ const {
  * }
  * @flow Part of the SELLER onboarding process - creates a sub-account that will receive split payments from customer subscriptions
  */
-router.post('/', addSubAccount);
+router.post('/', AsaasSubaccountController.create);
 
 /**
  * @route GET /asaas/subaccount
@@ -46,7 +42,7 @@ router.post('/', addSubAccount);
  * }
  * @flow Administrative function for monitoring all registered sub-accounts
  */
-router.get('/', getAllSubAccounts);
+router.get('/', AsaasSubaccountController.list);
 
 /**
  * @route GET /asaas/subaccount/bycpfcnpj/:cpfCnpj
@@ -59,6 +55,6 @@ router.get('/', getAllSubAccounts);
  * }
  * @flow Used to verify if a seller already has a sub-account before creating a new one
  */
-router.get('/bycpfcnpj/:cpfCnpj', getSubAccountByCpfCnpj);
+router.get('/bycpfcnpj/:cpfCnpj', AsaasSubaccountController.findByCpfCnpj);
 
 module.exports = router;

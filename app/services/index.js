@@ -9,7 +9,7 @@ const PaymentService = require('./payment.service');
 const NsService = require('./ns.service');
 
 // Serviços Asaas
-const AsaasService = require('./asaas/index');
+const AsaasService = require('./asaas.service');
 
 module.exports = {
   UserService,

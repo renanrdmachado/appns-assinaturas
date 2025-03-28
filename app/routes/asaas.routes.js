@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 
 // Importar todos os módulos de rota
-const customerRoutes = require('./customer.routes');
-const subAccountRoutes = require('./subaccount.routes');
-const webhookRoutes = require('./webhook.routes');
-const shopperRoutes = require('./shopper.routes');
-const subscriptionRoutes = require('./subscription.routes');
+const customerRoutes = require('./asaas/customer.routes');
+const subAccountRoutes = require('./asaas/subaccount.routes');
+const webhookRoutes = require('./asaas/webhook.routes');
+const shopperRoutes = require('./asaas/shopper.routes');
+const subscriptionRoutes = require('./asaas/subscription.routes');
 
 // Usar os roteadores importados
 router.use('/customer', customerRoutes);

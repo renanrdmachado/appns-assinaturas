@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const WebhookController = require('../../controllers/asaas/webhook.controller');
+const AsaasWebhookController = require('../../controllers/asaas/webhook.controller');
 
 /**
  * @route POST /asaas/webhook/register
@@ -23,7 +23,7 @@ const WebhookController = require('../../controllers/asaas/webhook.controller');
  * }
  * @flow System setup - configures Asaas to notify the application about payment events
  */
-router.post('/register', WebhookController.store);
+router.post('/register', AsaasWebhookController.register);
 
 /**
  * @route GET /asaas/webhook
@@ -35,7 +35,7 @@ router.post('/register', WebhookController.store);
  *   "message": "Error message"
  * }
  */
-router.get('/', WebhookController.index);
+router.get('/', AsaasWebhookController.list);
 
 /**
  * @route GET /asaas/webhook/:id
@@ -48,7 +48,7 @@ router.get('/', WebhookController.index);
  *   "message": "Error message"
  * }
  */
-router.get('/:id', WebhookController.show);
+router.get('/:id', AsaasWebhookController.getById);
 
 /**
  * @route PUT /asaas/webhook/:id
@@ -62,7 +62,7 @@ router.get('/:id', WebhookController.show);
  *   "message": "Error message"
  * }
  */
-router.put('/:id', WebhookController.update);
+router.put('/:id', AsaasWebhookController.update);
 
 /**
  * @route DELETE /asaas/webhook/:id
@@ -75,7 +75,7 @@ router.put('/:id', WebhookController.update);
  *   "message": "Error message"
  * }
  */
-router.delete('/:id', WebhookController.destroy);
+router.delete('/:id', AsaasWebhookController.delete);
 
 /**
  * @route POST /asaas/webhook/receive
@@ -88,6 +88,6 @@ router.delete('/:id', WebhookController.destroy);
  * }
  * @flow Payment processing - handles payment status updates from Asaas
  */
-router.post('/receive', WebhookController.receiveWebhook);
+router.post('/receive', AsaasWebhookController.receive);
 
 module.exports = router;

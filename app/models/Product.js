@@ -40,6 +40,7 @@ const Product = sequelize.define('Product', {
     type: DataTypes.JSON,
     allowNull: true
   }
+  // Removida a adição do campo nuvemshop_id conforme solicitado
 });
 
 module.exports = Product;

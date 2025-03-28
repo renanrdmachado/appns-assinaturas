@@ -2,6 +2,10 @@ require('dotenv').config();
 const axios = require('axios');
 const SellerService = require('./seller.service');
 const { formatError, createError } = require('../utils/errorHandler');
+const NsApiClient = require('../helpers/NsApiClient');
+const NsProductsService = require('./ns/products.service');
+const NsOrdersService = require('./ns/orders.service');
+const NsCustomersService = require('./ns/customers.service');
 
 class NsService {
     async authorize(code) {
@@ -37,27 +41,100 @@ class NsService {
                 return createError('Informações da loja são obrigatórias', 400);
             }
             
-            const options = {
+            console.log(`Obtendo informações da loja Nuvemshop ID: ${store.user_id}`);
+            
+            // Usando o novo cliente de API NsApiClient
+            const storeData = await NsApiClient.request({
                 method: 'GET',
-                url: `https://api.nuvemshop.com.br/v1/${store.user_id}/store`,
-                headers: {
-                    'Authentication': `bearer ${store.access_token}`,
-                    'User-Agent': process.env.NS_APP_NAME
-                }
-            };
-
-            const response = await axios(options);
-            const result = await SellerService.updateStoreInfo(store.user_id, store.access_token, response.data);
+                storeId: store.user_id, // Este é o ID correto da loja na Nuvemshop
+                endpoint: 'store',
+                accessToken: store.access_token
+            });
+            
+            const result = await SellerService.updateStoreInfo(store.user_id, store.access_token, storeData);
             
             if (!result.success) {
                 return result; // Propagar erro do SellerService
             }
             
-            return { success: true, data: response.data };
+            return { success: true, data: storeData };
         } catch (error) {
             console.error('Erro ao obter informações da loja:', error.message);
             return formatError(error);
         }
+    }
+    
+    // Delegando para os serviços específicos
+    
+    // Produtos
+    async getProducts(storeId, accessToken, params = {}) {
+        return await NsProductsService.getProducts(storeId, accessToken, params);
+    }
+    
+    async getProductById(storeId, accessToken, productId) {
+        return await NsProductsService.getProductById(storeId, accessToken, productId);
+    }
+    
+    async createProduct(storeId, accessToken, productData) {
+        return await NsProductsService.createProduct(storeId, accessToken, productData);
+    }
+    
+    async updateProduct(storeId, accessToken, productId, productData) {
+        return await NsProductsService.updateProduct(storeId, accessToken, productId, productData);
+    }
+    
+    async deleteProduct(storeId, accessToken, productId) {
+        return await NsProductsService.deleteProduct(storeId, accessToken, productId);
+    }
+    
+    async getProductVariants(storeId, accessToken, productId) {
+        return await NsProductsService.getProductVariants(storeId, accessToken, productId);
+    }
+    
+    // Pedidos
+    async getOrders(storeId, accessToken, params = {}) {
+        return await NsOrdersService.getOrders(storeId, accessToken, params);
+    }
+    
+    async getOrderById(storeId, accessToken, orderId) {
+        return await NsOrdersService.getOrderById(storeId, accessToken, orderId);
+    }
+    
+    async createOrder(storeId, accessToken, orderData) {
+        return await NsOrdersService.createOrder(storeId, accessToken, orderData);
+    }
+    
+    async updateOrder(storeId, accessToken, orderId, orderData) {
+        return await NsOrdersService.updateOrder(storeId, accessToken, orderId, orderData);
+    }
+    
+    async closeOrder(storeId, accessToken, orderId) {
+        return await NsOrdersService.closeOrder(storeId, accessToken, orderId);
+    }
+    
+    async openOrder(storeId, accessToken, orderId) {
+        return await NsOrdersService.openOrder(storeId, accessToken, orderId);
+    }
+    
+    async cancelOrder(storeId, accessToken, orderId) {
+        return await NsOrdersService.cancelOrder(storeId, accessToken, orderId);
+    }
+    
+    // Clientes
+    async getCustomers(storeId, accessToken, params = {}) {
+        return await NsCustomersService.getCustomers(storeId, accessToken, params);
+    }
+    
+    async getCustomerById(storeId, accessToken, customerId) {
+        return await NsCustomersService.getCustomerById(storeId, accessToken, customerId);
+    }
+    
+    async createCustomer(storeId, accessToken, customerData) {
+        return await NsCustomersService.createCustomer(storeId, accessToken, customerData);
+    }
+    
+    async updateCustomer(storeId, accessToken, customerId, customerData) {
+        return await NsCustomersService.updateCustomer(storeId, accessToken, customerId, customerData);
     }
 }
 

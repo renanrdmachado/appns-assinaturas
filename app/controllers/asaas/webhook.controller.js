@@ -2,14 +2,8 @@ require('dotenv').config();
 const AsaasWebhookService = require('../../services/asaas/webhook.service');
 const { formatError, createError } = require('../../utils/errorHandler');
 
-/**
- * Controller para gerenciar webhooks no Asaas, seguindo padrão RESTful
- */
-class WebhookController {
-    /**
-     * Registra um novo webhook no Asaas
-     */
-    async store(req, res) {
+class AsaasWebhookController {
+    async register(req, res) {
         try {
             const webhookData = req.body;
             const result = await AsaasWebhookService.registerWebhook(webhookData);
@@ -29,10 +23,7 @@ class WebhookController {
         }
     }
 
-    /**
-     * Lista todos os webhooks registrados no Asaas
-     */
-    async index(req, res) {
+    async list(req, res) {
         try {
             const result = await AsaasWebhookService.getWebhooks();
             
@@ -50,10 +41,7 @@ class WebhookController {
         }
     }
 
-    /**
-     * Obtém detalhes de um webhook específico
-     */
-    async show(req, res) {
+    async getById(req, res) {
         try {
             const { id } = req.params;
             
@@ -77,9 +65,6 @@ class WebhookController {
         }
     }
 
-    /**
-     * Atualiza um webhook existente
-     */
     async update(req, res) {
         try {
             const { id } = req.params;
@@ -106,10 +91,7 @@ class WebhookController {
         }
     }
 
-    /**
-     * Remove um webhook
-     */
-    async destroy(req, res) {
+    async delete(req, res) {
         try {
             const { id } = req.params;
             
@@ -133,10 +115,7 @@ class WebhookController {
         }
     }
 
-    /**
-     * Recebe e processa eventos de webhook do Asaas
-     */
-    async receiveWebhook(req, res) {
+    async receive(req, res) {
         console.log('Webhook recebido');
         try {
             const eventData = req.body;
@@ -172,4 +151,4 @@ class WebhookController {
     }
 }
 
-module.exports = new WebhookController();
+module.exports = new AsaasWebhookController();

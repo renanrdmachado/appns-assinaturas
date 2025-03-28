@@ -1,14 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const CustomerController = require('../../controllers/asaas/customer.controller');
-
-/**
- * @route GET /asaas/customer/
- * @description Lista todos os clientes sem filtro de grupo
- * @query offset, limit - Paginação
- * @access Private
- */
-router.get('/', CustomerController.listAll);
+const AsaasCustomerController = require('../../controllers/asaas/customer.controller');
 
 /**
  * @route POST /asaas/customer/:groupName
@@ -16,7 +8,7 @@ router.get('/', CustomerController.listAll);
  * @param {string} groupName - SELLERS ou SHOPPERS
  * @access Private
  */
-router.post('/:groupName', CustomerController.createOrUpdate);
+router.post('/:groupName', AsaasCustomerController.createOrUpdate);
 
 /**
  * @route GET /asaas/customer/group/:groupName
@@ -25,7 +17,15 @@ router.post('/:groupName', CustomerController.createOrUpdate);
  * @query offset, limit - Paginação
  * @access Private
  */
-router.get('/group/:groupName', CustomerController.listByGroup);
+router.get('/group/:groupName', AsaasCustomerController.listByGroup);
+
+/**
+ * @route GET /asaas/customer/
+ * @description Lista todos os clientes
+ * @query offset, limit - Paginação
+ * @access Private
+ */
+router.get('/', AsaasCustomerController.listAll);
 
 /**
  * @route GET /asaas/customer/:groupName/cpfcnpj/:cpfCnpj
@@ -34,7 +34,7 @@ router.get('/group/:groupName', CustomerController.listByGroup);
  * @param {string} cpfCnpj - CPF ou CNPJ do cliente
  * @access Private
  */
-router.get('/:groupName/cpfcnpj/:cpfCnpj', CustomerController.findByCpfCnpj);
+router.get('/:groupName/cpfcnpj/:cpfCnpj', AsaasCustomerController.findByCpfCnpj);
 
 /**
  * @route GET /asaas/customer/:groupName/external/:externalId
@@ -43,7 +43,7 @@ router.get('/:groupName/cpfcnpj/:cpfCnpj', CustomerController.findByCpfCnpj);
  * @param {string} externalId - ID externo (nuvemshop_id)
  * @access Private
  */
-router.get('/:groupName/external/:externalId',   CustomerController.findByExternalReference);
+router.get('/:groupName/external/:externalId', AsaasCustomerController.findByExternalReference);
 
 /**
  * @route DELETE /asaas/customer/:id
@@ -51,6 +51,14 @@ router.get('/:groupName/external/:externalId',   CustomerController.findByExtern
  * @param {string} id - ID do cliente no Asaas
  * @access Private
  */
-router.delete('/:id', CustomerController.remove);
+router.delete('/:id', AsaasCustomerController.remove);
+
+/**
+ * @route GET /asaas/customer/:id
+ * @description Busca cliente por ID no Asaas
+ * @param {string} id - ID do cliente no Asaas
+ * @access Private
+ */
+router.get('/:id', AsaasCustomerController.show);
 
 module.exports = router;

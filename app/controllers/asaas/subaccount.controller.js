@@ -1,107 +1,81 @@
 require('dotenv').config();
 const AsaasService = require('../../services/asaas/subaccount.service');
-const { formatError } = require('../../utils/errorHandler');
+const { formatError, createError } = require('../../utils/errorHandler');
 
-const addSubAccount = async (req, res) => {
-    try {
-        const account = req.body;
-        
-        const result = await AsaasService.addSubAccount(account);
-        
-        // Verificar se a operação foi bem-sucedida
-        if (!result.success) {
-            return res.status(result.status || 400).json(result);
+class AsaasSubaccountController {
+    async create(req, res) {
+        try {
+            const account = req.body;
+            
+            const result = await AsaasService.addSubAccount(account);
+            
+            // Verificar se a operação foi bem-sucedida
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            // Retorna diretamente o resultado sem aninhamento extra
+            return res.status(200).json(result);
+        } catch (error) {
+            console.error('Erro ao adicionar subconta:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Erro ao adicionar subconta:', error);
-        res.status(500).json(formatError(error));
     }
-};
 
-const getSubAccount = async (req, res) => {
-    try {
-        const { cpfCnpj } = req.query;
-        console.log('cpfCnpj:', cpfCnpj);
-        const result = await AsaasService.getSubAccount(cpfCnpj);
-        
-        // Verificar se a operação foi bem-sucedida
-        if (!result || (typeof result === 'object' && !result.success)) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Nenhuma subconta encontrada' 
+    async list(req, res) {
+        try {
+            const result = await AsaasService.getAllSubAccounts();
+            
+            // Verificar se a operação foi bem-sucedida e evitar aninhamento desnecessário
+            if (!result) {
+                return res.status(400).json(createError('Erro ao buscar subcontas', 400));
+            }
+            
+            // Se o resultado já tiver o formato { success, data }, retorna diretamente
+            if (result.success && result.data) {
+                return res.json(result);
+            }
+            
+            // Caso contrário, formata a resposta adequadamente
+            return res.json({
+                success: true,
+                data: result
             });
+        } catch (error) {
+            console.error('Erro ao listar subcontas:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        res.status(200).json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        console.error('Erro ao buscar subconta:', error.message);
-        res.status(500).json(formatError(error));
     }
-};
 
-// Get all sub-accounts
-const getAllSubAccounts = async (req, res) => {
-    try {
-        const result = await AsaasService.getAllSubAccounts();
-        
-        // Verificar se a operação foi bem-sucedida
-        if (!result || (typeof result === 'object' && !result.success)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Erro ao buscar subcontas',
-                error: result.message || 'Erro desconhecido' 
+    async findByCpfCnpj(req, res) {
+        try {
+            const { cpfCnpj } = req.params;
+            if (!cpfCnpj) {
+                return res.status(400).json(createError('CPF/CNPJ é obrigatório', 400));
+            }
+            
+            const result = await AsaasService.getSubAccountByCpfCnpj(cpfCnpj);
+            
+            // Verificar se a operação foi bem-sucedida
+            if (!result) {
+                return res.status(404).json(createError('Subconta não encontrada para o CPF/CNPJ informado', 404));
+            }
+            
+            // Se o resultado já tiver o formato { success, data }, retorna diretamente
+            if (result.success && result.data) {
+                return res.json(result);
+            }
+            
+            // Caso contrário, formata a resposta adequadamente
+            return res.json({
+                success: true,
+                data: result
             });
+        } catch (error) {
+            console.error('Erro ao buscar subconta por CPF/CNPJ:', error);
+            return res.status(500).json(formatError(error));
         }
-        
-        return res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        console.error('Erro ao listar subcontas:', error);
-        return res.status(500).json(formatError(error));
     }
-};
+}
 
-// Get a specific sub-account by CPF/CNPJ
-const getSubAccountByCpfCnpj = async (req, res) => {
-    try {
-        const { cpfCnpj } = req.params;
-        if (!cpfCnpj) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'CPF/CNPJ é obrigatório'
-            });
-        }
-        
-        const result = await AsaasService.getSubAccountByCpfCnpj(cpfCnpj);
-        
-        // Verificar se a operação foi bem-sucedida
-        if (!result || (typeof result === 'object' && !result.success)) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Subconta não encontrada para o CPF/CNPJ informado'
-            });
-        }
-        
-        return res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        console.error('Erro ao buscar subconta por CPF/CNPJ:', error);
-        return res.status(500).json(formatError(error));
-    }
-};
-
-module.exports = {
-    addSubAccount,
-    getSubAccount,
-    getAllSubAccounts,
-    getSubAccountByCpfCnpj
-};
+module.exports = new AsaasSubaccountController();

@@ -1,5 +1,5 @@
 const SubscriptionService = require('../../services/asaas/subscription.service');
-const { formatError } = require('../../utils/errorHandler');
+const { formatError, createError } = require('../../utils/errorHandler');
 
 class SubscriptionController {
     /**
@@ -39,6 +39,10 @@ class SubscriptionController {
         try {
             const { id } = req.params;
             
+            if (!id) {
+                return res.status(400).json(createError('ID da assinatura é obrigatório', 400));
+            }
+            
             const result = await SubscriptionService.get(id);
             
             // Verificar se a operação foi bem-sucedida
@@ -62,6 +66,11 @@ class SubscriptionController {
     async store(req, res) {
         try {
             const subscriptionData = req.body;
+            
+            if (!subscriptionData) {
+                return res.status(400).json(createError('Dados da assinatura são obrigatórios', 400));
+            }
+            
             const result = await SubscriptionService.create(subscriptionData);
             
             // Verificar se a operação foi bem-sucedida
@@ -88,6 +97,14 @@ class SubscriptionController {
             const { id } = req.params;
             const subscriptionData = req.body;
             
+            if (!id) {
+                return res.status(400).json(createError('ID da assinatura é obrigatório', 400));
+            }
+            
+            if (!subscriptionData) {
+                return res.status(400).json(createError('Dados da assinatura são obrigatórios', 400));
+            }
+            
             const result = await SubscriptionService.update(id, subscriptionData);
             
             // Verificar se a operação foi bem-sucedida
@@ -113,6 +130,10 @@ class SubscriptionController {
         try {
             const { id } = req.params;
             
+            if (!id) {
+                return res.status(400).json(createError('ID da assinatura é obrigatório', 400));
+            }
+            
             const result = await SubscriptionService.delete(id);
             
             // Verificar se a operação foi bem-sucedida
@@ -136,6 +157,10 @@ class SubscriptionController {
     async listByCustomer(req, res) {
         try {
             const { customer_id } = req.params;
+            
+            if (!customer_id) {
+                return res.status(400).json(createError('ID do cliente é obrigatório', 400));
+            }
             
             const result = await SubscriptionService.getByCustomerId(customer_id);
             

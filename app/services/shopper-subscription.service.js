@@ -2,7 +2,6 @@ const ShopperSubscription = require('../models/ShopperSubscription');
 const Order = require('../models/Order');
 const Shopper = require('../models/Shopper');
 const { formatError, createError } = require('../utils/errorHandler');
-const OrderValidator = require('../validators/order-validator');
 const subscriptionService = require('./asaas/subscription.service');
 const AsaasCustomerService = require('./asaas/customer.service');
 const sequelize = require('../config/database');
@@ -132,45 +131,62 @@ class ShopperSubscriptionService {
                 };
             }
             
-            // Obter ou criar cliente no Asaas
+            // Obter ou reutilizar o cliente no Asaas se já existir
             let customerId = shopper.asaas_customer_id;
             
             if (!customerId) {
-                console.log('Comprador não possui ID de cliente no Asaas. Criando...');
+                console.log('Comprador não possui ID de cliente no Asaas. Verificando se já existe...');
                 
                 // Verificar se shopper tem CPF/CNPJ
                 if (!shopper.cpfCnpj) {
                     return createError('CPF/CNPJ do comprador não está preenchido. É necessário para criar assinaturas.', 400);
                 }
                 
-                const customerData = {
-                    name: shopper.name,
-                    email: shopper.email,
-                    cpfCnpj: shopper.cpfCnpj,
-                    mobilePhone: shopper.mobilePhone,
-                    address: shopper.address,
-                    addressNumber: shopper.addressNumber,
-                    province: shopper.province,
-                    postalCode: shopper.postalCode,
-                    externalReference: `shopper_${shopper.id}`,
-                    groupName: AsaasCustomerService.SHOPPER_GROUP
-                };
+                // Verificar se já existe um cliente com este CPF/CNPJ no Asaas antes de criar um novo
+                const existingCustomer = await AsaasCustomerService.findByCpfCnpj(
+                    shopper.cpfCnpj,
+                    AsaasCustomerService.SHOPPER_GROUP
+                );
                 
-                const customerResult = await AsaasCustomerService.create(customerData);
-                
-                if (!customerResult.success) {
-                    return createError(`Não foi possível criar cliente no Asaas: ${customerResult.message}`, 400);
+                if (existingCustomer.success && existingCustomer.data) {
+                    console.log(`Cliente já existe no Asaas com CPF/CNPJ ${shopper.cpfCnpj}. Reutilizando ID: ${existingCustomer.data.id}`);
+                    customerId = existingCustomer.data.id;
+                    
+                    // Atualizar shopper com o ID do cliente
+                    await shopper.update({ asaas_customer_id: customerId });
+                    console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas existente: ${customerId}`);
+                } else {
+                    // Criar novo cliente no Asaas somente se não existir
+                    const customerData = {
+                        name: shopper.name,
+                        email: shopper.email,
+                        cpfCnpj: shopper.cpfCnpj,
+                        mobilePhone: shopper.mobilePhone,
+                        address: shopper.address,
+                        addressNumber: shopper.addressNumber,
+                        province: shopper.province,
+                        postalCode: shopper.postalCode,
+                        externalReference: `shopper_${shopper.id}`,
+                        groupName: AsaasCustomerService.SHOPPER_GROUP
+                    };
+                    
+                    const customerResult = await AsaasCustomerService.create(customerData);
+                    
+                    if (!customerResult.success) {
+                        return createError(`Não foi possível criar cliente no Asaas: ${customerResult.message}`, 400);
+                    }
+                    
+                    customerId = customerResult.data.id;
+                    
+                    // Atualizar shopper com o ID do cliente
+                    await shopper.update({ asaas_customer_id: customerId });
+                    console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas: ${customerId}`);
                 }
-                
-                customerId = customerResult.data.id;
-                
-                // Atualizar shopper com o ID do cliente
-                await shopper.update({ asaas_customer_id: customerId });
-                console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas: ${customerId}`);
+            } else {
+                console.log(`Comprador ${shopper.id} já possui ID de cliente Asaas: ${customerId}. Reutilizando...`);
             }
             
-            // Preparar dados da assinatura
-            // Se não forem fornecidos, usar dados do pedido
+            // Resto do processo de criação da assinatura continua igual
             
             // VERIFICAR DATA DE VENCIMENTO - Não pode ser menor que hoje
             let nextDueDate = data.next_due_date || order.next_due_date;
@@ -365,13 +381,6 @@ class ShopperSubscriptionService {
      * Formata os dados para a criação de assinatura no Asaas
      */
     formatDataForAsaasSubscription(data, customerId, shopper, order) {
-        console.log('INPUT de formatDataForAsaasSubscription:', {
-            next_due_date: data.next_due_date,
-            next_due_date_type: typeof data.next_due_date,
-            is_date_object: data.next_due_date instanceof Date,
-            value: data.value
-        });
-        
         // Usar o ID do cliente do shopper no Asaas
         if (!customerId) {
             console.error('ERRO: Nenhum customer_id válido para assinatura!');
@@ -399,96 +408,68 @@ class ShopperSubscriptionService {
             cycle = cycle.toUpperCase();
         }
         
-        // Garantir formato de data correto para a API do Asaas: "YYYY-MM-DD"
-        let nextDueDate = data.next_due_date;
-        if (nextDueDate) {
-            // Criar objeto Date independente do formato de entrada
+        // Mapear campos do nosso modelo para o formato esperado pelo Asaas
+        const asaasData = {
+            customer: customerId,                  // Campo obrigatório: ID do cliente no Asaas
+            billingType: data.billing_type || 'BOLETO', // Campo obrigatório: Tipo de cobrança
+            value: data.value,                     // Campo obrigatório: Valor da assinatura
+            cycle: cycle,                          // Campo obrigatório: Ciclo de cobrança normalizado
+            description: data.plan_name || `Assinatura do Pedido #${order.id}`, // Descrição
+        };
+        
+        // Formatar data de vencimento para o formato que o Asaas aceita (YYYY-MM-DD)
+        if (data.next_due_date) {
             let dueDate;
             
-            if (nextDueDate instanceof Date) {
-                console.log('Data é um objeto Date');
-                dueDate = nextDueDate;
-            } else if (typeof nextDueDate === 'string') {
-                console.log('Data é uma string:', nextDueDate);
-                dueDate = new Date(nextDueDate);
+            if (data.next_due_date instanceof Date) {
+                dueDate = data.next_due_date;
+            } else if (typeof data.next_due_date === 'string') {
+                dueDate = new Date(data.next_due_date);
             } else {
-                console.log('Tipo de data desconhecido:', typeof nextDueDate);
                 throw new Error('Formato de data inválido para next_due_date');
             }
-            
-            console.log('Data convertida para objeto Date:', dueDate);
-            console.log('Data ISO:', dueDate.toISOString());
-            console.log('Data localizada:', dueDate.toString());
             
             // Verificar se a data é válida
             if (isNaN(dueDate.getTime())) {
                 throw new Error('Data de vencimento inválida');
             }
             
-            // Verificar se a data é menor que hoje
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (dueDate < today) {
-                throw new Error('Data de vencimento não pode ser anterior à data atual');
-            }
-            
-            // Formatar data no formato YYYY-MM-DD
+            // Formatar como YYYY-MM-DD
             const year = dueDate.getFullYear();
-            // Mês é baseado em zero, por isso +1. E garantimos que tenha dois dígitos
-            const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const month = String(dueDate.getMonth() + 1).padStart(2, '0'); // Mês começa em 0
             const day = String(dueDate.getDate()).padStart(2, '0');
             
-            nextDueDate = `${year}-${month}-${day}`;
-            console.log(`Data formatada final para Asaas: ${nextDueDate}`);
+            asaasData.nextDueDate = `${year}-${month}-${day}`;
+            console.log(`Data formatada para Asaas: ${asaasData.nextDueDate}`);
         } else {
             throw new Error('Data de vencimento (next_due_date) é obrigatória');
         }
-        
-        // Mapear campos do nosso modelo para o formato esperado pelo Asaas
-        const asaasData = {
-            customer: customerId, // ID do cliente no Asaas
-            billingType: data.billing_type || 'BOLETO', // Tipo de cobrança
-            value: data.value, // Valor da assinatura
-            nextDueDate: nextDueDate, // Data de vencimento formatada
-            cycle: cycle, // Ciclo de cobrança normalizado
-            description: data.plan_name || `Assinatura do Pedido #${order.id}`, // Descrição
-        };
         
         // Adicionar campos opcionais apenas se estiverem definidos
         if (data.max_payments) asaasData.maxPayments = data.max_payments;
         
         // Referência externa deve ser um identificador único e consistente
-        // Usando ID da nossa aplicação
         asaasData.externalReference = `order_subscription_${order.id}`;
         
-        // Formatar data final se existir
+        // Formatar data final se existir (YYYY-MM-DD)
         if (data.end_date) {
-            // Criar objeto Date independente do formato de entrada
-            let endDateObj;
+            let endDate;
             
             if (data.end_date instanceof Date) {
-                endDateObj = data.end_date;
+                endDate = data.end_date;
             } else if (typeof data.end_date === 'string') {
-                endDateObj = new Date(data.end_date);
+                endDate = new Date(data.end_date);
             } else {
                 throw new Error('Formato de data inválido para end_date');
             }
             
-            // Verificar se a data é válida
-            if (isNaN(endDateObj.getTime())) {
+            if (isNaN(endDate.getTime())) {
                 throw new Error('Data final inválida');
             }
             
-            // Verificar se a data final é maior que a data de vencimento
-            const dueDate = new Date(nextDueDate);
-            if (endDateObj <= dueDate) {
-                throw new Error('Data final deve ser posterior à data de vencimento');
-            }
-            
-            // Formatar no formato YYYY-MM-DD
-            const year = endDateObj.getFullYear();
-            const month = String(endDateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(endDateObj.getDate()).padStart(2, '0');
+            const year = endDate.getFullYear();
+            const month = String(endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(endDate.getDate()).padStart(2, '0');
             
             asaasData.endDate = `${year}-${month}-${day}`;
         }
@@ -497,22 +478,14 @@ class ShopperSubscriptionService {
         if (data.interest) asaasData.interest = data.interest;
         if (data.fine) asaasData.fine = data.fine;
         
-        // Adicionar metadata se existir
-        if (data.metadata) {
-            // Se for preciso mesclar metadata com outras informações
-            asaasData.metadata = { 
-                ...data.metadata, 
-                source: 'appns-assinaturas',
-                order_id: order.id,
-                shopper_id: shopper.id
-            };
-        } else {
-            asaasData.metadata = {
-                source: 'appns-assinaturas',
-                order_id: order.id,
-                shopper_id: shopper.id
-            };
-        }
+        // Adicionar metadata básica
+        asaasData.metadata = {
+            source: 'appns-assinaturas',
+            order_id: order.id,
+            shopper_id: shopper.id
+        };
+        
+        console.log('Dados completos para envio ao Asaas:', JSON.stringify(asaasData, null, 2));
         
         return asaasData;
     }
