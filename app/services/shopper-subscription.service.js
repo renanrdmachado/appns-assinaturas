@@ -4,6 +4,8 @@ const Shopper = require('../models/Shopper');
 const { formatError, createError } = require('../utils/errorHandler');
 const subscriptionService = require('./asaas/subscription.service');
 const AsaasCustomerService = require('./asaas/customer.service');
+const AsaasFormatter = require('../utils/asaas-formatter');
+const SubscriptionValidator = require('../validators/subscription-validator'); // Usar o validador unificado
 const sequelize = require('../config/database');
 
 class ShopperSubscriptionService {
@@ -13,7 +15,17 @@ class ShopperSubscriptionService {
                 return createError('ID é obrigatório', 400);
             }
             
-            const subscription = await ShopperSubscription.findByPk(id);
+            // Modificado para incluir dados do shopper e do pedido
+            const subscription = await ShopperSubscription.findByPk(id, {
+                include: [
+                    {
+                        model: Shopper,
+                        as: 'shopper',
+                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                    }
+                ]
+            });
+            
             console.log("Service / ShopperSubscription: ", subscription ? subscription.id : 'not found');
             
             if (!subscription) {
@@ -29,7 +41,16 @@ class ShopperSubscriptionService {
     
     async getAll() {
         try {
-            const subscriptions = await ShopperSubscription.findAll();
+            // Modificado para incluir dados do shopper e do pedido
+            const subscriptions = await ShopperSubscription.findAll({
+                include: [
+                    {
+                        model: Shopper,
+                        as: 'shopper',
+                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                    }
+                ]
+            });
             
             console.log("Service / All ShopperSubscriptions count: ", subscriptions.length);
             return { success: true, data: subscriptions };
@@ -50,8 +71,16 @@ class ShopperSubscriptionService {
                 return createError('Comprador não encontrado', 404);
             }
             
+            // Modificado para incluir dados do shopper e do pedido
             const subscriptions = await ShopperSubscription.findAll({
-                where: { shopper_id: shopperId }
+                where: { shopper_id: shopperId },
+                include: [
+                    {
+                        model: Shopper,
+                        as: 'shopper',
+                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                    }
+                ]
             });
             
             console.log(`Service / ShopperSubscriptions for shopper ${shopperId}: `, subscriptions.length);
@@ -73,8 +102,16 @@ class ShopperSubscriptionService {
                 return createError('Pedido não encontrado', 404);
             }
             
+            // Modificado para incluir dados do shopper e do pedido
             const subscriptions = await ShopperSubscription.findAll({
-                where: { order_id: orderId }
+                where: { order_id: orderId },
+                include: [
+                    {
+                        model: Shopper,
+                        as: 'shopper',
+                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                    }
+                ]
             });
             
             console.log(`Service / ShopperSubscriptions for order ${orderId}: `, subscriptions.length);
@@ -186,36 +223,12 @@ class ShopperSubscriptionService {
                 console.log(`Comprador ${shopper.id} já possui ID de cliente Asaas: ${customerId}. Reutilizando...`);
             }
             
-            // Resto do processo de criação da assinatura continua igual
-            
             // VERIFICAR DATA DE VENCIMENTO - Não pode ser menor que hoje
             let nextDueDate = data.next_due_date || order.next_due_date;
             console.log('Data original da Order:', order.next_due_date);
             console.log('Data de vencimento extraída antes do processamento:', nextDueDate);
-            console.log('Tipo da data extraída:', typeof nextDueDate);
             
-            // Garantir que a data de vencimento é uma data válida e maior ou igual a hoje
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            // Verificar se a data é válida
-            if (!nextDueDate) {
-                await transaction.rollback();
-                return createError('Data de vencimento (next_due_date) é obrigatória para criar uma assinatura', 400);
-            }
-            
-            const dueDate = new Date(nextDueDate);
-            if (isNaN(dueDate.getTime())) {
-                await transaction.rollback();
-                return createError('Data de vencimento inválida', 400);
-            }
-            
-            // Verificar se a data é menor que hoje
-            if (dueDate < today) {
-                await transaction.rollback();
-                return createError('Data de vencimento não pode ser anterior à data atual', 400);
-            }
-            
+            // Preparar dados da assinatura
             const subscriptionData = {
                 // Usar dados fornecidos ou do pedido
                 plan_name: data.plan_name || `Assinatura do Pedido #${order.id}`,
@@ -227,6 +240,14 @@ class ShopperSubscriptionService {
                 shopper_id: shopperId,
                 order_id: orderId
             };
+            
+            // Validar dados com o validador unificado
+            try {
+                SubscriptionValidator.validateCreateData(subscriptionData);
+            } catch (error) {
+                await transaction.rollback();
+                return formatError(error);
+            }
             
             console.log('Dados montados para formatação:', JSON.stringify(subscriptionData, null, 2));
             
@@ -257,7 +278,7 @@ class ShopperSubscriptionService {
             
             // Atualizar dados da assinatura com o ID externo
             subscriptionData.external_id = asaasResult.data.id;
-            subscriptionData.status = this.mapAsaasStatusToLocalStatus(asaasResult.data.status);
+            subscriptionData.status = AsaasFormatter.mapAsaasStatusToLocalStatus(asaasResult.data.status);
             
             // Criar assinatura no banco local usando a transação
             console.log('Criando assinatura no banco local...');
@@ -294,6 +315,13 @@ class ShopperSubscriptionService {
                 return createError('ID é obrigatório', 400);
             }
             
+            // Validar dados com o validador unificado
+            try {
+                SubscriptionValidator.validateUpdateData(data);
+            } catch (error) {
+                return formatError(error);
+            }
+            
             const subscription = await ShopperSubscription.findByPk(id);
             
             if (!subscription) {
@@ -317,7 +345,7 @@ class ShopperSubscriptionService {
                 
                 // Atualizar status local com base no status do Asaas
                 if (asaasResult.data && asaasResult.data.status) {
-                    data.status = this.mapAsaasStatusToLocalStatus(asaasResult.data.status);
+                    data.status = AsaasFormatter.mapAsaasStatusToLocalStatus(asaasResult.data.status);
                 }
                 
                 // Se o pedido tiver o mesmo ID externo, atualizar o status também
@@ -390,23 +418,7 @@ class ShopperSubscriptionService {
         console.log('Customer ID para assinatura:', customerId);
         
         // Normalizar o ciclo para o formato que o Asaas espera
-        let cycle = data.cycle || 'MONTHLY';
-        const cycleMapping = {
-            'mensal': 'MONTHLY',
-            'semanal': 'WEEKLY',
-            'quinzenal': 'BIWEEKLY',
-            'bimestral': 'BIMONTHLY',
-            'trimestral': 'QUARTERLY',
-            'semestral': 'SEMIANNUALLY',
-            'anual': 'YEARLY'
-        };
-        
-        if (cycleMapping[cycle.toLowerCase()]) {
-            cycle = cycleMapping[cycle.toLowerCase()];
-        } else {
-            // Converter para maiúsculas se não for um dos alias conhecidos
-            cycle = cycle.toUpperCase();
-        }
+        const cycle = AsaasFormatter.normalizeCycle(data.cycle || 'MONTHLY');
         
         // Mapear campos do nosso modelo para o formato esperado pelo Asaas
         const asaasData = {
@@ -419,28 +431,12 @@ class ShopperSubscriptionService {
         
         // Formatar data de vencimento para o formato que o Asaas aceita (YYYY-MM-DD)
         if (data.next_due_date) {
-            let dueDate;
-            
-            if (data.next_due_date instanceof Date) {
-                dueDate = data.next_due_date;
-            } else if (typeof data.next_due_date === 'string') {
-                dueDate = new Date(data.next_due_date);
-            } else {
-                throw new Error('Formato de data inválido para next_due_date');
+            try {
+                asaasData.nextDueDate = AsaasFormatter.formatDate(data.next_due_date);
+                console.log(`Data formatada para Asaas: ${asaasData.nextDueDate}`);
+            } catch (error) {
+                throw new Error(`Erro ao formatar data de vencimento: ${error.message}`);
             }
-            
-            // Verificar se a data é válida
-            if (isNaN(dueDate.getTime())) {
-                throw new Error('Data de vencimento inválida');
-            }
-            
-            // Formatar como YYYY-MM-DD
-            const year = dueDate.getFullYear();
-            const month = String(dueDate.getMonth() + 1).padStart(2, '0'); // Mês começa em 0
-            const day = String(dueDate.getDate()).padStart(2, '0');
-            
-            asaasData.nextDueDate = `${year}-${month}-${day}`;
-            console.log(`Data formatada para Asaas: ${asaasData.nextDueDate}`);
         } else {
             throw new Error('Data de vencimento (next_due_date) é obrigatória');
         }
@@ -453,25 +449,11 @@ class ShopperSubscriptionService {
         
         // Formatar data final se existir (YYYY-MM-DD)
         if (data.end_date) {
-            let endDate;
-            
-            if (data.end_date instanceof Date) {
-                endDate = data.end_date;
-            } else if (typeof data.end_date === 'string') {
-                endDate = new Date(data.end_date);
-            } else {
-                throw new Error('Formato de data inválido para end_date');
+            try {
+                asaasData.endDate = AsaasFormatter.formatDate(data.end_date);
+            } catch (error) {
+                throw new Error(`Erro ao formatar data final: ${error.message}`);
             }
-            
-            if (isNaN(endDate.getTime())) {
-                throw new Error('Data final inválida');
-            }
-            
-            const year = endDate.getFullYear();
-            const month = String(endDate.getMonth() + 1).padStart(2, '0');
-            const day = String(endDate.getDate()).padStart(2, '0');
-            
-            asaasData.endDate = `${year}-${month}-${day}`;
         }
         
         if (data.discount) asaasData.discount = data.discount;
@@ -501,82 +483,37 @@ class ShopperSubscriptionService {
         
         // Formatar next_due_date para YYYY-MM-DD se fornecido
         if (data.next_due_date !== undefined) {
-            let nextDueDate = data.next_due_date;
-            let dueDate;
-            
-            if (nextDueDate instanceof Date) {
-                dueDate = nextDueDate;
-            } else if (typeof nextDueDate === 'string') {
-                dueDate = new Date(nextDueDate);
-            } else {
-                throw new Error('Formato de data inválido para next_due_date');
+            try {
+                asaasData.nextDueDate = AsaasFormatter.formatDate(data.next_due_date);
+            } catch (error) {
+                throw new Error(`Erro ao formatar data de vencimento: ${error.message}`);
             }
-            
-            // Verificar se a data é válida
-            if (isNaN(dueDate.getTime())) {
-                throw new Error('Data de vencimento inválida');
-            }
-            
-            // Formatar no formato YYYY-MM-DD
-            const year = dueDate.getFullYear();
-            const month = String(dueDate.getMonth() + 1).padStart(2, '0');
-            const day = String(dueDate.getDate()).padStart(2, '0');
-            
-            asaasData.nextDueDate = `${year}-${month}-${day}`;
         }
         
-        if (data.cycle !== undefined) asaasData.cycle = data.cycle;
+        if (data.cycle !== undefined) {
+            asaasData.cycle = AsaasFormatter.normalizeCycle(data.cycle);
+        }
+        
         if (data.plan_name !== undefined) asaasData.description = data.plan_name;
         
         // Formatar end_date para YYYY-MM-DD se fornecido
         if (data.end_date !== undefined) {
-            let endDate = data.end_date;
-            let endDateObj;
-            
-            if (endDate instanceof Date) {
-                endDateObj = endDate;
-            } else if (typeof endDate === 'string') {
-                endDateObj = new Date(endDate);
-            } else if (endDate === null) {
+            if (data.end_date === null) {
                 // Se a data final for null, significa que queremos removê-la
                 asaasData.endDate = null;
-                return asaasData;
             } else {
-                throw new Error('Formato de data inválido para end_date');
+                try {
+                    asaasData.endDate = AsaasFormatter.formatDate(data.end_date);
+                } catch (error) {
+                    throw new Error(`Erro ao formatar data final: ${error.message}`);
+                }
             }
-            
-            // Verificar se a data é válida
-            if (isNaN(endDateObj.getTime())) {
-                throw new Error('Data final inválida');
-            }
-            
-            // Formatar no formato YYYY-MM-DD
-            const year = endDateObj.getFullYear();
-            const month = String(endDateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(endDateObj.getDate()).padStart(2, '0');
-            
-            asaasData.endDate = `${year}-${month}-${day}`;
         }
         
         if (data.max_payments !== undefined) asaasData.maxPayments = data.max_payments;
         if (data.billing_type !== undefined) asaasData.billingType = data.billing_type;
         
         return asaasData;
-    }
-    
-    /**
-     * Mapeia status do Asaas para status local
-     */
-    mapAsaasStatusToLocalStatus(asaasStatus) {
-        const statusMap = {
-            'ACTIVE': 'active',
-            'INACTIVE': 'inactive',
-            'EXPIRED': 'inactive',
-            'OVERDUE': 'overdue',
-            'PENDING': 'pending'
-        };
-        
-        return statusMap[asaasStatus] || 'pending';
     }
 }
 

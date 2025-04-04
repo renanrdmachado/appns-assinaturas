@@ -6,7 +6,20 @@ class ShopperValidator extends BaseValidator {
      * @param {number|string} id - ID a ser validado
      */
     static validateId(id) {
-        return this.validateId(id, 'comprador');
+        // Implementação correta sem chamada recursiva
+        if (!id) {
+            this.throwError('ID do comprador é obrigatório', 400);
+        }
+        
+        if (typeof id !== 'string' && typeof id !== 'number') {
+            this.throwError('ID do comprador deve ser uma string ou número', 400);
+        }
+        
+        if (typeof id === 'string' && id.trim() === '') {
+            this.throwError('ID do comprador não pode ser vazio', 400);
+        }
+        
+        return true;
     }
     
     /**

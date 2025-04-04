@@ -85,4 +85,19 @@ const ShopperSubscription = sequelize.define('ShopperSubscription', {
   }
 });
 
+// Adicionando associação após a inicialização do modelo
+const setupAssociations = () => {
+  const Shopper = require('./Shopper');
+  
+  // Adicionar associação com o modelo Shopper
+  ShopperSubscription.belongsTo(Shopper, {
+    foreignKey: 'shopper_id',
+    as: 'shopper'
+  });
+};
+
+// Executar a configuração das associações - pode ser chamada após todos os modelos estarem definidos
+// Ou você pode fazer isso em um arquivo separado que configura todas as associações
+setupAssociations();
+
 module.exports = ShopperSubscription;
