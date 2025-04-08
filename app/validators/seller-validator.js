@@ -33,29 +33,29 @@ class SellerValidator extends BaseValidator {
         }
         
         // Validar campos obrigatórios
-        const requiredFields = ['nuvemshop_id', 'Asaas_cpfCnpj'];
+        const requiredFields = ['nuvemshop_id', 'cpfCnpj'];
         errors.push(...this.validateRequiredFields(data, requiredFields, 'vendedor'));
         
         // Validações específicas
-        if (data.Asaas_cpfCnpj && !this.isValidCpfCnpj(data.Asaas_cpfCnpj)) {
-            errors.push("O campo 'Asaas_cpfCnpj' deve ser um CPF ou CNPJ válido");
+        if (data.cpfCnpj && !this.isValidCpfCnpj(data.cpfCnpj)) {
+            errors.push("O campo 'cpfCnpj' deve ser um CPF ou CNPJ válido");
         }
         
         // Validar campos opcionais quando fornecidos
-        if (data.Asaas_loginEmail && !this.isValidEmail(data.Asaas_loginEmail)) {
-            errors.push("O campo 'Asaas_loginEmail' deve ser um email válido");
+        if (data.email && !this.isValidEmail(data.email)) {
+            errors.push("O campo 'email' deve ser um email válido");
         }
         
-        if (data.Asaas_mobilePhone && !this.isValidPhone(data.Asaas_mobilePhone)) {
-            errors.push("O campo 'Asaas_mobilePhone' deve ser um telefone válido");
+        if (data.mobilePhone && !this.isValidPhone(data.mobilePhone)) {
+            errors.push("O campo 'mobilePhone' deve ser um telefone válido");
         }
         
-        if (data.Asaas_postalCode && !this.isValidPostalCode(data.Asaas_postalCode)) {
-            errors.push("O campo 'Asaas_postalCode' deve ser um CEP válido");
+        if (data.postalCode && !this.isValidPostalCode(data.postalCode)) {
+            errors.push("O campo 'postalCode' deve ser um CEP válido");
         }
         
-        if (data.Asaas_birthDate && !this.isValidDate(data.Asaas_birthDate)) {
-            errors.push("O campo 'Asaas_birthDate' deve ser uma data válida");
+        if (data.birthDate && !this.isValidDate(data.birthDate)) {
+            errors.push("O campo 'birthDate' deve ser uma data válida");
         }
 
         return this.throwValidationErrors(errors);
@@ -78,29 +78,29 @@ class SellerValidator extends BaseValidator {
         }
 
         // CPF/CNPJ não deve ser vazio se estiver sendo atualizado
-        if (data.Asaas_cpfCnpj !== undefined) {
-            if (!data.Asaas_cpfCnpj) {
-                errors.push("O campo 'Asaas_cpfCnpj' não pode ser vazio");
-            } else if (!this.isValidCpfCnpj(data.Asaas_cpfCnpj)) {
-                errors.push("O campo 'Asaas_cpfCnpj' deve ser um CPF ou CNPJ válido");
+        if (data.cpfCnpj !== undefined) {
+            if (!data.cpfCnpj) {
+                errors.push("O campo 'cpfCnpj' não pode ser vazio");
+            } else if (!this.isValidCpfCnpj(data.cpfCnpj)) {
+                errors.push("O campo 'cpfCnpj' deve ser um CPF ou CNPJ válido");
             }
         }
         
         // Validar outros campos quando fornecidos
-        if (data.Asaas_loginEmail !== undefined && !this.isValidEmail(data.Asaas_loginEmail)) {
-            errors.push("O campo 'Asaas_loginEmail' deve ser um email válido");
+        if (data.email !== undefined && !this.isValidEmail(data.email)) {
+            errors.push("O campo 'email' deve ser um email válido");
         }
         
-        if (data.Asaas_mobilePhone !== undefined && !this.isValidPhone(data.Asaas_mobilePhone)) {
-            errors.push("O campo 'Asaas_mobilePhone' deve ser um telefone válido");
+        if (data.mobilePhone !== undefined && !this.isValidPhone(data.mobilePhone)) {
+            errors.push("O campo 'mobilePhone' deve ser um telefone válido");
         }
         
-        if (data.Asaas_postalCode !== undefined && !this.isValidPostalCode(data.Asaas_postalCode)) {
-            errors.push("O campo 'Asaas_postalCode' deve ser um CEP válido");
+        if (data.postalCode !== undefined && !this.isValidPostalCode(data.postalCode)) {
+            errors.push("O campo 'postalCode' deve ser um CEP válido");
         }
         
-        if (data.Asaas_birthDate !== undefined && !this.isValidDate(data.Asaas_birthDate)) {
-            errors.push("O campo 'Asaas_birthDate' deve ser uma data válida");
+        if (data.birthDate !== undefined && !this.isValidDate(data.birthDate)) {
+            errors.push("O campo 'birthDate' deve ser uma data válida");
         }
 
         return this.throwValidationErrors(errors);

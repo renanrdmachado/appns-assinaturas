@@ -1,8 +1,13 @@
 const Seller = require('../models/Seller');
-const { formatError } = require('../utils/errorHandler');
+const User = require('../models/User');
+const UserData = require('../models/UserData');
+const Shopper = require('../models/Shopper'); // Adicionando importação do Shopper
+const { createError, formatError } = require('../utils/errorHandler');
 const AsaasCustomerService = require('./asaas/customer.service');
 const SellerValidator = require('../validators/seller-validator');
-const AsaasApiClient = require('../helpers/AsaasApiClient');
+const AsaasMapper = require('../utils/asaas-mapper');
+const sequelize = require('../config/database');
+const { Op } = require('sequelize');
 
 class SellerService {
     async get(id) {
@@ -14,7 +19,7 @@ class SellerService {
             console.log("Service / Seller: ", seller);
             
             if (!seller) {
-                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
             
             return { success: true, data: seller };
@@ -36,7 +41,7 @@ class SellerService {
             console.log("Service / Seller by nuvemshop_id: ", seller);
             
             if (!seller) {
-                return { success: false, message: `Vendedor com Nuvemshop ID ${nuvemshopId} não encontrado`, status: 404 };
+                return createError(`Vendedor com Nuvemshop ID ${nuvemshopId} não encontrado`, 404);
             }
             
             return { success: true, data: seller };
@@ -65,7 +70,7 @@ class SellerService {
         console.log("Seller - creating...");
         
         try {
-            // Validação dos dados
+            // Validação dos dados usando o validator
             SellerValidator.validateSellerData(data);
             
             if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
@@ -75,42 +80,26 @@ class SellerService {
             // 1. Verificar se já existe um vendedor com este nuvemshop_id no banco local
             const existingSeller = await Seller.findOne({ where: { nuvemshop_id: data.nuvemshop_id } });
             if (existingSeller) {
-                return { 
-                    success: false, 
-                    message: 'Já existe um vendedor com este ID da Nuvemshop',
-                    status: 400
-                };
+                return createError('Já existe um vendedor com este ID da Nuvemshop', 400);
             }
             
-            // 2. Verificar se já existe um vendedor com este CPF/CNPJ no banco local
-            const sellerWithSameCpfCnpj = await Seller.findOne({ where: { Asaas_cpfCnpj: data.Asaas_cpfCnpj } });
-            if (sellerWithSameCpfCnpj) {
-                return {
-                    success: false,
-                    message: `Já existe um vendedor com o CPF/CNPJ ${data.Asaas_cpfCnpj} cadastrado (ID: ${sellerWithSameCpfCnpj.id})`,
-                    status: 400
-                };
+            // 2. Verificar se já existe um userData com este cpfCnpj no banco local
+            const existingUserData = await UserData.findOne({ where: { cpfCnpj: data.cpfCnpj } });
+            if (existingUserData) {
+                // Verificar se já existe um User associado a este UserData
+                const existingUser = await User.findOne({ where: { user_data_id: existingUserData.id } });
+                if (existingUser) {
+                    // Verificar se já existe um Seller associado a este User
+                    const sellerWithUser = await Seller.findOne({ where: { user_id: existingUser.id } });
+                    if (sellerWithUser) {
+                        return createError(`Já existe um vendedor associado ao CPF/CNPJ ${data.cpfCnpj}`, 400);
+                    }
+                }
             }
-            
-            // Verificar se temos CPF/CNPJ para a sincronização com o Asaas
-            if (!data.Asaas_cpfCnpj) {
-                return {
-                    success: false,
-                    message: 'CPF/CNPJ é obrigatório para criar um vendedor',
-                    status: 400
-                };
-            }
-            
-            // DEBUG: Dados do vendedor antes de sincronizar com Asaas
-            console.log('DEBUG - Dados do vendedor para sincronização com Asaas:', {
-                nuvemshop_id: data.nuvemshop_id,
-                cpfCnpj: data.Asaas_cpfCnpj,
-                email: data.Asaas_loginEmail || 'não especificado'
-            });
             
             // 3. Verificar se já existe um cliente com este CPF/CNPJ no Asaas
-            console.log(`Verificando se já existe cliente com CPF/CNPJ ${data.Asaas_cpfCnpj} no Asaas...`);
-            const existingAsaasCustomer = await AsaasCustomerService.findByCpfCnpj(data.Asaas_cpfCnpj, AsaasCustomerService.SELLER_GROUP);
+            console.log(`Verificando se já existe cliente com CPF/CNPJ ${data.cpfCnpj} no Asaas...`);
+            const existingAsaasCustomer = await AsaasCustomerService.findByCpfCnpj(data.cpfCnpj, AsaasCustomerService.SELLER_GROUP);
             
             let asaasCustomerId;
             
@@ -119,59 +108,17 @@ class SellerService {
                 console.log(`Cliente já existe no Asaas com ID: ${existingAsaasCustomer.data.id}`);
                 asaasCustomerId = existingAsaasCustomer.data.id;
                 
-                // DEBUG: Informações do cliente existente no Asaas
-                console.log('DEBUG - Cliente existente no Asaas:', {
-                    id: existingAsaasCustomer.data.id,
-                    name: existingAsaasCustomer.data.name,
-                    cpfCnpj: existingAsaasCustomer.data.cpfCnpj
-                });
-                
                 // Verificar se há um vendedor vinculado a este ID do Asaas
                 const sellerWithAsaasId = await Seller.findOne({ 
                     where: { payments_customer_id: asaasCustomerId } 
                 });
                 
                 if (sellerWithAsaasId) {
-                    return {
-                        success: false,
-                        message: `Já existe um vendedor (ID: ${sellerWithAsaasId.id}) vinculado a este cliente do Asaas`,
-                        status: 400
-                    };
+                    return createError(`Já existe um vendedor (ID: ${sellerWithAsaasId.id}) vinculado a este cliente do Asaas`, 400);
                 }
-                
-                // Se chegou aqui, podemos usar o cliente existente no Asaas
             } else {
-                // Se não existe, criar novo cliente no Asaas
-                // Extrair info da loja do JSON
-                const storeInfo = typeof data.nuvemshop_info === 'string' 
-                    ? JSON.parse(data.nuvemshop_info) 
-                    : data.nuvemshop_info || {};
-                    
-                // Mapear dados para o formato do Asaas
-                const customerData = {
-                    name: storeInfo.name || storeInfo.storeName || 'Loja ' + data.nuvemshop_id,
-                    cpfCnpj: data.Asaas_cpfCnpj,
-                    email: data.Asaas_loginEmail || storeInfo.email || undefined,
-                    mobilePhone: data.Asaas_mobilePhone || undefined,
-                    address: data.Asaas_address || undefined,
-                    addressNumber: data.Asaas_addressNumber || undefined,
-                    province: data.Asaas_province || undefined,
-                    postalCode: data.Asaas_postalCode || undefined,
-                    externalReference: data.nuvemshop_id.toString(),
-                    groupName: AsaasCustomerService.SELLER_GROUP,
-                    observations: `Vendedor da Nuvemshop ID: ${data.nuvemshop_id}`,
-                    notificationDisabled: false
-                };
-                
-                console.log('Criando novo cliente no Asaas para vendedor...');
-                
-                // DEBUG: Dados do cliente a ser criado no Asaas
-                console.log('DEBUG - Dados do cliente a ser criado no Asaas:', {
-                    name: customerData.name,
-                    cpfCnpj: customerData.cpfCnpj,
-                    email: customerData.email || 'não especificado',
-                    groupName: customerData.groupName
-                });
+                // Se não existe, criar novo cliente no Asaas usando o AsaasMapper
+                const customerData = AsaasMapper.mapRawDataToCustomer(data, 'seller', AsaasCustomerService.SELLER_GROUP);
                 
                 // Tentar criar cliente no Asaas
                 const asaasResult = await AsaasCustomerService.createOrUpdate(
@@ -179,38 +126,88 @@ class SellerService {
                     AsaasCustomerService.SELLER_GROUP
                 );
                 
-                // DEBUG: Resposta do Asaas para criação de cliente
-                console.log('DEBUG - Resposta do Asaas para criação de cliente:', 
-                    asaasResult.success ? 
-                    { id: asaasResult.data.id, name: asaasResult.data.name } : 
-                    { error: asaasResult.message });
-                
                 // Se falhar no Asaas, não cria no banco local
                 if (!asaasResult.success) {
-                    console.error('Falha ao criar cliente no Asaas:', asaasResult.message);
-                    return {
-                        success: false,
-                        message: `Falha ao sincronizar com Asaas: ${asaasResult.message}`,
-                        status: asaasResult.status || 400
-                    };
+                    return createError(`Falha ao sincronizar com Asaas: ${asaasResult.message}`, asaasResult.status || 400);
                 }
                 
-                console.log('Cliente criado com sucesso no Asaas, ID:', asaasResult.data.id);
                 asaasCustomerId = asaasResult.data.id;
             }
             
             // 4. Adicionar ID do cliente Asaas nos dados e criar no banco local
             data.payments_customer_id = asaasCustomerId;
-            
-            // Criar o seller no banco de dados local
-            const seller = await Seller.create(data);
-            console.log('Seller created com Asaas sync:', seller.id);
-            
-            return { 
-                success: true, 
-                message: 'Vendedor criado e sincronizado com Asaas com sucesso',
-                data: seller
-            };
+
+            // Usar transação para garantir consistência entre as entidades
+            try {
+                const result = await sequelize.transaction(async (t) => {
+                    // Criar ou obter o UserData
+                    let userData = existingUserData;
+                    if (!userData) {
+                        userData = await UserData.create({
+                            cpfCnpj: data.cpfCnpj,
+                            email: data.email || null,
+                            mobilePhone: data.mobilePhone || null,
+                            address: data.address || null,
+                            addressNumber: data.addressNumber || null,
+                            province: data.province || null,
+                            postalCode: data.postalCode || null,
+                            birthDate: data.birthDate || null
+                        }, { transaction: t });
+                    }
+
+                    // Criar ou obter o User
+                    let user;
+                    if (existingUserData) {
+                        user = await User.findOne({ 
+                            where: { user_data_id: userData.id },
+                            transaction: t
+                        });
+                    }
+                    
+                    if (!user) {
+                        user = await User.create({
+                            username: data.username || null,
+                            email: data.email,
+                            password: data.password || null,
+                            user_data_id: userData.id
+                        }, { transaction: t });
+                    }
+
+                    // Criar o Seller vinculado ao User
+                    const seller = await Seller.create({
+                        nuvemshop_id: data.nuvemshop_id,
+                        nuvemshop_info: data.nuvemshop_info || null,
+                        nuvemshop_api_token: data.nuvemshop_api_token || null,
+                        app_status: data.app_status || null,
+                        app_start_date: data.app_start_date || null,
+                        user_id: user.id,
+                        payments_customer_id: data.payments_customer_id || null
+                    }, { transaction: t });
+
+                    // Carregar o seller com as relações
+                    const sellerWithRelations = await Seller.findByPk(seller.id, {
+                        include: [
+                            { 
+                                model: User, 
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }] 
+                            }
+                        ],
+                        transaction: t
+                    });
+
+                    return sellerWithRelations;
+                });
+
+                return { 
+                    success: true, 
+                    message: 'Vendedor criado com sucesso',
+                    data: result
+                };
+            } catch (txError) {
+                console.error('Erro na transação ao criar vendedor:', txError.message);
+                return createError(`Erro ao salvar dados: ${txError.message}`, 500);
+            }
         } catch (error) {
             console.error('Erro ao criar vendedor - service:', error.message);
             return formatError(error);
@@ -220,7 +217,7 @@ class SellerService {
     async updateStoreInfo(nuvemshopId, api_token, storeInfo) {
         try {
             if (!nuvemshopId) {
-                return { success: false, message: 'ID da Nuvemshop é obrigatório', status: 400 };
+                return createError('ID da Nuvemshop é obrigatório', 400);
             }
             
             const nuvemshopInfo = typeof storeInfo === 'string' 
@@ -248,10 +245,18 @@ class SellerService {
             // Validação do ID
             SellerValidator.validateId(id);
             
-            const seller = await Seller.findByPk(id);
+            const seller = await Seller.findByPk(id, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
             
             if (!seller) {
-                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
             
             // Validação dos dados de atualização
@@ -262,86 +267,117 @@ class SellerService {
             }
             
             // Verificar se há dados relevantes para o Asaas
-            const asaasRelevantFields = ['Asaas_cpfCnpj', 'Asaas_loginEmail', 'Asaas_mobilePhone', 
-                                        'Asaas_address', 'Asaas_addressNumber', 'Asaas_province', 
-                                        'Asaas_postalCode'];
+            const asaasRelevantFields = ['cpfCnpj', 'email', 'mobilePhone', 
+                                        'address', 'addressNumber', 'province', 
+                                        'postalCode'];
             
             const needsAsaasSync = asaasRelevantFields.some(field => data[field] !== undefined);
             
             // Se precisamos sincronizar com o Asaas
             if (needsAsaasSync) {
-                // Obter CPF/CNPJ atual ou atualizado
-                const cpfCnpj = data.Asaas_cpfCnpj || seller.Asaas_cpfCnpj;
+                // Criar objeto temporário com dados atualizados para o Asaas
+                const tempSeller = JSON.parse(JSON.stringify(seller));
                 
-                if (!cpfCnpj) {
-                    return {
-                        success: false,
-                        message: 'CPF/CNPJ é obrigatório para sincronizar com o Asaas',
-                        status: 400
-                    };
+                // Atualizar UserData no tempSeller
+                if (tempSeller.user && tempSeller.user.userData) {
+                    if (data.cpfCnpj) tempSeller.user.userData.cpfCnpj = data.cpfCnpj;
+                    if (data.mobilePhone) tempSeller.user.userData.mobilePhone = data.mobilePhone;
+                    if (data.address) tempSeller.user.userData.address = data.address;
+                    if (data.addressNumber) tempSeller.user.userData.addressNumber = data.addressNumber;
+                    if (data.province) tempSeller.user.userData.province = data.province;
+                    if (data.postalCode) tempSeller.user.userData.postalCode = data.postalCode;
                 }
                 
-                // Mapear dados para o Asaas
-                const mergedData = { ...seller.toJSON(), ...data };
-                
-                // Extrair info da loja do JSON
-                const storeInfo = typeof mergedData.nuvemshop_info === 'string' 
-                    ? JSON.parse(mergedData.nuvemshop_info) 
-                    : mergedData.nuvemshop_info || {};
-                
-                const customerData = {
-                    name: storeInfo.name || storeInfo.storeName || 'Loja ' + mergedData.nuvemshop_id,
-                    cpfCnpj: mergedData.Asaas_cpfCnpj,
-                    email: mergedData.Asaas_loginEmail || storeInfo.email || undefined,
-                    mobilePhone: mergedData.Asaas_mobilePhone || undefined,
-                    address: mergedData.Asaas_address || undefined,
-                    addressNumber: mergedData.Asaas_addressNumber || undefined,
-                    province: mergedData.Asaas_province || undefined,
-                    postalCode: mergedData.Asaas_postalCode || undefined,
-                    externalReference: mergedData.nuvemshop_id.toString(),
-                    groupName: AsaasCustomerService.SELLER_GROUP,
-                    observations: `Vendedor da Nuvemshop ID: ${mergedData.nuvemshop_id}`,
-                    notificationDisabled: false
-                };
-                
-                console.log('Sincronizando dados atualizados com Asaas antes de salvar no banco...');
-                
-                // Primeiro tentar sincronizar com o Asaas
-                const asaasResult = await AsaasCustomerService.createOrUpdate(
-                    customerData, 
-                    AsaasCustomerService.SELLER_GROUP
-                );
-                
-                // Se falhar no Asaas, não atualiza no banco local
-                if (!asaasResult.success) {
-                    console.error('Falha ao atualizar no Asaas:', asaasResult.message);
-                    return {
-                        success: false,
-                        message: `Falha ao sincronizar com Asaas: ${asaasResult.message}`,
-                        status: asaasResult.status || 400
-                    };
+                // Atualizar User no tempSeller
+                if (tempSeller.user && data.email) {
+                    tempSeller.user.email = data.email;
                 }
                 
-                console.log('Cliente atualizado com sucesso no Asaas, ID:', asaasResult.data.id);
-                
-                // Atualizar o payments_customer_id se necessário
-                if (asaasResult.data.id && (!seller.payments_customer_id || seller.payments_customer_id !== asaasResult.data.id)) {
-                    data.payments_customer_id = asaasResult.data.id;
+                try {
+                    // Mapear para formato do Asaas
+                    const customerData = AsaasMapper.mapSellerToCustomer(tempSeller, AsaasCustomerService.SELLER_GROUP);
+                    
+                    // Sincronizar com Asaas
+                    const asaasResult = await AsaasCustomerService.createOrUpdate(
+                        customerData, 
+                        AsaasCustomerService.SELLER_GROUP
+                    );
+                    
+                    // Se falhar no Asaas, não atualiza no banco local
+                    if (!asaasResult.success) {
+                        return createError(`Falha ao sincronizar com Asaas: ${asaasResult.message}`, asaasResult.status || 400);
+                    }
+                    
+                    // Atualizar ID do cliente Asaas se necessário
+                    if (asaasResult.data.id && (!seller.payments_customer_id || seller.payments_customer_id !== asaasResult.data.id)) {
+                        data.payments_customer_id = asaasResult.data.id;
+                    }
+                } catch (asaasError) {
+                    console.error('Erro na sincronização com Asaas:', asaasError.message);
+                    return createError(`Erro ao sincronizar com Asaas: ${asaasError.message}`, 500);
                 }
             }
             
-            // Atualizar o seller no banco de dados local
-            await seller.update(data);
-            await seller.reload();
-            
-            console.log('Seller updated:', seller.id);
-            return { 
-                success: true, 
-                message: needsAsaasSync ? 
-                    'Vendedor atualizado e sincronizado com Asaas com sucesso' : 
-                    'Vendedor atualizado com sucesso',
-                data: seller
-            };
+            // Usar transação para atualizar entidades no banco local
+            try {
+                return await sequelize.transaction(async (t) => {
+                    // 1. Atualizar UserData
+                    if (seller.user && seller.user.userData) {
+                        if (data.cpfCnpj || data.mobilePhone || data.address || 
+                            data.addressNumber || data.province || data.postalCode || 
+                            data.birthDate) {
+                            
+                            await seller.user.userData.update({
+                                cpfCnpj: data.cpfCnpj || seller.user.userData.cpfCnpj,
+                                mobilePhone: data.mobilePhone || seller.user.userData.mobilePhone,
+                                address: data.address || seller.user.userData.address,
+                                addressNumber: data.addressNumber || seller.user.userData.addressNumber,
+                                province: data.province || seller.user.userData.province,
+                                postalCode: data.postalCode || seller.user.userData.postalCode,
+                                birthDate: data.birthDate || seller.user.userData.birthDate
+                            }, { transaction: t });
+                        }
+                    }
+                    
+                    // 2. Atualizar User
+                    if (seller.user && (data.email || data.username)) {
+                        await seller.user.update({
+                            email: data.email || seller.user.email,
+                            username: data.username || seller.user.username
+                        }, { transaction: t });
+                    }
+                    
+                    // 3. Atualizar Seller
+                    await seller.update({
+                        nuvemshop_info: data.nuvemshop_info || seller.nuvemshop_info,
+                        nuvemshop_api_token: data.nuvemshop_api_token || seller.nuvemshop_api_token,
+                        app_status: data.app_status || seller.app_status,
+                        payments_customer_id: data.payments_customer_id || seller.payments_customer_id
+                    }, { transaction: t });
+                    
+                    // Recarregar o seller com as relações atualizadas
+                    await seller.reload({
+                        include: [
+                            { 
+                                model: User, 
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }] 
+                            }
+                        ]
+                    });
+                    
+                    return { 
+                        success: true, 
+                        message: needsAsaasSync ? 
+                            'Vendedor atualizado e sincronizado com Asaas com sucesso' : 
+                            'Vendedor atualizado com sucesso',
+                        data: seller
+                    };
+                });
+            } catch (txError) {
+                console.error('Erro na transação ao atualizar vendedor:', txError.message);
+                return createError(`Erro ao atualizar dados: ${txError.message}`, 500);
+            }
         } catch (error) {
             console.error('Erro ao atualizar vendedor:', error.message);
             return formatError(error);
@@ -350,15 +386,77 @@ class SellerService {
     
     async delete(id) {
         try {
-            const seller = await Seller.findByPk(id);
+            // Validação do ID
+            SellerValidator.validateId(id);
+            
+            // Carregar o seller com suas associações - sempre incluir o User
+            const seller = await Seller.findByPk(id, {
+                include: [{ model: User, as: 'user' }]
+            });
             
             if (!seller) {
-                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
             
-            await seller.destroy();
-            console.log(`Vendedor com ID ${id} foi excluído com sucesso`);
-            return { success: true, message: `Vendedor com ID ${id} foi excluído com sucesso` };
+            const userId = seller.user?.id;
+            const userDataId = seller.user?.user_data_id;
+            
+            try {
+                await sequelize.transaction(async (t) => {
+                    // 1. Excluir o seller
+                    await seller.destroy({ transaction: t });
+                    
+                    // 2. Se tiver usuário, verificar se pode excluí-lo
+                    if (userId) {
+                        // Verificar se o usuário está associado a outro seller ou shopper
+                        const shopperCount = await Shopper.count({ 
+                            where: { user_id: userId }, 
+                            transaction: t 
+                        });
+                        
+                        const sellerCount = await Seller.count({ 
+                            where: { user_id: userId }, 
+                            transaction: t 
+                        });
+                        
+                        // Se não estiver associado a outros registros, excluir o usuário
+                        if (shopperCount === 0 && sellerCount === 0) {
+                            const user = await User.findByPk(userId, { transaction: t });
+                            if (user) {
+                                await user.destroy({ transaction: t });
+                                
+                                // 3. Se tiver userData, verificar se pode excluí-lo
+                                if (userDataId) {
+                                    // Verificar se o userData está associado a outros usuários
+                                    const otherUsers = await User.count({
+                                        where: { 
+                                            user_data_id: userDataId,
+                                            id: { [Op.ne]: userId }
+                                        },
+                                        transaction: t
+                                    });
+                                    
+                                    // Se não estiver associado a outros usuários, excluir o userData
+                                    if (otherUsers === 0) {
+                                        const userData = await UserData.findByPk(userDataId, { transaction: t });
+                                        if (userData) {
+                                            await userData.destroy({ transaction: t });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                return { 
+                    success: true, 
+                    message: `Vendedor com ID ${id} foi excluído com sucesso` 
+                };
+            } catch (txError) {
+                console.error('Erro na transação ao excluir vendedor:', txError.message);
+                return createError(`Erro ao excluir dados: ${txError.message}`, 500);
+            }
         } catch (error) {
             console.error('Erro ao excluir vendedor:', error.message);
             return formatError(error);
@@ -367,11 +465,8 @@ class SellerService {
 
     async savePaymentsInfo(storeId, payments) {
         try {
-            console.log("savePaymentsInfo - store", storeId);
-            console.log("savePaymentsInfo - payments", payments);
-            
             if (!storeId) {
-                return { success: false, message: 'ID da loja é obrigatório', status: 400 };
+                return createError('ID da loja é obrigatório', 400);
             }
             
             const [seller, created] = await Seller.upsert({
@@ -383,9 +478,7 @@ class SellerService {
                 app_status: payments.status
             });
             
-            const dataJson = seller.dataValues;
-            console.log('Seller store info updated:', dataJson);
-            return { success: true, data: dataJson };
+            return { success: true, data: seller.dataValues };
         } catch (error) {
             console.error('Erro ao salvar informações de pagamento:', error.message);
             return formatError(error);
@@ -394,33 +487,85 @@ class SellerService {
 
     async saveSubAccountInfo(storeId, account) {
         try {
-            console.log("saveSubAccountInfo - store", storeId);
-            console.log("saveSubAccountInfo - account", account);
-            
             if (!storeId) {
-                return { success: false, message: 'ID da loja é obrigatório', status: 400 };
+                return createError('ID da loja é obrigatório', 400);
             }
             
-            const [seller, created] = await Seller.upsert({
-                nuvemshop_id: storeId,
-                subaccount_id: account.id,
-                subaccount_wallet_id: account.walletId,
-                subaccount_api_key: account.apiKey,
-                Asaas_cpfCnpj: account.cpfCnpj,
-                Asaas_mobilePhone: account.mobilePhone,
-                Asaas_site: account.site,
-                Asaas_incomeValue: account.incomeValue,
-                Asaas_address: account.address,
-                Asaas_addressNumber: account.addressNumber,
-                Asaas_province: account.province,
-                Asaas_postalCode: account.postalCode,
-                Asaas_loginEmail: account.loginEmail,
-                Asaas_birthDate: account.birthDate
+            // Buscar o vendedor existente
+            const seller = await Seller.findOne({ 
+                where: { nuvemshop_id: storeId },
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
             });
             
-            const dataJson = seller.dataValues;
-            console.log('Seller store info updated:', dataJson);
-            return { success: true, data: dataJson };
+            if (!seller) {
+                return createError(`Vendedor com Nuvemshop ID ${storeId} não encontrado`, 404);
+            }
+            
+            // Usar transação para atualizar os dados
+            try {
+                await sequelize.transaction(async (t) => {
+                    // 1. Atualizar UserData
+                    if (seller.user && seller.user.userData) {
+                        await seller.user.userData.update({
+                            cpfCnpj: account.cpfCnpj || seller.user.userData.cpfCnpj,
+                            mobilePhone: account.mobilePhone || seller.user.userData.mobilePhone,
+                            address: account.address || seller.user.userData.address,
+                            addressNumber: account.addressNumber || seller.user.userData.addressNumber,
+                            province: account.province || seller.user.userData.province,
+                            postalCode: account.postalCode || seller.user.userData.postalCode
+                        }, { transaction: t });
+                    } else if (seller.user) {
+                        // Criar UserData se não existir
+                        const userData = await UserData.create({
+                            cpfCnpj: account.cpfCnpj,
+                            mobilePhone: account.mobilePhone || null,
+                            address: account.address || null,
+                            addressNumber: account.addressNumber || null,
+                            province: account.province || null,
+                            postalCode: account.postalCode || null
+                        }, { transaction: t });
+                        
+                        // Atualizar user_data_id no User
+                        await seller.user.update({
+                            user_data_id: userData.id,
+                            email: account.loginEmail || seller.user.email
+                        }, { transaction: t });
+                    }
+                    
+                    // 2. Atualizar Seller
+                    await seller.update({
+                        subaccount_id: account.id,
+                        subaccount_wallet_id: account.walletId,
+                        subaccount_api_key: account.apiKey
+                    }, { transaction: t });
+                });
+                
+                // Recarregar o seller com as relações atualizadas
+                await seller.reload({
+                    include: [
+                        { 
+                            model: User, 
+                            as: 'user',
+                            include: [{ model: UserData, as: 'userData' }] 
+                        }
+                    ]
+                });
+                
+                return { 
+                    success: true, 
+                    message: 'Informações da subconta salvas com sucesso',
+                    data: seller
+                };
+            } catch (txError) {
+                console.error('Erro na transação ao salvar subconta:', txError.message);
+                return createError(`Erro ao salvar subconta: ${txError.message}`, 500);
+            }
         } catch (error) {
             console.error('Erro ao salvar informações da subconta:', error.message);
             return formatError(error);
@@ -430,11 +575,37 @@ class SellerService {
     async findByCpfCnpj(cpfCnpj) {
         try {
             if (!cpfCnpj) {
-                return { success: false, message: 'CPF/CNPJ é obrigatório', status: 400 };
+                return createError('CPF/CNPJ é obrigatório', 400);
             }
             
+            // Buscar UserData pelo CPF/CNPJ
+            const userData = await UserData.findOne({
+                where: { cpfCnpj: cpfCnpj }
+            });
+            
+            if (!userData) {
+                return { success: true, data: null };
+            }
+            
+            // Buscar User vinculado ao UserData
+            const user = await User.findOne({
+                where: { user_data_id: userData.id }
+            });
+            
+            if (!user) {
+                return { success: true, data: null };
+            }
+            
+            // Buscar Seller vinculado ao User
             const seller = await Seller.findOne({
-                where: { Asaas_cpfCnpj: cpfCnpj }
+                where: { user_id: user.id },
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
             });
             
             return { success: true, data: seller };
@@ -451,23 +622,20 @@ class SellerService {
      */
     async syncWithAsaas(id) {
         try {
-            const seller = await Seller.findByPk(id);
+            const seller = await Seller.findByPk(id, {
+                include: [{ model: User, as: 'user', include: [{ model: UserData, as: 'userData' }] }]
+            });
             
             if (!seller) {
-                return { success: false, message: `Vendedor com ID ${id} não encontrado`, status: 404 };
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
             
-            // Valida se tem informações mínimas necessárias
-            if (!seller.Asaas_cpfCnpj) {
-                return { 
-                    success: false, 
-                    message: 'CPF/CNPJ é obrigatório para sincronizar com Asaas',
-                    status: 400 
-                };
+            if (!seller.user || !seller.user.userData || !seller.user.userData.cpfCnpj) {
+                return createError('CPF/CNPJ é obrigatório para sincronizar com Asaas', 400);
             }
             
-            // Mapeia dados do seller para o formato do Asaas
-            const customerData = this._mapToAsaasCustomer(seller);
+            // Usar o AsaasMapper para mapear os dados
+            const customerData = AsaasMapper.mapSellerToCustomer(seller, AsaasCustomerService.SELLER_GROUP);
             
             // Cria ou atualiza o cliente no Asaas
             const result = await AsaasCustomerService.createOrUpdate(
@@ -476,60 +644,29 @@ class SellerService {
             );
             
             if (result.success) {
-                // Sempre atualiza o ID do customer no seller - importante para garantir que temos o ID correto
+                // Sempre atualiza o ID do customer no seller
                 await seller.update({ 
                     payments_customer_id: result.data.id 
                 });
                 
                 // Recarregar o objeto depois da atualização
                 await seller.reload();
-                
-                console.log(`Seller ID ${id} atualizado com payments_customer_id: ${result.data.id}`);
+            } else {
+                return createError(`Falha ao sincronizar com Asaas: ${result.message}`, result.status || 400);
             }
             
             return { 
-                success: result.success,
+                success: true,
                 data: {
                     seller: seller,
                     asaasCustomer: result.data
                 },
-                message: result.success ? 
-                    'Vendedor sincronizado com sucesso no Asaas' : 
-                    result.message
+                message: 'Vendedor sincronizado com sucesso no Asaas'
             };
         } catch (error) {
             console.error('Erro ao sincronizar vendedor com Asaas:', error.message);
             return formatError(error);
         }
-    }
-    
-    /**
-     * Método auxiliar para mapear os dados do Seller para o formato do Customer do Asaas
-     * @private
-     * @param {Object} seller - Objeto do modelo Seller
-     * @returns {Object} - Dados no formato esperado pelo Asaas
-     */
-    _mapToAsaasCustomer(seller) {
-        // Extrair info da loja do JSON
-        const storeInfo = typeof seller.nuvemshop_info === 'string' 
-            ? JSON.parse(seller.nuvemshop_info) 
-            : seller.nuvemshop_info || {};
-        
-        // Montar objeto com os dados do Asaas
-        return {
-            name: storeInfo.name || storeInfo.storeName || 'Loja ' + seller.nuvemshop_id,
-            cpfCnpj: seller.Asaas_cpfCnpj,
-            email: seller.Asaas_loginEmail || storeInfo.email,
-            mobilePhone: seller.Asaas_mobilePhone,
-            address: seller.Asaas_address,
-            addressNumber: seller.Asaas_addressNumber,
-            province: seller.Asaas_province,
-            postalCode: seller.Asaas_postalCode,
-            externalReference: seller.nuvemshop_id.toString(),
-            groupName: AsaasCustomerService.SELLER_GROUP,
-            observations: `Vendedor da Nuvemshop ID: ${seller.nuvemshop_id}`,
-            notificationDisabled: false
-        };
     }
 }
 

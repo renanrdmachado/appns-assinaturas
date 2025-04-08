@@ -61,8 +61,12 @@ const store = async (req, res) => {
             data: result.data 
         });
     } catch (error) {
-        console.error('Erro ao criar vendedor:', error);
-        return res.status(500).json(formatError(error));
+        console.error('Erro ao criar vendedor:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao criar vendedor',
+            error: error.message
+        });
     }
 };
 

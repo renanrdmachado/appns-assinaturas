@@ -1,6 +1,8 @@
 const ShopperSubscription = require('../models/ShopperSubscription');
 const Order = require('../models/Order');
 const Shopper = require('../models/Shopper');
+const User = require('../models/User');
+const UserData = require('../models/UserData');
 const { formatError, createError } = require('../utils/errorHandler');
 const subscriptionService = require('./asaas/subscription.service');
 const AsaasCustomerService = require('./asaas/customer.service');
@@ -21,7 +23,14 @@ class ShopperSubscriptionService {
                     {
                         model: Shopper,
                         as: 'shopper',
-                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }
+                        ],
+                        attributes: ['id', 'name', 'email']
                     }
                 ]
             });
@@ -47,7 +56,14 @@ class ShopperSubscriptionService {
                     {
                         model: Shopper,
                         as: 'shopper',
-                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }
+                        ],
+                        attributes: ['id', 'name', 'email']
                     }
                 ]
             });
@@ -66,7 +82,15 @@ class ShopperSubscriptionService {
                 return createError('ID do comprador é obrigatório', 400);
             }
             
-            const shopper = await Shopper.findByPk(shopperId);
+            const shopper = await Shopper.findByPk(shopperId, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }]
+                    }
+                ]
+            });
             if (!shopper) {
                 return createError('Comprador não encontrado', 404);
             }
@@ -78,7 +102,14 @@ class ShopperSubscriptionService {
                     {
                         model: Shopper,
                         as: 'shopper',
-                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }
+                        ],
+                        attributes: ['id', 'name', 'email']
                     }
                 ]
             });
@@ -109,7 +140,14 @@ class ShopperSubscriptionService {
                     {
                         model: Shopper,
                         as: 'shopper',
-                        attributes: ['id', 'name', 'email', 'cpfCnpj', 'mobilePhone']
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }
+                        ],
+                        attributes: ['id', 'name', 'email']
                     }
                 ]
             });
@@ -148,7 +186,15 @@ class ShopperSubscriptionService {
             }
             
             // Verificar se o comprador existe
-            const shopper = await Shopper.findByPk(shopperId);
+            const shopper = await Shopper.findByPk(shopperId, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }]
+                    }
+                ]
+            });
             
             if (!shopper) {
                 return createError('Comprador não encontrado', 404);
@@ -169,54 +215,66 @@ class ShopperSubscriptionService {
             }
             
             // Obter ou reutilizar o cliente no Asaas se já existir
-            let customerId = shopper.asaas_customer_id;
+            let customerId = shopper.payments_customer_id; // Alterado de asaas_customer_id para payments_customer_id
             
             if (!customerId) {
                 console.log('Comprador não possui ID de cliente no Asaas. Verificando se já existe...');
                 
                 // Verificar se shopper tem CPF/CNPJ
-                if (!shopper.cpfCnpj) {
+                const cpfCnpj = shopper.user?.userData?.cpfCnpj;
+                if (!cpfCnpj) {
+                    await transaction.rollback();
                     return createError('CPF/CNPJ do comprador não está preenchido. É necessário para criar assinaturas.', 400);
+                }
+                
+                // Validar formato do CPF/CNPJ antes de enviar para o Asaas
+                const cleanCpfCnpj = cpfCnpj.replace(/\D/g, '');
+                if (cleanCpfCnpj.length !== 11 && cleanCpfCnpj.length !== 14) {
+                    await transaction.rollback();
+                    return createError(`CPF/CNPJ ${cpfCnpj} tem formato inválido. Deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ).`, 400);
                 }
                 
                 // Verificar se já existe um cliente com este CPF/CNPJ no Asaas antes de criar um novo
                 const existingCustomer = await AsaasCustomerService.findByCpfCnpj(
-                    shopper.cpfCnpj,
+                    cleanCpfCnpj,
                     AsaasCustomerService.SHOPPER_GROUP
                 );
                 
                 if (existingCustomer.success && existingCustomer.data) {
-                    console.log(`Cliente já existe no Asaas com CPF/CNPJ ${shopper.cpfCnpj}. Reutilizando ID: ${existingCustomer.data.id}`);
+                    console.log(`Cliente já existe no Asaas com CPF/CNPJ ${cpfCnpj}. Reutilizando ID: ${existingCustomer.data.id}`);
                     customerId = existingCustomer.data.id;
                     
                     // Atualizar shopper com o ID do cliente
-                    await shopper.update({ asaas_customer_id: customerId });
+                    await shopper.update({ payments_customer_id: customerId }, { transaction }); // Alterado para payments_customer_id
                     console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas existente: ${customerId}`);
                 } else {
                     // Criar novo cliente no Asaas somente se não existir
                     const customerData = {
-                        name: shopper.name,
-                        email: shopper.email,
-                        cpfCnpj: shopper.cpfCnpj,
-                        mobilePhone: shopper.mobilePhone,
-                        address: shopper.address,
-                        addressNumber: shopper.addressNumber,
-                        province: shopper.province,
-                        postalCode: shopper.postalCode,
+                        name: shopper.name || `Cliente ${shopper.nuvemshop_id}`,
+                        email: shopper.email || shopper.user?.email,
+                        cpfCnpj: cleanCpfCnpj, // Usar o CPF/CNPJ limpo
+                        mobilePhone: shopper.user?.userData?.mobilePhone,
+                        address: shopper.user?.userData?.address,
+                        addressNumber: shopper.user?.userData?.addressNumber,
+                        province: shopper.user?.userData?.province,
+                        postalCode: shopper.user?.userData?.postalCode,
                         externalReference: `shopper_${shopper.id}`,
                         groupName: AsaasCustomerService.SHOPPER_GROUP
                     };
                     
+                    console.log('Enviando dados para criar cliente no Asaas:', JSON.stringify(customerData, null, 2));
+                    
                     const customerResult = await AsaasCustomerService.create(customerData);
                     
                     if (!customerResult.success) {
+                        await transaction.rollback();
                         return createError(`Não foi possível criar cliente no Asaas: ${customerResult.message}`, 400);
                     }
                     
                     customerId = customerResult.data.id;
                     
                     // Atualizar shopper com o ID do cliente
-                    await shopper.update({ asaas_customer_id: customerId });
+                    await shopper.update({ payments_customer_id: customerId }, { transaction }); // Alterado para payments_customer_id
                     console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas: ${customerId}`);
                 }
             } else {

@@ -1,7 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Definição do modelo User
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
@@ -10,7 +9,8 @@ const User = sequelize.define('User', {
   },
   username: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true, // Nome de usuário opcional para clientes que não criam conta
+    unique: true
   },
   email: {
     type: DataTypes.STRING,
@@ -19,12 +19,20 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true // Senha opcional para clientes que não criam conta
   },
-  seller_id: {
-    type: DataTypes.STRING,
+  user_data_id: {
+    type: DataTypes.INTEGER,
     allowNull: true
   }
+});
+
+// Definindo o relacionamento com o modelo UserData
+const UserData = require('./UserData');
+
+User.belongsTo(UserData, {
+  foreignKey: 'user_data_id',
+  as: 'userData'
 });
 
 module.exports = User;

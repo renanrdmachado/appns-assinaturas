@@ -1,7 +1,13 @@
 const Shopper = require('../models/Shopper');
+const User = require('../models/User');
+const UserData = require('../models/UserData');
+const Seller = require('../models/Seller'); // Adicionando importação do Seller
 const { formatError, createError } = require('../utils/errorHandler');
 const AsaasCustomerService = require('./asaas/customer.service');
 const ShopperValidator = require('../validators/shopper-validator');
+const sequelize = require('../config/database');
+const { Op } = require('sequelize');
+const AsaasMapper = require('../utils/asaas-mapper');
 
 class ShopperService {
     /**
@@ -13,7 +19,15 @@ class ShopperService {
             // Validação do ID
             ShopperValidator.validateId(id);
             
-            const shopper = await Shopper.findByPk(id);
+            const shopper = await Shopper.findByPk(id, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
             console.log("Service / Shopper: ", shopper ? shopper.id : 'not found');
             
             if (!shopper) {
@@ -91,7 +105,11 @@ class ShopperService {
                 return createError('Já existe um shopper com este ID da Nuvemshop', 400);
             }
             
-            // Sincronizar com o Asaas, se tiver dados suficientes
+            // Verificar se já existe um UserData com este CPF/CNPJ
+            let userData = await UserData.findOne({ where: { cpfCnpj: data.cpfCnpj } });
+            
+            // Sincronizar com o Asaas antes de criar no banco local
+            let asaasCustomerId = null;
             if (data.cpfCnpj) {
                 // Verificar se já existe um cliente com este CPF/CNPJ no Asaas
                 console.log(`Verificando se já existe cliente com CPF/CNPJ ${data.cpfCnpj} no Asaas...`);
@@ -100,17 +118,35 @@ class ShopperService {
                     AsaasCustomerService.SHOPPER_GROUP
                 );
                 
-                let asaasCustomerId;
-                
                 if (existingAsaasCustomer.success) {
                     // Se já existe cliente no Asaas, usamos o ID existente
                     console.log(`Cliente já existe no Asaas com ID: ${existingAsaasCustomer.data.id}`);
                     asaasCustomerId = existingAsaasCustomer.data.id;
+                    
+                    // Verificar se há um shopper vinculado a este ID do Asaas
+                    const shopperWithAsaasId = await Shopper.findOne({ 
+                        where: { payments_customer_id: asaasCustomerId } 
+                    });
+                    
+                    if (shopperWithAsaasId) {
+                        return createError(`Já existe um shopper vinculado a este cliente do Asaas`, 400);
+                    }
                 } else {
                     // Se não existe, criar novo cliente no Asaas
-                    const customerData = this._mapToAsaasCustomer(data);
-                    
-                    console.log('Criando novo cliente no Asaas para shopper...');
+                    const customerData = {
+                        name: data.name || `Shopper ${data.nuvemshop_id}`,
+                        cpfCnpj: data.cpfCnpj,
+                        email: data.email,
+                        mobilePhone: data.mobilePhone,
+                        address: data.address,
+                        addressNumber: data.addressNumber,
+                        province: data.province,
+                        postalCode: data.postalCode,
+                        externalReference: data.nuvemshop_id ? data.nuvemshop_id.toString() : undefined,
+                        groupName: AsaasCustomerService.SHOPPER_GROUP,
+                        observations: `Shopper da Nuvemshop${data.nuvemshop_id ? ' ID: ' + data.nuvemshop_id : ''}`,
+                        notificationDisabled: false
+                    };
                     
                     // Tentar criar cliente no Asaas
                     const asaasResult = await AsaasCustomerService.createOrUpdate(
@@ -118,29 +154,70 @@ class ShopperService {
                         AsaasCustomerService.SHOPPER_GROUP
                     );
                     
-                    // Se falhar no Asaas, não impede criação no banco local
-                    if (asaasResult.success) {
-                        console.log('Cliente criado com sucesso no Asaas, ID:', asaasResult.data.id);
-                        asaasCustomerId = asaasResult.data.id;
-                    } else {
-                        console.warn('Falha ao criar cliente no Asaas:', asaasResult.message);
+                    // Se falhar no Asaas, não cria no banco local
+                    if (!asaasResult.success) {
+                        return createError(`Falha ao sincronizar com Asaas: ${asaasResult.message}`, 400);
                     }
-                }
-                
-                // Adicionar ID do cliente Asaas nos dados se disponível
-                if (asaasCustomerId) {
-                    data.payments_customer_id = asaasCustomerId;
+                    
+                    asaasCustomerId = asaasResult.data.id;
                 }
             }
             
-            // Criar o shopper no banco de dados local
-            const shopper = await Shopper.create(data);
-            console.log('Shopper created:', shopper.id);
+            // Usar transação para garantir consistência
+            const result = await sequelize.transaction(async (t) => {
+                // Criar ou usar UserData existente
+                if (!userData) {
+                    userData = await UserData.create({
+                        cpfCnpj: data.cpfCnpj,
+                        email: data.email,
+                        mobilePhone: data.mobilePhone,
+                        address: data.address,
+                        addressNumber: data.addressNumber,
+                        province: data.province,
+                        postalCode: data.postalCode,
+                        birthDate: data.birthDate
+                    }, { transaction: t });
+                }
+                
+                // Criar User vinculado ao UserData
+                const user = await User.create({
+                    username: data.username || null,
+                    email: data.email,
+                    password: data.password || null,
+                    user_data_id: userData.id
+                }, { transaction: t });
+                
+                // Criar Shopper vinculado ao User
+                const shopper = await Shopper.create({
+                    nuvemshop_id: data.nuvemshop_id,
+                    nuvemshop_info: data.nuvemshop_info,
+                    name: data.name,
+                    email: data.email,
+                    user_id: user.id,
+                    payments_customer_id: asaasCustomerId,
+                    payments_status: data.payments_status || "PENDING"
+                }, { transaction: t });
+                
+                return shopper;
+            });
+            
+            // Carregar o shopper com as relações
+            const shopperWithRelations = await Shopper.findByPk(result.id, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
+            
+            console.log('Shopper created:', shopperWithRelations.id);
             
             return { 
                 success: true, 
                 message: 'Shopper criado com sucesso',
-                data: shopper
+                data: shopperWithRelations
             };
         } catch (error) {
             console.error('Erro ao criar shopper:', error.message);
@@ -158,7 +235,16 @@ class ShopperService {
             // Validação do ID
             ShopperValidator.validateId(id);
             
-            const shopper = await Shopper.findByPk(id);
+            // Buscar o shopper com suas relações
+            const shopper = await Shopper.findByPk(id, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
             
             if (!shopper) {
                 return createError(`Shopper com ID ${id} não encontrado`, 404);
@@ -171,56 +257,111 @@ class ShopperService {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
             
-            // Verificar se há dados relevantes para o Asaas
-            const asaasRelevantFields = ['cpfCnpj', 'email', 'mobilePhone', 
-                                        'address', 'addressNumber', 'province', 
-                                        'postalCode'];
+            // Verificar se há dados que precisam ser sincronizados com o Asaas
+            const needsAsaasSync = data.cpfCnpj || data.email || data.mobilePhone || 
+                                data.address || data.addressNumber || data.province || 
+                                data.postalCode || data.name;
             
-            const needsAsaasSync = asaasRelevantFields.some(field => data[field] !== undefined);
-            
-            // Se precisamos sincronizar com o Asaas e temos um cliente ID
-            if (needsAsaasSync && (shopper.payments_customer_id || data.cpfCnpj)) {
-                // Obter CPF/CNPJ atual ou atualizado
-                const cpfCnpj = data.cpfCnpj || shopper.cpfCnpj;
-                
-                if (cpfCnpj) {
-                    // Mapear dados para o Asaas
-                    const mergedData = { ...shopper.toJSON(), ...data };
-                    const customerData = this._mapToAsaasCustomer(mergedData);
+            // Se precisamos sincronizar com o Asaas e temos um CPF/CNPJ
+            if (needsAsaasSync && (shopper.user?.userData?.cpfCnpj || data.cpfCnpj)) {
+                try {
+                    // Criar um objeto temporário com os dados atualizados para mapear para o Asaas
+                    const tempShopper = JSON.parse(JSON.stringify(shopper));
                     
-                    console.log('Sincronizando dados atualizados com Asaas...');
+                    // Atualizar o tempShopper com os novos dados
+                    if (data.name) tempShopper.name = data.name;
+                    if (data.email) {
+                        tempShopper.email = data.email;
+                        if (tempShopper.user) tempShopper.user.email = data.email;
+                    }
                     
-                    // Tentar sincronizar com o Asaas
+                    // Atualizar o userData no tempShopper
+                    if (tempShopper.user && tempShopper.user.userData) {
+                        if (data.cpfCnpj) tempShopper.user.userData.cpfCnpj = data.cpfCnpj;
+                        if (data.mobilePhone) tempShopper.user.userData.mobilePhone = data.mobilePhone;
+                        if (data.address) tempShopper.user.userData.address = data.address;
+                        if (data.addressNumber) tempShopper.user.userData.addressNumber = data.addressNumber;
+                        if (data.province) tempShopper.user.userData.province = data.province;
+                        if (data.postalCode) tempShopper.user.userData.postalCode = data.postalCode;
+                    }
+                    
+                    // Mapear para o formato do Asaas
+                    const customerData = AsaasMapper.mapShopperToCustomer(tempShopper, AsaasCustomerService.SHOPPER_GROUP);
+                    
+                    console.log('Sincronizando shopper com Asaas...');
+                    
+                    // Enviar para o Asaas
                     const asaasResult = await AsaasCustomerService.createOrUpdate(
                         customerData,
                         AsaasCustomerService.SHOPPER_GROUP
                     );
                     
-                    // Se falhar no Asaas, não impede atualização no banco local
-                    if (asaasResult.success) {
-                        console.log('Cliente atualizado com sucesso no Asaas, ID:', asaasResult.data.id);
-                        
-                        // Atualizar o payments_customer_id se necessário
-                        if (asaasResult.data.id && 
-                            (!shopper.payments_customer_id || shopper.payments_customer_id !== asaasResult.data.id)) {
-                            data.payments_customer_id = asaasResult.data.id;
-                        }
-                    } else {
-                        console.warn('Falha ao atualizar no Asaas:', asaasResult.message);
+                    console.log('Resposta do Asaas:', asaasResult.success ? 'Sucesso' : 'Falha');
+                    
+                    // Se houve sucesso e o ID do Asaas é diferente, atualizar no shopper
+                    if (asaasResult.success && asaasResult.data.id !== shopper.payments_customer_id) {
+                        data.payments_customer_id = asaasResult.data.id;
                     }
+                } catch (asaasError) {
+                    console.error('Erro na sincronização com Asaas:', asaasError.message);
+                    // Não bloqueia a atualização local se falhar no Asaas
                 }
             }
             
-            // Atualizar o shopper no banco de dados local
-            await shopper.update(data);
-            await shopper.reload();
-            
-            console.log('Shopper updated:', shopper.id);
-            return { 
-                success: true, 
-                message: 'Shopper atualizado com sucesso',
-                data: shopper
-            };
+            // Usar transação para garantir atomicidade da atualização no banco de dados
+            return await sequelize.transaction(async (t) => {
+                // 1. Atualizar UserData
+                if (shopper.user && shopper.user.userData) {
+                    if (data.cpfCnpj || data.mobilePhone || data.address || 
+                        data.addressNumber || data.province || data.postalCode || 
+                        data.birthDate) {
+                        
+                        await shopper.user.userData.update({
+                            cpfCnpj: data.cpfCnpj || shopper.user.userData.cpfCnpj,
+                            mobilePhone: data.mobilePhone || shopper.user.userData.mobilePhone,
+                            address: data.address || shopper.user.userData.address,
+                            addressNumber: data.addressNumber || shopper.user.userData.addressNumber,
+                            province: data.province || shopper.user.userData.province,
+                            postalCode: data.postalCode || shopper.user.userData.postalCode,
+                            birthDate: data.birthDate || shopper.user.userData.birthDate
+                        }, { transaction: t });
+                    }
+                }
+                
+                // 2. Atualizar User
+                if (shopper.user && (data.email || data.username)) {
+                    await shopper.user.update({
+                        email: data.email || shopper.user.email,
+                        username: data.username || shopper.user.username
+                    }, { transaction: t });
+                }
+                
+                // 3. Atualizar Shopper
+                await shopper.update({
+                    name: data.name !== undefined ? data.name : shopper.name,
+                    email: data.email || shopper.email,
+                    nuvemshop_info: data.nuvemshop_info || shopper.nuvemshop_info,
+                    payments_status: data.payments_status || shopper.payments_status,
+                    payments_customer_id: data.payments_customer_id || shopper.payments_customer_id
+                }, { transaction: t });
+                
+                // Recarregar o shopper com as relações atualizadas
+                await shopper.reload({
+                    include: [
+                        { 
+                            model: User, 
+                            as: 'user',
+                            include: [{ model: UserData, as: 'userData' }] 
+                        }
+                    ]
+                });
+                
+                return { 
+                    success: true, 
+                    message: 'Shopper atualizado com sucesso',
+                    data: shopper
+                };
+            });
         } catch (error) {
             console.error('Erro ao atualizar shopper:', error.message);
             return formatError(error);
@@ -233,15 +374,72 @@ class ShopperService {
      */
     async delete(id) {
         try {
-            const shopper = await Shopper.findByPk(id);
+            // Validação do ID
+            ShopperValidator.validateId(id);
+            
+            const shopper = await Shopper.findByPk(id, {
+                include: [{ model: User, as: 'user' }]
+            });
             
             if (!shopper) {
                 return createError(`Shopper com ID ${id} não encontrado`, 404);
             }
             
-            await shopper.destroy();
-            console.log(`Shopper com ID ${id} foi excluído com sucesso`);
-            return { success: true, message: `Shopper com ID ${id} foi excluído com sucesso` };
+            const userId = shopper.user?.id;
+            const userDataId = shopper.user?.user_data_id;
+            
+            // Usar transação para garantir atomicidade
+            await sequelize.transaction(async (t) => {
+                // 1. Excluir o shopper
+                await shopper.destroy({ transaction: t });
+                
+                // 2. Se tiver usuário, verificar se pode excluí-lo
+                if (userId) {
+                    // Verificar se o usuário está associado a outro shopper ou seller
+                    const shopperCount = await Shopper.count({ 
+                        where: { user_id: userId }, 
+                        transaction: t 
+                    });
+                    
+                    const sellerCount = await Seller.count({ 
+                        where: { user_id: userId }, 
+                        transaction: t 
+                    });
+                    
+                    // Se não estiver associado a outros registros, excluir o usuário
+                    if (shopperCount === 0 && sellerCount === 0) {
+                        const user = await User.findByPk(userId, { transaction: t });
+                        if (user) {
+                            await user.destroy({ transaction: t });
+                            
+                            // 3. Se tiver userData, verificar se pode excluí-lo
+                            if (userDataId) {
+                                // Verificar se o userData está associado a outros usuários
+                                const otherUsers = await User.count({
+                                    where: { 
+                                        user_data_id: userDataId,
+                                        id: { [Op.ne]: userId }
+                                    },
+                                    transaction: t
+                                });
+                                
+                                // Se não estiver associado a outros usuários, excluir o userData
+                                if (otherUsers === 0) {
+                                    const userData = await UserData.findByPk(userDataId, { transaction: t });
+                                    if (userData) {
+                                        await userData.destroy({ transaction: t });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            return { 
+                success: true, 
+                message: `Shopper com ID ${id} foi excluído com sucesso` 
+            };
         } catch (error) {
             console.error('Erro ao excluir shopper:', error.message);
             return formatError(error);
@@ -254,19 +452,26 @@ class ShopperService {
      */
     async syncWithAsaas(id) {
         try {
-            const shopper = await Shopper.findByPk(id);
+            const shopper = await Shopper.findByPk(id, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
             
             if (!shopper) {
                 return createError(`Shopper com ID ${id} não encontrado`, 404);
             }
             
-            // Valida se tem informações mínimas necessárias
-            if (!shopper.cpfCnpj) {
+            if (!shopper.user?.userData?.cpfCnpj) {
                 return createError('CPF/CNPJ é obrigatório para sincronizar com Asaas', 400);
             }
             
-            // Mapeia dados do shopper para o formato do Asaas
-            const customerData = this._mapToAsaasCustomer(shopper);
+            // Usar o mapeador para criar os dados no formato do Asaas
+            const customerData = AsaasMapper.mapShopperToCustomer(shopper, AsaasCustomerService.SHOPPER_GROUP);
             
             // Cria ou atualiza o cliente no Asaas
             const result = await AsaasCustomerService.createOrUpdate(
@@ -275,15 +480,13 @@ class ShopperService {
             );
             
             if (result.success) {
-                // Sempre atualiza o ID do customer no shopper
+                // Atualiza o payments_customer_id no shopper
                 await shopper.update({ 
                     payments_customer_id: result.data.id 
                 });
                 
-                // Recarregar o objeto depois da atualização
+                // Recarregar o shopper para ter os dados atualizados
                 await shopper.reload();
-                
-                console.log(`Shopper ID ${id} atualizado com payments_customer_id: ${result.data.id}`);
             }
             
             return { 

@@ -1,0 +1,156 @@
+Table User {
+  id integer [primary key, increment]
+  username varchar [unique]
+  email varchar [not null, unique]
+  password varchar
+  user_data_id integer
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table UserData {
+  id integer [primary key, increment]
+  mobilePhone varchar
+  cpfCnpj varchar [not null]
+  address varchar
+  addressNumber varchar
+  province varchar
+  postalCode varchar
+  birthDate timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table Seller {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  nuvemshop_id varchar [not null, unique]
+  nuvemshop_info text
+  nuvemshop_api_token varchar
+  subaccount_id varchar
+  subaccount_wallet_id varchar
+  subaccount_api_key varchar
+  app_start_date timestamp
+  app_status varchar
+  payments_customer_id varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table Shopper {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  nuvemshop_id varchar [not null, unique]
+  nuvemshop_info text
+  payments_customer_id varchar
+  payments_status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table Product {
+  id integer [primary key, increment]
+  seller_id integer [not null]
+  name varchar [not null]
+  price float [not null]
+  stock integer
+  sku varchar
+  description varchar
+  categories json
+  images json
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table Order {
+  id integer [primary key, increment]
+  seller_id integer [not null]
+  shopper_id integer [not null]
+  external_id varchar
+  products json [not null]
+  customer_info json [not null]
+  nuvemshop json
+  value decimal(10,2) [not null]
+  status enum('active', 'inactive', 'overdue', 'canceled', 'pending') [not null, default: 'pending']
+  cycle varchar [not null]
+  next_due_date timestamp [not null]
+  start_date timestamp [not null]
+  end_date timestamp
+  payment_method varchar
+  billing_type varchar
+  metadata json
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table Payment {
+  id integer [primary key, increment]
+  external_id varchar
+  payable_type enum('seller_subscription', 'shopper_subscription') [not null]
+  payable_id integer [not null]
+  status enum('pending', 'confirmed', 'overdue', 'refunded', 'canceled', 'failed') [not null]
+  value decimal(10,2) [not null]
+  net_value decimal(10,2)
+  payment_date timestamp
+  due_date timestamp [not null]
+  payment_method varchar
+  invoice_url varchar
+  description varchar
+  transaction_data json
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table SellerSubscription {
+  id integer [primary key, increment]
+  seller_id integer [not null]
+  external_id varchar
+  plan_name varchar [not null]
+  value decimal(10,2) [not null]
+  status enum('active', 'inactive', 'overdue', 'canceled', 'pending') [not null, default: 'pending']
+  cycle varchar [not null]
+  next_due_date timestamp [not null]
+  start_date timestamp [not null]
+  end_date timestamp
+  payment_method varchar
+  billing_type varchar
+  features json
+  metadata json
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table ShopperSubscription {
+  id integer [primary key, increment]
+  shopper_id integer [not null]
+  order_id integer [not null]
+  external_id varchar
+  plan_name varchar [not null]
+  value decimal(10,2) [not null]
+  status enum('active', 'inactive', 'overdue', 'canceled', 'pending') [not null, default: 'pending']
+  cycle varchar [not null]
+  next_due_date timestamp [not null]
+  start_date timestamp [not null]
+  end_date timestamp
+  payment_method varchar
+  billing_type varchar
+  features json
+  metadata json
+  created_at timestamp
+  updated_at timestamp
+}
+
+// Relações
+Ref: User.user_data_id > UserData.id
+Ref: Seller.user_id > User.id
+Ref: Shopper.user_id > User.id
+Ref: Product.seller_id > Seller.id
+Ref: Order.seller_id > Seller.id
+Ref: Order.shopper_id > Shopper.id
+Ref: SellerSubscription.seller_id > Seller.id
+Ref: ShopperSubscription.shopper_id > Shopper.id
+Ref: ShopperSubscription.order_id > Order.id
+
+// Relações polimórficas (representação conceitual)
+Ref: Payment.payable_id > SellerSubscription.id
+Ref: Payment.payable_id > ShopperSubscription.id

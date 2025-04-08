@@ -1,5 +1,6 @@
 require('dotenv').config();
 const UserService = require('../services/user.service');
+const { formatError } = require('../utils/errorHandler');
 
 const index = async (req, res) => {
     console.log("Controller - AppUsersController/index");
@@ -58,30 +59,24 @@ const update = async (req, res) => {
             });
         }
         
-        // Verificar se o usuário existe
-        const existingUser = await UserService.get(userId);
-        if (!existingUser) {
-            return res.status(404).json({ 
-                success: false, 
-                message: `Usuário com ID ${userId} não encontrado` 
+        const result = await UserService.update(userId, req.body);
+        
+        if (!result.success) {
+            return res.status(result.status || 400).json({
+                success: false,
+                message: result.message,
+                errors: result.errors
             });
         }
-        
-        // Atualizar o usuário
-        const updatedUser = await UserService.update(userId, req.body);
         
         res.status(200).json({ 
             success: true, 
             message: 'Usuário atualizado com sucesso', 
-            data: updatedUser 
+            data: result.data 
         });
     } catch (error) {
         console.error("Erro ao atualizar usuário:", error.message);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao atualizar usuário', 
-            error: error.message
-        });
+        return res.status(500).json(formatError(error));
     }
 };
 

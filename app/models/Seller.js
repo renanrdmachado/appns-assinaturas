@@ -38,7 +38,6 @@ const Seller = sequelize.define('Seller', {
           ? value 
           : JSON.stringify(value);
         
-        // Verificar se é um JSON válido
         JSON.parse(stringValue);
         this.setDataValue('nuvemshop_info', stringValue);
       } catch (error) {
@@ -71,51 +70,23 @@ const Seller = sequelize.define('Seller', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  Asaas_cpfCnpj: {
-    type: DataTypes.STRING,
+  user_id: {
+    type: DataTypes.INTEGER,
     allowNull: false
-  },
-  Asaas_mobilePhone: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_site: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_incomeValue: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true
-  },
-  Asaas_address: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_addressNumber: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_province: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_postalCode: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_loginEmail: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  Asaas_birthDate: {
-    type: DataTypes.DATE,
-    allowNull: true
   },
   payments_customer_id: {
     type: DataTypes.STRING,
     allowNull: true,
     comment: 'ID do cliente no sistema de pagamento (Asaas)'
   }
+});
+
+const User = require('./User');
+
+// Adicionar associação com o modelo User
+Seller.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user'
 });
 
 module.exports = Seller;
