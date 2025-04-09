@@ -7,7 +7,7 @@ services:
       MYSQL_ROOT_PASSWORD: ""
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "3306:3306"
+      - "3307:3306" # Alterado para evitar conflito com a porta 3306
     volumes:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
@@ -21,7 +21,7 @@ services:
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: ""
     ports:
-      - "8080:80"
+      - "8181:80" # Alterado para evitar conflito com a porta 8080
     depends_on:
       - mysql
     restart: always

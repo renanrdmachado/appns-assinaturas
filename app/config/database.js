@@ -7,6 +7,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD,
   {
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT, // Adicionado para usar a porta do .env
     dialect: process.env.DB_DIALECT
   }
 );
