@@ -2,7 +2,7 @@
 app/node_modules/
 app/npm-debug.log
 app/yarn-error.log
-#app/.env
+app/.env
 
 # Optional npm cache directory
 .npm

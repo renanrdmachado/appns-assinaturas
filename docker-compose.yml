@@ -19,7 +19,7 @@ services:
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_ROOT_PASSWORD: "appsn_db_25@passwd"
     ports:
       - "8181:80" # Alterado para evitar conflito com a porta 8080
     depends_on:
