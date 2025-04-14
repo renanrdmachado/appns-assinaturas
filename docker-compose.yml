@@ -4,7 +4,7 @@ services:
     container_name: appns_assinatura_db
     environment:
       MYSQL_DATABASE: appns_assinatura
-      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_ROOT_PASSWORD: "appsn_db_25@passwd"
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
       - "3307:3306" # Alterado para evitar conflito com a porta 3306
