@@ -2,6 +2,7 @@ const Shopper = require('../models/Shopper');
 const User = require('../models/User');
 const UserData = require('../models/UserData');
 const Seller = require('../models/Seller'); // Adicionando importação do Seller
+const ShopperSubscription = require('../models/ShopperSubscription'); // Adicionando importação
 const { formatError, createError } = require('../utils/errorHandler');
 const AsaasCustomerService = require('./asaas/customer.service');
 const ShopperValidator = require('../validators/shopper-validator');
@@ -385,61 +386,84 @@ class ShopperService {
                 return createError(`Shopper com ID ${id} não encontrado`, 404);
             }
             
+            // Verificar se o shopper possui assinaturas antes de tentar excluí-lo
+            const subscriptionCount = await ShopperSubscription.count({
+                where: { shopper_id: id }
+            });
+            
+            if (subscriptionCount > 0) {
+                return createError(
+                    `Não é possível excluir o cliente pois ele possui ${subscriptionCount} assinatura(s) ativa(s). Cancele todas as assinaturas antes de excluir o cliente.`, 
+                    400
+                );
+            }
+            
             const userId = shopper.user?.id;
             const userDataId = shopper.user?.user_data_id;
             
-            // Usar transação para garantir atomicidade
-            await sequelize.transaction(async (t) => {
-                // 1. Excluir o shopper
-                await shopper.destroy({ transaction: t });
-                
-                // 2. Se tiver usuário, verificar se pode excluí-lo
-                if (userId) {
-                    // Verificar se o usuário está associado a outro shopper ou seller
-                    const shopperCount = await Shopper.count({ 
-                        where: { user_id: userId }, 
-                        transaction: t 
-                    });
+            try {
+                // Usar transação para garantir atomicidade
+                await sequelize.transaction(async (t) => {
+                    // 1. Excluir o shopper
+                    await shopper.destroy({ transaction: t });
                     
-                    const sellerCount = await Seller.count({ 
-                        where: { user_id: userId }, 
-                        transaction: t 
-                    });
-                    
-                    // Se não estiver associado a outros registros, excluir o usuário
-                    if (shopperCount === 0 && sellerCount === 0) {
-                        const user = await User.findByPk(userId, { transaction: t });
-                        if (user) {
-                            await user.destroy({ transaction: t });
-                            
-                            // 3. Se tiver userData, verificar se pode excluí-lo
-                            if (userDataId) {
-                                // Verificar se o userData está associado a outros usuários
-                                const otherUsers = await User.count({
-                                    where: { 
-                                        user_data_id: userDataId,
-                                        id: { [Op.ne]: userId }
-                                    },
-                                    transaction: t
-                                });
+                    // 2. Se tiver usuário, verificar se pode excluí-lo
+                    if (userId) {
+                        // Verificar se o usuário está associado a outro shopper ou seller
+                        const shopperCount = await Shopper.count({ 
+                            where: { user_id: userId }, 
+                            transaction: t 
+                        });
+                        
+                        const sellerCount = await Seller.count({ 
+                            where: { user_id: userId }, 
+                            transaction: t 
+                        });
+                        
+                        // Se não estiver associado a outros registros, excluir o usuário
+                        if (shopperCount === 0 && sellerCount === 0) {
+                            const user = await User.findByPk(userId, { transaction: t });
+                            if (user) {
+                                await user.destroy({ transaction: t });
                                 
-                                // Se não estiver associado a outros usuários, excluir o userData
-                                if (otherUsers === 0) {
-                                    const userData = await UserData.findByPk(userDataId, { transaction: t });
-                                    if (userData) {
-                                        await userData.destroy({ transaction: t });
+                                // 3. Se tiver userData, verificar se pode excluí-lo
+                                if (userDataId) {
+                                    // Verificar se o userData está associado a outros usuários
+                                    const otherUsers = await User.count({
+                                        where: { 
+                                            user_data_id: userDataId,
+                                            id: { [Op.ne]: userId }
+                                        },
+                                        transaction: t
+                                    });
+                                    
+                                    // Se não estiver associado a outros usuários, excluir o userData
+                                    if (otherUsers === 0) {
+                                        const userData = await UserData.findByPk(userDataId, { transaction: t });
+                                        if (userData) {
+                                            await userData.destroy({ transaction: t });
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                });
+                
+                return { 
+                    success: true, 
+                    message: `Cliente excluído com sucesso` 
+                };
+            } catch (dbError) {
+                // Trata especificamente erros de chave estrangeira
+                if (dbError.name === 'SequelizeForeignKeyConstraintError') {
+                    return createError(
+                        `Não é possível excluir o cliente pois ele está vinculado a outros registros no sistema. Cancele todas as assinaturas antes de excluir o cliente.`,
+                        400
+                    );
                 }
-            });
-            
-            return { 
-                success: true, 
-                message: `Shopper com ID ${id} foi excluído com sucesso` 
-            };
+                throw dbError; // Lança outros erros para serem tratados no catch externo
+            }
         } catch (error) {
             console.error('Erro ao excluir shopper:', error.message);
             return formatError(error);
