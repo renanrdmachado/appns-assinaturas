@@ -6,6 +6,7 @@ const NsApiClient = require('../helpers/NsApiClient');
 const NsProductsService = require('./ns/products.service');
 const NsOrdersService = require('./ns/orders.service');
 const NsCustomersService = require('./ns/customers.service');
+const querystring = require('querystring'); // Importando o módulo querystring
 
 class NsService {
     async authorize(code) {
@@ -14,23 +15,50 @@ class NsService {
                 return createError('Código de autorização é obrigatório', 400);
             }
             
-            const response = await axios.post('https://www.nuvemshop.com.br/apps/authorize/token', {
-                'client_id': process.env.NS_CLIENT_ID,
-                'client_secret': process.env.NS_CLIENT_SECRET,
-                'grant_type': 'authorization_code',
-                'code': code
+            console.log(`Tentando autorizar com código: ${code}`);
+            
+            // Criando o corpo da requisição no formato application/x-www-form-urlencoded
+            const requestBody = querystring.stringify({
+                client_id: process.env.NS_CLIENT_ID,
+                client_secret: process.env.NS_CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code: code
             });
             
+            // Definindo explicitamente o Content-Type como application/x-www-form-urlencoded
+            const response = await axios.post('https://www.nuvemshop.com.br/apps/authorize/token', 
+                requestBody, 
+                {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json'
+                    }
+                }
+            );
+            
+            console.log('Resposta da API da Nuvemshop recebida');
             const data = response.data;
             
             if (!data.access_token) {
+                console.error('Token não recebido na resposta:', data);
                 return createError('Falha na autorização: Token não recebido', 400);
             }
+            
+            console.log('Token recebido com sucesso:', data.access_token.slice(0, 10) + '...');
             
             await this.getAndSaveStoreInfo(data);
             return { success: true, data };
         } catch (error) {
-            console.error('Erro na autorização Nuvemshop:', error.message);
+            console.error('Erro na autorização Nuvemshop:', error);
+            
+            // Log adicional para depuração
+            if (error.response) {
+                console.error('Detalhes da resposta de erro:');
+                console.error('Status:', error.response.status);
+                console.error('Headers:', error.response.headers);
+                console.error('Corpo:', error.response.data);
+            }
+            
             return formatError(error);
         }
     }
