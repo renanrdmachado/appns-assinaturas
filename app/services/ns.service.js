@@ -17,17 +17,17 @@ class NsService {
             
             console.log(`Tentando autorizar com código: ${code}`);
             
-            // Criando o corpo da requisição no formato application/x-www-form-urlencoded
-            const requestBody = querystring.stringify({
-                client_id: process.env.NS_CLIENT_ID,
-                client_secret: process.env.NS_CLIENT_SECRET,
-                grant_type: 'authorization_code',
-                code: code
-            });
+            // Criar os parâmetros no formato URL encoded
+            const params = new URLSearchParams();
+            params.append('client_id', process.env.NS_CLIENT_ID);
+            params.append('client_secret', process.env.NS_CLIENT_SECRET);
+            params.append('grant_type', 'authorization_code');
+            params.append('code', code);
             
-            // Definindo explicitamente o Content-Type como application/x-www-form-urlencoded
-            const response = await axios.post('https://www.nuvemshop.com.br/apps/authorize/token', 
-                requestBody, 
+            // Enviar com o tipo de conteúdo correto
+            const response = await axios.post(
+                'https://www.nuvemshop.com.br/apps/authorize/token', 
+                params,
                 {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -44,19 +44,17 @@ class NsService {
                 return createError('Falha na autorização: Token não recebido', 400);
             }
             
-            console.log('Token recebido com sucesso:', data.access_token.slice(0, 10) + '...');
+            console.log('Token recebido com sucesso');
             
             await this.getAndSaveStoreInfo(data);
             return { success: true, data };
         } catch (error) {
-            console.error('Erro na autorização Nuvemshop:', error);
+            console.error('Erro na autorização Nuvemshop:', error.message);
             
             // Log adicional para depuração
             if (error.response) {
-                console.error('Detalhes da resposta de erro:');
                 console.error('Status:', error.response.status);
-                console.error('Headers:', error.response.headers);
-                console.error('Corpo:', error.response.data);
+                console.error('Dados da resposta de erro:', error.response.data);
             }
             
             return formatError(error);
