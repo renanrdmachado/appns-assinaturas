@@ -6,7 +6,6 @@ const NsApiClient = require('../helpers/NsApiClient');
 const NsProductsService = require('./ns/products.service');
 const NsOrdersService = require('./ns/orders.service');
 const NsCustomersService = require('./ns/customers.service');
-const querystring = require('querystring'); // Importando o módulo querystring
 
 class NsService {
     async authorize(code) {
@@ -14,19 +13,15 @@ class NsService {
             if (!code) {
                 return createError('Código de autorização é obrigatório', 400);
             }
-            
-            console.log(`Tentando autorizar com código: ${code}`);
-            
-            // Criar os parâmetros no formato URL encoded
+            // Monta os parâmetros no formato x-www-form-urlencoded
             const params = new URLSearchParams();
             params.append('client_id', process.env.NS_CLIENT_ID);
             params.append('client_secret', process.env.NS_CLIENT_SECRET);
             params.append('grant_type', 'authorization_code');
             params.append('code', code);
-            
-            // Enviar com o tipo de conteúdo correto
+
             const response = await axios.post(
-                'https://www.nuvemshop.com.br/apps/authorize/token', 
+                'https://www.nuvemshop.com.br/apps/authorize/token',
                 params,
                 {
                     headers: {
@@ -35,28 +30,14 @@ class NsService {
                     }
                 }
             );
-            
-            console.log('Resposta da API da Nuvemshop recebida');
             const data = response.data;
-            
             if (!data.access_token) {
-                console.error('Token não recebido na resposta:', data);
                 return createError('Falha na autorização: Token não recebido', 400);
             }
-            
-            console.log('Token recebido com sucesso');
-            
             await this.getAndSaveStoreInfo(data);
             return { success: true, data };
         } catch (error) {
             console.error('Erro na autorização Nuvemshop:', error.message);
-            
-            // Log adicional para depuração
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Dados da resposta de erro:', error.response.data);
-            }
-            
             return formatError(error);
         }
     }
