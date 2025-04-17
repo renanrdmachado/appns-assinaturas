@@ -7,18 +7,18 @@ class NsOrdersController {
     async getOrders(req, res) {
         try {
             const { seller_id } = req.params;
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json(createError('Vendedor não encontrado', 404));
+            if (!seller.success) {
+                return res.status(seller.status || 404).json(seller);
             }
             
             // Converter parâmetros da query
             const params = { ...req.query };
             
             const result = await NsService.getOrders(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 params
             );
             
@@ -36,15 +36,15 @@ class NsOrdersController {
     async getOrderById(req, res) {
         try {
             const { seller_id, order_id } = req.params;
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.getOrderById(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 order_id
             );
             
@@ -68,15 +68,15 @@ class NsOrdersController {
             const { seller_id } = req.params;
             const orderData = req.body;
             
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.createOrder(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 orderData
             );
             
@@ -100,15 +100,15 @@ class NsOrdersController {
             const { seller_id, order_id } = req.params;
             const orderData = req.body;
             
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.updateOrder(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 order_id,
                 orderData
             );
@@ -132,15 +132,15 @@ class NsOrdersController {
         try {
             const { seller_id, order_id } = req.params;
             
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.closeOrder(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 order_id
             );
             
@@ -163,15 +163,15 @@ class NsOrdersController {
         try {
             const { seller_id, order_id } = req.params;
             
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.openOrder(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 order_id
             );
             
@@ -194,15 +194,15 @@ class NsOrdersController {
         try {
             const { seller_id, order_id } = req.params;
             
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.cancelOrder(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 order_id
             );
             
@@ -225,15 +225,15 @@ class NsOrdersController {
         try {
             const { seller_id, order_id } = req.params;
             
-            const seller = await SellerService.getById(seller_id);
+            const seller = await SellerService.get(seller_id);
             
-            if (!seller) {
-                return res.status(404).json({ success: false, message: 'Vendedor não encontrado' });
+            if (!seller.success) {
+                return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
             const result = await NsService.getOrderPayments(
-                seller.nuvemshop_id,
-                seller.nuvemshop_token,
+                seller.data.nuvemshop_id,
+                seller.data.nuvemshop_token,
                 order_id
             );
             
