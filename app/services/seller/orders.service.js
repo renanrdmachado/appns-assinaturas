@@ -4,7 +4,6 @@ const Order = require('../../models/Order');
 const Shopper = require('../../models/Shopper');
 const User = require('../../models/User');
 const UserData = require('../../models/UserData');
-const Product = require('../../models/Product');
 const { Op } = require('sequelize');
 
 /**
@@ -43,32 +42,15 @@ class SellerOrdersService {
                 whereConditions.shopper_id = params.shopper_id;
             }
 
-            // Configurar opções de busca
+            // Configurar opções de busca - simplificando para não usar associações que podem estar causando problemas
             const findOptions = {
                 where: whereConditions,
-                include: [
-                    {
-                        model: Shopper,
-                        as: 'shopper',
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                include: [{ model: UserData, as: 'userData' }]
-                            }
-                        ]
-                    },
-                    {
-                        model: Product,
-                        as: 'product'
-                    }
-                ],
                 order: [['createdAt', 'DESC']],
                 limit: params.limit ? parseInt(params.limit) : 50,
                 offset: params.offset ? parseInt(params.offset) : 0
             };
 
-            // Buscar os pedidos
+            // Buscar os pedidos sem incluir relacionamentos para testar
             const orders = await Order.findAll(findOptions);
 
             // Contar total de pedidos para paginação
@@ -111,29 +93,12 @@ class SellerOrdersService {
                 return createError(`Vendedor com ID ${sellerId} não encontrado`, 404);
             }
 
-            // Buscar o pedido com suas relações
+            // Buscar o pedido sem incluir associações para testar
             const order = await Order.findOne({
                 where: { 
                     id: orderId,
                     seller_id: sellerId
-                },
-                include: [
-                    {
-                        model: Shopper,
-                        as: 'shopper',
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                include: [{ model: UserData, as: 'userData' }]
-                            }
-                        ]
-                    },
-                    {
-                        model: Product,
-                        as: 'product'
-                    }
-                ]
+                }
             });
 
             if (!order) {
