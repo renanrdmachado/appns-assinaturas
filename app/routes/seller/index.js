@@ -13,7 +13,7 @@ router.use('/:seller_id/products', productRoutes);
 router.use('/:seller_id/shoppers', shopperRoutes);
 router.use('/:seller_id/subscriptions', subscriptionRoutes);
 router.use('/:seller_id/orders', orderRoutes);
-router.use('/store/:store_id', storeRoutes);
+router.use('/store', storeRoutes);
 
 // Rota específica para assinaturas de um shopper de um seller
 const SubscriptionsController = require('../../controllers/seller/subscriptions.controller');
