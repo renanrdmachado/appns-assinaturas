@@ -668,6 +668,23 @@ class SellerService {
             return formatError(error);
         }
     }
+
+    /**
+     * Busca um seller pelo nuvemshop_id (storeId)
+     * @param {string} storeId
+     * @returns {Promise<Object>} seller
+     */
+    async getByStoreId(storeId) {
+        try {
+            const seller = await Seller.findOne({ where: { nuvemshop_id: storeId } });
+            if (!seller) {
+                return { success: false, message: 'Seller não encontrado para este storeId', status: 404 };
+            }
+            return { success: true, data: seller };
+        } catch (error) {
+            return { success: false, message: error.message, status: 500 };
+        }
+    }
 }
 
 module.exports = new SellerService();
