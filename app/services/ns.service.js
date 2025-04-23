@@ -5,8 +5,7 @@ const { formatError, createError } = require('../utils/errorHandler');
 const NsApiClient = require('../helpers/NsApiClient');
 const NsProductsService = require('./ns/products.service');
 const NsOrdersService = require('./ns/orders.service');
-const NsCustomersService = require('./ns/customers.service');
-const querystring = require('querystring'); // Importando o módulo querystring
+const querystring = require('querystring');
 
 class NsService {
     async authorize(code) {

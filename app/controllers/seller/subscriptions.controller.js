@@ -1,9 +1,8 @@
-require('dotenv').config();
-const NsSubscriptionsService = require('../../services/ns/subscriptions.service');
+const SellerSubscriptionsService = require('../../services/seller/subscriptions.service');
 const SellerService = require('../../services/seller.service');
 const { formatError, createError } = require('../../utils/errorHandler');
 
-class NsSubscriptionsController {
+class SellerSubscriptionsController {
     /**
      * Lista todas as assinaturas de shoppers de um seller
      */
@@ -16,19 +15,10 @@ class NsSubscriptionsController {
                 return res.status(seller.status || 404).json(seller);
             }
             
-            // Verificações de segurança
-            if (!seller.data.nuvemshop_id) {
-                return res.status(400).json(createError('ID da Nuvemshop não encontrado para este vendedor', 400));
-            }
-            
-            if (!seller.data.nuvemshop_api_token) {
-                return res.status(400).json(createError('Token de API da Nuvemshop não encontrado para este vendedor', 400));
-            }
-            
             // Converter parâmetros da query
             const params = { ...req.query };
             
-            const result = await NsSubscriptionsService.getSellerSubscriptions(
+            const result = await SellerSubscriptionsService.getSellerSubscriptions(
                 seller_id,
                 params
             );
@@ -56,16 +46,7 @@ class NsSubscriptionsController {
                 return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
-            // Verificações de segurança
-            if (!seller.data.nuvemshop_id) {
-                return res.status(400).json(createError('ID da Nuvemshop não encontrado para este vendedor', 400));
-            }
-            
-            if (!seller.data.nuvemshop_api_token) {
-                return res.status(400).json(createError('Token de API da Nuvemshop não encontrado para este vendedor', 400));
-            }
-            
-            const result = await NsSubscriptionsService.getSellerSubscriptionById(
+            const result = await SellerSubscriptionsService.getSellerSubscriptionById(
                 seller_id,
                 subscription_id
             );
@@ -97,19 +78,10 @@ class NsSubscriptionsController {
                 return res.status(seller.status || 404).json({ success: false, message: 'Vendedor não encontrado' });
             }
             
-            // Verificações de segurança
-            if (!seller.data.nuvemshop_id) {
-                return res.status(400).json(createError('ID da Nuvemshop não encontrado para este vendedor', 400));
-            }
-            
-            if (!seller.data.nuvemshop_api_token) {
-                return res.status(400).json(createError('Token de API da Nuvemshop não encontrado para este vendedor', 400));
-            }
-            
             // Converter parâmetros da query
             const params = { ...req.query };
             
-            const result = await NsSubscriptionsService.getSellerShopperSubscriptions(
+            const result = await SellerSubscriptionsService.getSellerShopperSubscriptions(
                 seller_id,
                 shopper_id,
                 params
@@ -131,4 +103,4 @@ class NsSubscriptionsController {
     }
 }
 
-module.exports = new NsSubscriptionsController();
+module.exports = new SellerSubscriptionsController();

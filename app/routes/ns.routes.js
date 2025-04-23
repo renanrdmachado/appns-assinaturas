@@ -14,9 +14,7 @@ router.use('/', authRoutes);
 router.use('/seller/:seller_id/products', productsRoutes);
 router.use('/seller/:seller_id/orders', ordersRoutes);
 router.use('/seller/:seller_id/customers', customersRoutes);
-
-// Novas rotas para shoppers e assinaturas, seguindo o mesmo padrão
 router.use('/seller/:seller_id/shoppers', shoppersRoutes);
-router.use('/seller/:seller_id', subscriptionsRoutes);
+router.use('/seller/:seller_id/subscriptions', subscriptionsRoutes);
 
 module.exports = router;

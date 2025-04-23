@@ -7,9 +7,9 @@ const UserData = require('../../models/UserData');
 const { Op } = require('sequelize');
 
 /**
- * Classe de serviço para operações com Shoppers da Nuvemshop relacionados a um Seller
+ * Classe de serviço para operações com Shoppers relacionados a um Seller
  */
-class NsShoppersService {
+class SellerShoppersService {
     /**
      * Lista todos os shoppers (clientes) vinculados a um seller por meio de orders
      * @param {string} sellerId - ID do seller
@@ -143,4 +143,4 @@ class NsShoppersService {
     }
 }
 
-module.exports = new NsShoppersService();
+module.exports = new SellerShoppersService();

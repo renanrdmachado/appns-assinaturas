@@ -12,6 +12,9 @@ const sellerSubscriptionRoutes = require('./seller-subscription.routes');
 const sellerSubAccountRoutes = require('./seller-subaccount.routes');
 const paymentRoutes = require('./payment.routes');
 
+// Rotas específicas do seller (organizadas por recursos)
+const sellerSpecificRoutes = require('./seller');
+
 // Rotas de integrações
 const nsRoutes = require('./ns.routes');
 const asaasRoutes = require('./asaas.routes');
@@ -26,6 +29,11 @@ router.use('/app/shopper-subscriptions', shopperSubscriptionRoutes);
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);
+
+// Rotas específicas do seller (com URLs /app/seller/...)
+router.use('/app/sellers', sellerSpecificRoutes);
+
+// Rotas de integração
 router.use('/ns', nsRoutes);
 router.use('/asaas', asaasRoutes);
 
