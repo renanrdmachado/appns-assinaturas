@@ -30,8 +30,7 @@ router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);
 
-// Rotas específicas do seller (com URLs /app/seller/...)
-router.use('/app/sellers', sellerSpecificRoutes);
+router.use('/app/seller', sellerSpecificRoutes);
 
 // Rotas de integração
 router.use('/ns', nsRoutes);
