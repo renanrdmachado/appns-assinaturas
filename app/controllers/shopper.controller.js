@@ -86,6 +86,16 @@ class ShopperController {
                 return res.status(result.status || 400).json(result);
             }
             
+            // Caso especial: cliente já existe no Asaas e está vinculado a um shopper
+            if (result.alreadyExists) {
+                return res.status(200).json({
+                    success: true,
+                    alreadyExists: true,
+                    message: result.message || 'Shopper já existente recuperado com sucesso',
+                    data: result.data
+                });
+            }
+            
             return res.status(201).json({
                 success: true,
                 message: 'Shopper criado com sucesso',

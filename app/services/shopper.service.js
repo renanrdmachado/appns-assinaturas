@@ -126,11 +126,25 @@ class ShopperService {
                     
                     // Verificar se há um shopper vinculado a este ID do Asaas
                     const shopperWithAsaasId = await Shopper.findOne({ 
-                        where: { payments_customer_id: asaasCustomerId } 
+                        where: { payments_customer_id: asaasCustomerId },
+                        include: [
+                            { 
+                                model: User, 
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }] 
+                            }
+                        ]
                     });
                     
                     if (shopperWithAsaasId) {
-                        return createError(`Já existe um shopper vinculado a este cliente do Asaas`, 400);
+                        // Em vez de retornar erro, retorna o shopper existente com um status de "ALREADY_EXISTS"
+                        console.log('Shopper já existe com este cliente Asaas:', shopperWithAsaasId.id);
+                        return { 
+                            success: true, 
+                            alreadyExists: true,
+                            message: 'Já existe um shopper vinculado a este cliente do Asaas',
+                            data: shopperWithAsaasId
+                        };
                     }
                 } else {
                     // Se não existe, criar novo cliente no Asaas
