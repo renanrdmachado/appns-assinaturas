@@ -1,8 +1,10 @@
 require('dotenv').config();
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
 const SellerService = require('../seller.service');
+const ShopperService = require('../shopper.service');
+const SellerSubscriptionService = require('../seller-subscription.service');
+const ShopperSubscriptionService = require('../shopper-subscription.service');
 const { formatError, createError } = require('../../utils/errorHandler');
-const AsaasValidator = require('../../validators/asaas-validator'); // Importar o validator
 
 class WebhookService {
     async registerWebhook(webhookData) {
@@ -123,15 +125,29 @@ class WebhookService {
             const paymentInfo = eventData.payment;
             const entityInfo = await this.findEntityByPayment(paymentInfo);
             
+            let result = {
+                success: true,
+                event: eventData.event,
+                paymentId: paymentInfo.id,
+                entity: entityInfo.entity ? {
+                    id: entityInfo.entity.id,
+                    type: entityInfo.type
+                } : null,
+                status: null,
+                message: ''
+            };
+
             // Processar o evento de webhook com base em seu tipo
             switch(eventData.event) {
                 case 'PAYMENT_CREATED':
                     console.log(`Pagamento criado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'PENDING');
+                        result.status = 'PENDING';
+                        result.message = `Pagamento ${paymentInfo.id} criado para ${entityInfo.type} ${entityInfo.entity.id}`;
                     } else {
-                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
+                        result.success = false;
+                        result.message = `Não foi possível associar o pagamento ${paymentInfo.id} a um cliente ou vendedor`;
                     }
                     break;
                     
@@ -139,38 +155,46 @@ class WebhookService {
                 case 'PAYMENT_CONFIRMED':
                     console.log(`Pagamento confirmado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'RECEIVED');
+                        result.status = 'RECEIVED';
+                        result.message = `Pagamento ${paymentInfo.id} confirmado para ${entityInfo.type} ${entityInfo.entity.id}`;
                     } else {
-                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
+                        result.success = false;
+                        result.message = `Não foi possível associar o pagamento confirmado ${paymentInfo.id} a um cliente ou vendedor`;
                     }
                     break;
                     
                 case 'PAYMENT_OVERDUE':
                     console.log(`Pagamento atrasado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'OVERDUE');
+                        result.status = 'OVERDUE';
+                        result.message = `Pagamento ${paymentInfo.id} atrasado para ${entityInfo.type} ${entityInfo.entity.id}`;
                     } else {
-                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
+                        result.success = false;
+                        result.message = `Não foi possível associar o pagamento atrasado ${paymentInfo.id} a um cliente ou vendedor`;
                     }
                     break;
                 
                 case 'PAYMENT_REFUNDED':
                     console.log(`Pagamento reembolsado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
-                        console.log(`Pagamento ${paymentInfo.id} pertence a ${entityInfo.type} ${entityInfo.entity.id}`);
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'REFUNDED');
+                        result.status = 'REFUNDED';
+                        result.message = `Pagamento ${paymentInfo.id} reembolsado para ${entityInfo.type} ${entityInfo.entity.id}`;
                     } else {
-                        console.warn(`Não foi possível encontrar entidade para o pagamento ${paymentInfo.id}`);
+                        result.success = false;
+                        result.message = `Não foi possível associar o pagamento reembolsado ${paymentInfo.id} a um cliente ou vendedor`;
                     }
                     break;
                 
                 default:
-                    console.warn(`Tipo de evento não tratado: ${eventData.event}`);
+                    result.success = true;
+                    result.message = `Evento ${eventData.event} recebido, mas não requer processamento especial`;
+                    console.log(`Evento não processado especificamente: ${eventData.event}`);
             }
             
-            return { success: true, message: 'Evento de webhook processado com sucesso' };
+            return result;
         } catch (error) {
             console.error('Erro ao processar webhook:', error);
             return formatError(error);
@@ -178,9 +202,9 @@ class WebhookService {
     }
 
     /**
-     * Find an entity (seller or customer) related to a payment
+     * Find an entity (seller or shopper) related to a payment
      * @param {Object} paymentInfo - Payment information from webhook
-     * @returns {Object} Object containing entity and type ('seller', 'customer' or null)
+     * @returns {Object} Object containing entity and type ('seller', 'shopper' or null)
      */
     async findEntityByPayment(paymentInfo) {
         try {
@@ -189,16 +213,10 @@ class WebhookService {
                 console.log(`Procurando vendedor com payments_customer_id: ${paymentInfo.customer}`);
                 
                 // Get all sellers to find one with matching customer ID
-                const sellers = await SellerService.getAll();
+                const sellersResult = await SellerService.getAll();
                 
-                if (sellers && sellers.length > 0) {
-                    // Log all customer IDs to help with debugging
-                    console.log('IDs de cliente disponíveis em nossa base de dados:');
-                    sellers.forEach(s => {
-                        if (s.payments_customer_id) {
-                            console.log(`Vendedor ID ${s.id}, ID do cliente: ${s.payments_customer_id}`);
-                        }
-                    });
+                if (sellersResult.success && sellersResult.data && Array.isArray(sellersResult.data) && sellersResult.data.length > 0) {
+                    const sellers = sellersResult.data;
                     
                     // Filter sellers to find one with matching payments_customer_id
                     const sellerWithCustomerId = sellers.find(seller => 
@@ -209,81 +227,142 @@ class WebhookService {
                         console.log(`Vendedor encontrado pelo ID do cliente ${paymentInfo.customer}: Vendedor ID ${sellerWithCustomerId.id}`);
                         return { entity: sellerWithCustomerId, type: 'seller' };
                     } else {
-                        console.log(`Nenhum vendedor encontrado com ID de cliente ${paymentInfo.customer}`);
+                        console.log(`Nenhum vendedor encontrado com ID de cliente ${paymentInfo.customer}, verificando shoppers...`);
+                        
+                        // Check if payment belongs to a shopper
+                        const shoppersResult = await ShopperService.getAll();
+                        
+                        if (shoppersResult.success && shoppersResult.data && Array.isArray(shoppersResult.data) && shoppersResult.data.length > 0) {
+                            const shoppers = shoppersResult.data;
+                            
+                            const shopperWithCustomerId = shoppers.find(shopper => 
+                                shopper.payments_customer_id && shopper.payments_customer_id === paymentInfo.customer
+                            );
+                            
+                            if (shopperWithCustomerId) {
+                                console.log(`Shopper encontrado pelo ID do cliente ${paymentInfo.customer}: Shopper ID ${shopperWithCustomerId.id}`);
+                                return { entity: shopperWithCustomerId, type: 'shopper' };
+                            } else {
+                                console.log(`Nenhum shopper encontrado com ID de cliente ${paymentInfo.customer}`);
+                            }
+                        }
                     }
                 } else {
-                    console.log('Nenhum vendedor encontrado na base de dados');
+                    console.log('Não foi possível recuperar vendedores da base de dados');
                 }
             } else {
                 console.log('Aviso: Informação de pagamento não contém ID do cliente');
             }
 
-            // Second priority: Check if payment matches a payment/subscription ID
+            // Second priority: Check if payment/subscription ID matches
             if (paymentInfo.id) {
-                console.log(`Procurando vendedor com payments_subscription_id: ${paymentInfo.id}`);
+                console.log(`Procurando por assinaturas com ID: ${paymentInfo.id}`);
                 
-                const sellers = await SellerService.getAll();
-                
-                // Filter sellers to find one with matching payments_subscription_id
-                const sellerWithSubId = sellers.find(seller => 
-                    seller.payments_subscription_id && seller.payments_subscription_id === paymentInfo.id
-                );
-                
-                if (sellerWithSubId) {
-                    console.log(`Vendedor encontrado pelo ID do pagamento ${paymentInfo.id}: Vendedor ID ${sellerWithSubId.id}`);
-                    return { entity: sellerWithSubId, type: 'seller' };
-                } else {
-                    console.log(`Nenhum vendedor encontrado com ID de pagamento ${paymentInfo.id}`);
+                // Check seller subscriptions
+                const sellerSubResult = await SellerSubscriptionService.getByExternalId(paymentInfo.id);
+                if (sellerSubResult.success && sellerSubResult.data) {
+                    const sellerId = sellerSubResult.data.seller_id;
+                    const sellerResult = await SellerService.get(sellerId);
+                    
+                    if (sellerResult.success && sellerResult.data) {
+                        console.log(`Assinatura de vendedor encontrada para pagamento ${paymentInfo.id}: Vendedor ID ${sellerId}`);
+                        return { entity: sellerResult.data, type: 'seller' };
+                    }
                 }
+                
+                // Check shopper subscriptions
+                const shopperSubResult = await ShopperSubscriptionService.getByExternalId(paymentInfo.id);
+                if (shopperSubResult.success && shopperSubResult.data) {
+                    const shopperId = shopperSubResult.data.shopper_id;
+                    const shopperResult = await ShopperService.get(shopperId);
+                    
+                    if (shopperResult.success && shopperResult.data) {
+                        console.log(`Assinatura de shopper encontrada para pagamento ${paymentInfo.id}: Shopper ID ${shopperId}`);
+                        return { entity: shopperResult.data, type: 'shopper' };
+                    }
+                }
+                
+                console.log(`Nenhuma assinatura encontrada para ID de pagamento ${paymentInfo.id}`);
             }
 
-            // Third priority: Try to extract seller ID from description if it exists
+            // Third priority: Try to extract information from description if it exists
             if (paymentInfo.description && paymentInfo.description.trim() !== '') {
                 console.log(`Verificando campo de descrição: "${paymentInfo.description}"`);
                 
-                // If description is formatted as seller ID or contains it
-                const descMatch = paymentInfo.description.match(/seller[_-]?id[:\s]?(\d+)/i);
-                if (descMatch && descMatch[1]) {
-                    const sellerId = descMatch[1];
+                // If description is formatted to identify entity
+                const sellerMatch = paymentInfo.description.match(/seller[_-]?id[:\s]?(\d+)/i);
+                if (sellerMatch && sellerMatch[1]) {
+                    const sellerId = sellerMatch[1];
                     const seller = await SellerService.get(sellerId);
-                    if (seller) {
-                        console.log(`Vendedor encontrado pela referência na descrição ${sellerId}: Vendedor ID ${seller.id}`);
-                        return { entity: seller, type: 'seller' };
+                    if (seller.success && seller.data) {
+                        console.log(`Vendedor encontrado pela referência na descrição ${sellerId}: Vendedor ID ${seller.data.id}`);
+                        return { entity: seller.data, type: 'seller' };
+                    }
+                }
+                
+                const shopperMatch = paymentInfo.description.match(/shopper[_-]?id[:\s]?(\d+)/i);
+                if (shopperMatch && shopperMatch[1]) {
+                    const shopperId = shopperMatch[1];
+                    const shopper = await ShopperService.get(shopperId);
+                    if (shopper.success && shopper.data) {
+                        console.log(`Shopper encontrado pela referência na descrição ${shopperId}: Shopper ID ${shopper.data.id}`);
+                        return { entity: shopper.data, type: 'shopper' };
                     }
                 }
             }
 
             // If no entity found
             console.warn(`Nenhuma entidade encontrada para o pagamento ID ${paymentInfo.id}, cliente ${paymentInfo.customer}`);
-            console.warn('Verifique se o ID do cliente no webhook corresponde ao payments_customer_id armazenado em sua base de dados');
             return { entity: null, type: null };
         } catch (error) {
             console.error('Erro ao encontrar entidade para o pagamento:', error);
-            return { entity: null, type: null };
+            throw error;
         }
     }
 
     /**
      * Update payment status for an entity
-     * @param {Object} entity - The entity object (seller or customer)
-     * @param {string} entityType - Type of entity ('seller' or 'customer')
+     * @param {Object} entity - The entity object (seller or shopper)
+     * @param {string} entityType - Type of entity ('seller' or 'shopper')
      * @param {Object} paymentInfo - Payment information
      * @param {string} status - New payment status
      */
     async updatePaymentStatus(entity, entityType, paymentInfo, status) {
         try {
+            const updateData = { 
+                payments_status: status,
+                payments_last_update: new Date()
+            };
+            
+            if (paymentInfo.dueDate) {
+                updateData.payments_next_due = paymentInfo.dueDate;
+            }
+
             if (entityType === 'seller') {
                 // Update seller payment status
-                await SellerService.update(entity.id, { 
-                    payments_status: status,
-                    payments_next_due: paymentInfo.dueDate || entity.payments_next_due,
-                    payments_last_update: new Date()
-                });
-                console.log(`Updated payment status for seller ${entity.id} to ${status}`);
+                const result = await SellerService.update(entity.id, updateData);
+                if (result.success) {
+                    console.log(`Atualizado status de pagamento do vendedor ${entity.id} para ${status}`);
+                    return true;
+                } else {
+                    console.error(`Erro ao atualizar status de pagamento do vendedor ${entity.id}:`, result.message);
+                    return false;
+                }
+            } else if (entityType === 'shopper') {
+                // Update shopper payment status
+                const result = await ShopperService.update(entity.id, updateData);
+                if (result.success) {
+                    console.log(`Atualizado status de pagamento do shopper ${entity.id} para ${status}`);
+                    return true;
+                } else {
+                    console.error(`Erro ao atualizar status de pagamento do shopper ${entity.id}:`, result.message);
+                    return false;
+                }
             } 
-            // Add handling for customer entities when implemented
+            return false;
         } catch (error) {
-            console.error(`Error updating payment status for ${entityType} ${entity.id}:`, error);
+            console.error(`Erro ao atualizar status de pagamento para ${entityType} ${entity.id}:`, error);
+            return false;
         }
     }
 }

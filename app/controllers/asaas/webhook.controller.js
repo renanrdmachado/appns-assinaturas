@@ -116,10 +116,9 @@ class AsaasWebhookController {
     }
 
     async receive(req, res) {
-        console.log('Webhook recebido');
         try {
             const eventData = req.body;
-            console.log('Dados do webhook:', JSON.stringify(eventData, null, 2));
+            console.log('Webhook recebido:', JSON.stringify(eventData, null, 2));
             
             // Processar o webhook
             const result = await AsaasWebhookService.processWebhookEvent(eventData);
@@ -127,26 +126,35 @@ class AsaasWebhookController {
             // Sempre retorna 200 OK para o Asaas, mesmo em caso de erro
             // para evitar que o Asaas faça novas tentativas
             if (!result.success) {
-                console.warn('Erro processando webhook, mas retornando 200 OK:', result.message);
+                console.warn('Erro processando webhook:', result.message);
                 return res.status(200).json({ 
                     success: false, 
                     message: result.message,
-                    processed: false
+                    processed: false,
+                    paymentId: eventData.payment?.id,
+                    event: eventData.event
                 });
             }
             
-            return res.status(200).json({ 
-                success: true, 
-                message: 'Webhook processado com sucesso',
-                processed: true
+            return res.status(200).json({
+                success: true,
+                message: result.message || 'Webhook processado com sucesso',
+                processed: true,
+                paymentId: result.paymentId,
+                event: result.event,
+                entity: result.entity,
+                status: result.status
             });
         } catch (error) {
             console.error('Erro ao processar evento de webhook:', error);
             // Ainda retorna 200 para prevenir que o Asaas tente novamente
-            return res.status(200).json(Object.assign(
-                formatError(error),
-                { processed: false }
-            ));
+            return res.status(200).json({
+                success: false,
+                message: error.message || 'Erro interno ao processar webhook',
+                processed: false,
+                paymentId: req.body.payment?.id,
+                event: req.body.event
+            });
         }
     }
 }

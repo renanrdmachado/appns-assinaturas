@@ -573,6 +573,50 @@ class ShopperSubscriptionService {
         
         return asaasData;
     }
+
+    /**
+     * Busca uma assinatura pelo ID externo do Asaas
+     * @param {string} externalId - ID da assinatura no Asaas
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async getByExternalId(externalId) {
+        try {
+            if (!externalId) {
+                return createError('ID externo é obrigatório', 400);
+            }
+            
+            const subscription = await ShopperSubscription.findOne({
+                where: { external_id: externalId },
+                include: [
+                    {
+                        model: Shopper,
+                        as: 'shopper',
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }
+                        ],
+                        attributes: ['id', 'name', 'email']
+                    }
+                ]
+            });
+            
+            if (!subscription) {
+                return {
+                    success: false,
+                    message: `Nenhuma assinatura de shopper encontrada com ID externo ${externalId}`,
+                    status: 404
+                };
+            }
+            
+            return { success: true, data: subscription };
+        } catch (error) {
+            console.error(`Erro ao buscar assinatura de shopper por ID externo ${externalId}:`, error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new ShopperSubscriptionService();

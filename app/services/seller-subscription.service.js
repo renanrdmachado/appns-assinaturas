@@ -497,6 +497,36 @@ class SellerSubscriptionService {
         
         return statusMap[asaasStatus] || 'pending';
     }
+
+    /**
+     * Busca uma assinatura pelo ID externo do Asaas
+     * @param {string} externalId - ID da assinatura no Asaas
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async getByExternalId(externalId) {
+        try {
+            if (!externalId) {
+                return createError('ID externo é obrigatório', 400);
+            }
+            
+            const subscription = await SellerSubscription.findOne({
+                where: { external_id: externalId }
+            });
+            
+            if (!subscription) {
+                return {
+                    success: false,
+                    message: `Nenhuma assinatura de vendedor encontrada com ID externo ${externalId}`,
+                    status: 404
+                };
+            }
+            
+            return { success: true, data: subscription };
+        } catch (error) {
+            console.error(`Erro ao buscar assinatura de vendedor por ID externo ${externalId}:`, error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new SellerSubscriptionService();
