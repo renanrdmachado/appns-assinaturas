@@ -66,7 +66,14 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
         await Payment.create(paymentData);
     }
     // Atualiza status da assinatura se necessário
-    if (['overdue','canceled','refunded'].includes(paymentData.status)) {
+    if (paymentData.status === 'confirmed') {
+        // Ativa a assinatura
+        if (payableType === 'shopper_subscription') {
+            await require('../shopper-subscription.service').update(subscription.id, { status: 'active' });
+        } else if (payableType === 'seller_subscription') {
+            await require('../seller-subscription.service').update(subscription.id, { status: 'active' });
+        }
+    } else if (['overdue','canceled','refunded'].includes(paymentData.status)) {
         let assinaturaStatus = paymentData.status;
         if (assinaturaStatus === 'refunded') assinaturaStatus = 'canceled';
         if (payableType === 'shopper_subscription') {
