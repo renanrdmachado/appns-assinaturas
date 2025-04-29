@@ -336,10 +336,10 @@ class ShopperSubscriptionService {
             
             // Atualizar dados da assinatura com o ID externo
             subscriptionData.external_id = asaasResult.data.id;
-            subscriptionData.status = AsaasFormatter.mapAsaasStatusToLocalStatus(asaasResult.data.status);
+            // Sempre criar como pending, só muda para active via webhook
+            subscriptionData.status = 'pending';
             
             // Criar assinatura no banco local usando a transação
-            console.log('Criando assinatura no banco local...');
             const subscription = await ShopperSubscription.create(subscriptionData, { transaction });
             
             // Atualizar pedido com o ID da assinatura se necessário
