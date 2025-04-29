@@ -5,6 +5,77 @@ const ShopperService = require('../shopper.service');
 const SellerSubscriptionService = require('../seller-subscription.service');
 const ShopperSubscriptionService = require('../shopper-subscription.service');
 const { formatError, createError } = require('../../utils/errorHandler');
+const Payment = require('../../models/Payment');
+
+function mapAsaasStatusToPaymentStatus(status) {
+    switch ((status || '').toUpperCase()) {
+        case 'RECEIVED':
+        case 'CONFIRMED':
+            return 'confirmed';
+        case 'OVERDUE':
+            return 'overdue';
+        case 'REFUNDED':
+            return 'refunded';
+        case 'CANCELED':
+            return 'canceled';
+        case 'FAILED':
+            return 'failed';
+        default:
+            return 'pending';
+    }
+}
+
+async function createOrUpdatePaymentFromWebhook(paymentInfo) {
+    let subscription = null;
+    let payableType = null;
+    // SellerSubscription
+    let sellerSub = await require('../seller-subscription.service').getByExternalId(paymentInfo.subscription);
+    if (sellerSub.success && sellerSub.data) {
+        subscription = sellerSub.data;
+        payableType = 'seller_subscription';
+    }
+    // ShopperSubscription
+    if (!subscription) {
+        let shopperSub = await require('../shopper-subscription.service').getByExternalId(paymentInfo.subscription);
+        if (shopperSub.success && shopperSub.data) {
+            subscription = shopperSub.data;
+            payableType = 'shopper_subscription';
+        }
+    }
+    if (!subscription || !payableType) return;
+    // Busca pagamento existente
+    let payment = await Payment.findOne({ where: { external_id: paymentInfo.id } });
+    const paymentData = {
+        external_id: paymentInfo.id,
+        payable_type: payableType,
+        payable_id: subscription.id,
+        status: mapAsaasStatusToPaymentStatus(paymentInfo.status),
+        value: paymentInfo.value ?? 0,
+        net_value: paymentInfo.netValue ?? null,
+        payment_date: paymentInfo.paymentDate ? new Date(paymentInfo.paymentDate) : (paymentInfo.confirmedDate ? new Date(paymentInfo.confirmedDate) : null),
+        due_date: paymentInfo.dueDate ? new Date(paymentInfo.dueDate) : null,
+        payment_method: paymentInfo.billingType ?? null,
+        invoice_url: paymentInfo.invoiceUrl ?? null,
+        description: paymentInfo.description ?? null,
+        transaction_data: paymentInfo
+    };
+    if (payment) {
+        // Atualiza status e dados se mudou
+        await payment.update(paymentData);
+    } else {
+        await Payment.create(paymentData);
+    }
+    // Atualiza status da assinatura se necessário
+    if (['overdue','canceled','refunded'].includes(paymentData.status)) {
+        let assinaturaStatus = paymentData.status;
+        if (assinaturaStatus === 'refunded') assinaturaStatus = 'canceled';
+        if (payableType === 'shopper_subscription') {
+            await require('../shopper-subscription.service').update(subscription.id, { status: assinaturaStatus });
+        } else if (payableType === 'seller_subscription') {
+            await require('../seller-subscription.service').update(subscription.id, { status: assinaturaStatus });
+        }
+    }
+}
 
 class WebhookService {
     async registerWebhook(webhookData) {
@@ -143,6 +214,8 @@ class WebhookService {
                     console.log(`Pagamento criado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'PENDING');
+                        // Cria registro de pagamento
+                        await createOrUpdatePaymentFromWebhook(paymentInfo);
                         result.status = 'PENDING';
                         result.message = `Pagamento ${paymentInfo.id} criado para ${entityInfo.type} ${entityInfo.entity.id}`;
                     } else {
@@ -156,6 +229,15 @@ class WebhookService {
                     console.log(`Pagamento confirmado: ${paymentInfo.id}`);
                     if (entityInfo.entity) {
                         await this.updatePaymentStatus(entityInfo.entity, entityInfo.type, paymentInfo, 'RECEIVED');
+                        // Atualizar status da assinatura do shopper para 'active' se existir subscription
+                        if (entityInfo.type === 'shopper' && paymentInfo.subscription) {
+                            const subResult = await require('../shopper-subscription.service').getByExternalId(paymentInfo.subscription);
+                            if (subResult.success && subResult.data) {
+                                await require('../shopper-subscription.service').update(subResult.data.id, { status: 'active' });
+                            }
+                        }
+                        // Cria registro de pagamento
+                        await createOrUpdatePaymentFromWebhook(paymentInfo);
                         result.status = 'RECEIVED';
                         result.message = `Pagamento ${paymentInfo.id} confirmado para ${entityInfo.type} ${entityInfo.entity.id}`;
                     } else {
