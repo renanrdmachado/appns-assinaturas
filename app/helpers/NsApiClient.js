@@ -90,6 +90,22 @@ class NsApiClient {
             }
         }
     }
+
+    static async get(endpoint, params = {}, options = {}) {
+        return this.request({ method: 'GET', endpoint, params, ...options });
+    }
+
+    static async post(endpoint, data = {}, options = {}) {
+        return this.request({ method: 'POST', endpoint, data, ...options });
+    }
+
+    static async put(endpoint, data = {}, options = {}) {
+        return this.request({ method: 'PUT', endpoint, data, ...options });
+    }
+
+    static async delete(endpoint, params = {}, options = {}) {
+        return this.request({ method: 'DELETE', endpoint, params, ...options });
+    }
 }
 
 module.exports = NsApiClient;

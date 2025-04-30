@@ -4,8 +4,7 @@ const { formatError, createError } = require('../../utils/errorHandler');
 class NsOrdersService {
     async getOrders(storeId, accessToken, params = {}) {
         try {
-            const orders = await NsApiClient.request({
-                method: 'GET',
+            const orders = await NsApiClient.get({
                 storeId,
                 endpoint: 'orders',
                 accessToken,
@@ -25,8 +24,7 @@ class NsOrdersService {
                 return createError('ID do pedido é obrigatório', 400);
             }
             
-            const order = await NsApiClient.request({
-                method: 'GET',
+            const order = await NsApiClient.get({
                 storeId,
                 endpoint: `orders/${orderId}`,
                 accessToken
@@ -45,8 +43,7 @@ class NsOrdersService {
                 return createError('Dados do pedido são obrigatórios', 400);
             }
             
-            const order = await NsApiClient.request({
-                method: 'POST',
+            const order = await NsApiClient.post({
                 storeId,
                 endpoint: 'orders',
                 accessToken,
@@ -70,8 +67,7 @@ class NsOrdersService {
                 return createError('Dados do pedido são obrigatórios', 400);
             }
             
-            const order = await NsApiClient.request({
-                method: 'PUT',
+            const order = await NsApiClient.put({
                 storeId,
                 endpoint: `orders/${orderId}`,
                 accessToken,
@@ -91,8 +87,7 @@ class NsOrdersService {
                 return createError('ID do pedido é obrigatório', 400);
             }
             
-            const order = await NsApiClient.request({
-                method: 'POST',
+            const order = await NsApiClient.post({
                 storeId,
                 endpoint: `orders/${orderId}/close`,
                 accessToken
@@ -111,8 +106,7 @@ class NsOrdersService {
                 return createError('ID do pedido é obrigatório', 400);
             }
             
-            const order = await NsApiClient.request({
-                method: 'POST',
+            const order = await NsApiClient.post({
                 storeId,
                 endpoint: `orders/${orderId}/open`,
                 accessToken
@@ -131,8 +125,7 @@ class NsOrdersService {
                 return createError('ID do pedido é obrigatório', 400);
             }
             
-            const order = await NsApiClient.request({
-                method: 'POST',
+            const order = await NsApiClient.post({
                 storeId,
                 endpoint: `orders/${orderId}/cancel`,
                 accessToken
@@ -151,8 +144,7 @@ class NsOrdersService {
                 return createError('ID do pedido é obrigatório', 400);
             }
             
-            const payments = await NsApiClient.request({
-                method: 'GET',
+            const payments = await NsApiClient.get({
                 storeId,
                 endpoint: `orders/${orderId}/payments`,
                 accessToken

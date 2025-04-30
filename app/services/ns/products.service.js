@@ -19,8 +19,7 @@ class NsProductsService {
             const paramsFormatted = new URLSearchParams(params);
             console.log(`Parâmetros da requisição: ${paramsFormatted.toString() || 'nenhum'}`);
             
-            const products = await NsApiClient.request({
-                method: 'GET',
+            const products = await NsApiClient.get({
                 storeId,
                 endpoint: 'products',
                 accessToken,
@@ -41,8 +40,7 @@ class NsProductsService {
                 return createError('ID do produto é obrigatório', 400);
             }
             
-            const product = await NsApiClient.request({
-                method: 'GET',
+            const product = await NsApiClient.get({
                 storeId,
                 endpoint: `products/${productId}`,
                 accessToken
@@ -61,8 +59,7 @@ class NsProductsService {
                 return createError('Dados do produto são obrigatórios', 400);
             }
             
-            const product = await NsApiClient.request({
-                method: 'POST',
+            const product = await NsApiClient.post({
                 storeId,
                 endpoint: 'products',
                 accessToken,
@@ -86,8 +83,7 @@ class NsProductsService {
                 return createError('Dados do produto são obrigatórios', 400);
             }
             
-            const product = await NsApiClient.request({
-                method: 'PUT',
+            const product = await NsApiClient.put({
                 storeId,
                 endpoint: `products/${productId}`,
                 accessToken,
@@ -107,8 +103,7 @@ class NsProductsService {
                 return createError('ID do produto é obrigatório', 400);
             }
             
-            await NsApiClient.request({
-                method: 'DELETE',
+            await NsApiClient.delete({
                 storeId,
                 endpoint: `products/${productId}`,
                 accessToken
@@ -127,8 +122,7 @@ class NsProductsService {
                 return createError('ID do produto é obrigatório', 400);
             }
             
-            const variants = await NsApiClient.request({
-                method: 'GET',
+            const variants = await NsApiClient.get({
                 storeId,
                 endpoint: `products/${productId}/variants`,
                 accessToken
