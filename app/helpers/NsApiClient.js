@@ -92,19 +92,46 @@ class NsApiClient {
     }
 
     static async get({ storeId, endpoint, accessToken, params, headers = {} }) {
-        return this.request({ method: 'GET', storeId, endpoint, accessToken, params, headers });
+        return this.request({ 
+            method: 'GET', 
+            storeId, 
+            endpoint, 
+            accessToken, 
+            params, 
+            headers 
+        });
     }
 
     static async post({ storeId, endpoint, accessToken, data, headers = {} }) {
-        return this.request({ method: 'POST', storeId, endpoint, accessToken, data, headers });
+        return this.request({ 
+            method: 'POST', 
+            storeId, 
+            endpoint, 
+            accessToken, 
+            data, 
+            headers 
+        });
     }
 
     static async put({ storeId, endpoint, accessToken, data, headers = {} }) {
-        return this.request({ method: 'PUT', storeId, endpoint, accessToken, data, headers });
+        return this.request({ 
+            method: 'PUT', 
+            storeId, 
+            endpoint, 
+            accessToken, 
+            data, 
+            headers 
+        });
     }
 
     static async delete({ storeId, endpoint, accessToken, headers = {} }) {
-        return this.request({ method: 'DELETE', storeId, endpoint, accessToken, headers });
+        return this.request({ 
+            method: 'DELETE', 
+            storeId, 
+            endpoint, 
+            accessToken, 
+            headers 
+        });
     }
 }
 

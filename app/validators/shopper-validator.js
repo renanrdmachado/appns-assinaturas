@@ -46,7 +46,7 @@ class ShopperValidator extends BaseValidator {
         }
         
         // Validar campos obrigatórios
-        const requiredFields = ['nuvemshop_id', 'name', 'email', 'cpfCnpj'];
+        const requiredFields = ['name', 'email', 'cpfCnpj'];
         errors.push(...this.validateRequiredFields(data, requiredFields, 'comprador'));
         
         // Validações específicas

@@ -9,7 +9,6 @@ const ShopperValidator = require('../validators/shopper-validator');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
 const AsaasMapper = require('../utils/asaas-mapper');
-const NsApiClient = require('../helpers/NsApiClient');
 
 class ShopperService {
     /**
@@ -94,53 +93,9 @@ class ShopperService {
             // Validação dos dados
             ShopperValidator.validateShopperData(data);
 
-            // Busca ou cria customer na NS
-            let nsCustomer = null;
-            if (data.cpfCnpj) {
-                // Buscar customer na NS pelo CPF
-                const nsSearch = await NsApiClient.get('/customers', { q: data.cpfCnpj });
-                if (Array.isArray(nsSearch) && nsSearch.length > 0) {
-                    nsCustomer = nsSearch.find(c => c.identification === data.cpfCnpj);
-                }
-                // Se não encontrou, cria
-                if (!nsCustomer) {
-                    const customerPayload = {
-                        name: data.name,
-                        email: data.email,
-                        phone: data.mobilePhone,
-                        identification: data.cpfCnpj,
-                        send_email_invite: true,
-                        password: data.cpfCnpj,
-                        addresses: [
-                            {
-                                address: data.address,
-                                city: data.city || '',
-                                country: 'BR',
-                                locality: data.province || '',
-                                number: data.addressNumber,
-                                phone: data.mobilePhone,
-                                province: data.province || '',
-                                zipcode: data.postalCode
-                            }
-                        ]
-                    };
-                    nsCustomer = await NsApiClient.post('/customers', customerPayload);
-                }
-            }
-            if (nsCustomer) {
-                data.nuvemshop_info = JSON.stringify(nsCustomer);
-                data.nuvemshop_id = nsCustomer.id; // Garante o id da NS como nuvemshop_id
-            } else if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
+            // Formatação dos dados
+            if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
-            }
-            
-            // Verificar se já existe um shopper com este nuvemshop_id
-            const existingShopper = await Shopper.findOne({ 
-                where: { nuvemshop_id: data.nuvemshop_id } 
-            });
-            
-            if (existingShopper) {
-                return createError('Já existe um shopper com este ID da Nuvemshop', 400);
             }
             
             // Verificar se já existe um UserData com este CPF/CNPJ
@@ -185,20 +140,7 @@ class ShopperService {
                     }
                 } else {
                     // Se não existe, criar novo cliente no Asaas
-                    const customerData = {
-                        name: data.name || `Shopper ${data.nuvemshop_id}`,
-                        cpfCnpj: data.cpfCnpj,
-                        email: data.email,
-                        mobilePhone: data.mobilePhone,
-                        address: data.address,
-                        addressNumber: data.addressNumber,
-                        province: data.province,
-                        postalCode: data.postalCode,
-                        externalReference: data.nuvemshop_id ? data.nuvemshop_id.toString() : undefined,
-                        groupName: AsaasCustomerService.SHOPPER_GROUP,
-                        observations: `Shopper da Nuvemshop${data.nuvemshop_id ? ' ID: ' + data.nuvemshop_id : ''}`,
-                        notificationDisabled: false
-                    };
+                    const customerData = this._mapToAsaasCustomer(data);
                     
                     // Tentar criar cliente no Asaas
                     const asaasResult = await AsaasCustomerService.createOrUpdate(
@@ -213,12 +155,14 @@ class ShopperService {
                     
                     asaasCustomerId = asaasResult.data.id;
                 }
+                
+                data.payments_customer_id = asaasCustomerId;
             }
-            
+
             // Usar transação para garantir consistência
             const result = await sequelize.transaction(async (t) => {
                 // Criar ou usar UserData existente
-                if (!userData) {
+                if (!userData && data.cpfCnpj) {
                     userData = await UserData.create({
                         cpfCnpj: data.cpfCnpj,
                         email: data.email,
@@ -236,17 +180,17 @@ class ShopperService {
                     username: data.username || null,
                     email: data.email,
                     password: data.password || null,
-                    user_data_id: userData.id
+                    user_data_id: userData?.id
                 }, { transaction: t });
                 
                 // Criar Shopper vinculado ao User
                 const shopper = await Shopper.create({
-                    nuvemshop_id: data.nuvemshop_id,
-                    nuvemshop_info: data.nuvemshop_info,
+                    nuvemshop_id: data.nuvemshop_id || null,
+                    nuvemshop_info: data.nuvemshop_info || null,
                     name: data.name,
                     email: data.email,
                     user_id: user.id,
-                    payments_customer_id: asaasCustomerId,
+                    payments_customer_id: data.payments_customer_id,
                     payments_status: data.payments_status || "PENDING"
                 }, { transaction: t });
                 

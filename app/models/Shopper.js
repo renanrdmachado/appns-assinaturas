@@ -11,7 +11,7 @@ const Shopper = sequelize.define('Shopper', {
   nuvemshop_id: {
     type: DataTypes.STRING,
     unique: true,
-    allowNull: false
+    allowNull: true // Mudando para true para tornar o campo opcional
   },
   nuvemshop_info: {
     type: DataTypes.TEXT,
@@ -58,11 +58,11 @@ const Shopper = sequelize.define('Shopper', {
   },
   name: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false // Nome é obrigatório agora que não usamos nuvemshop_id
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false // Email é obrigatório agora que não usamos nuvemshop_id
   },
   user_id: {
     type: DataTypes.INTEGER,
