@@ -9,6 +9,7 @@ const ShopperValidator = require('../validators/shopper-validator');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
 const AsaasMapper = require('../utils/asaas-mapper');
+const NsApiClient = require('../helpers/NsApiClient');
 
 class ShopperService {
     /**
@@ -92,8 +93,44 @@ class ShopperService {
         try {
             // Validação dos dados
             ShopperValidator.validateShopperData(data);
-            
-            if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
+
+            // Busca ou cria customer na NS
+            let nsCustomer = null;
+            if (data.cpfCnpj) {
+                // Buscar customer na NS pelo CPF
+                const nsSearch = await NsApiClient.get('/customers', { q: data.cpfCnpj });
+                if (Array.isArray(nsSearch) && nsSearch.length > 0) {
+                    nsCustomer = nsSearch.find(c => c.identification === data.cpfCnpj);
+                }
+                // Se não encontrou, cria
+                if (!nsCustomer) {
+                    const customerPayload = {
+                        name: data.name,
+                        email: data.email,
+                        phone: data.mobilePhone,
+                        identification: data.cpfCnpj,
+                        send_email_invite: true,
+                        password: data.cpfCnpj,
+                        addresses: [
+                            {
+                                address: data.address,
+                                city: data.city || '',
+                                country: 'BR',
+                                locality: data.province || '',
+                                number: data.addressNumber,
+                                phone: data.mobilePhone,
+                                province: data.province || '',
+                                zipcode: data.postalCode
+                            }
+                        ]
+                    };
+                    nsCustomer = await NsApiClient.post('/customers', customerPayload);
+                }
+            }
+            if (nsCustomer) {
+                data.nuvemshop_info = JSON.stringify(nsCustomer);
+                data.nuvemshop_id = nsCustomer.id; // Garante o id da NS como nuvemshop_id
+            } else if (data.nuvemshop_info && typeof data.nuvemshop_info !== 'string') {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
             

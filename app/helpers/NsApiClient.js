@@ -29,7 +29,7 @@ class NsApiClient {
                 throw new Error('Token de acesso (accessToken) é obrigatório');
             }
             
-            const baseUrl = process.env.NS_API_URL || 'https://api.nuvemshop.com.br/v1';
+            const baseUrl = process.env.NS_API_URL || 'https://api.nuvemshop.com.br/2025-03';
             const url = `${baseUrl}/${storeIdStr}/${endpoint}${params ? `?${params.toString()}` : ''}`;
             
             console.log(`NsApiClient: Preparando requisição para ${url}`);

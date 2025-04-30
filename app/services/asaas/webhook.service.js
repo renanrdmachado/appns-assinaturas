@@ -67,9 +67,9 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
     }
     // Atualiza status da assinatura se necessário
     if (paymentData.status === 'confirmed') {
-        // Ativa a assinatura
+        // Ativa a assinatura local
         if (payableType === 'shopper_subscription') {
-            await require('../shopper-subscription.service').update(subscription.id, { status: 'active' });
+            await require('../shopper-subscription.service').updateStatusLocal(subscription.id, 'active');
         } else if (payableType === 'seller_subscription') {
             await require('../seller-subscription.service').update(subscription.id, { status: 'active' });
         }
@@ -77,7 +77,7 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
         let assinaturaStatus = paymentData.status;
         if (assinaturaStatus === 'refunded') assinaturaStatus = 'canceled';
         if (payableType === 'shopper_subscription') {
-            await require('../shopper-subscription.service').update(subscription.id, { status: assinaturaStatus });
+            await require('../shopper-subscription.service').updateStatusLocal(subscription.id, assinaturaStatus);
         } else if (payableType === 'seller_subscription') {
             await require('../seller-subscription.service').update(subscription.id, { status: assinaturaStatus });
         }

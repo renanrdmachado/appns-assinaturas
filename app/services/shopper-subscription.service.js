@@ -617,6 +617,22 @@ class ShopperSubscriptionService {
             return formatError(error);
         }
     }
+
+    /**
+     * Atualiza apenas o status local da assinatura, sem chamar o Asaas
+     */
+    async updateStatusLocal(id, status) {
+        try {
+            if (!id) return createError('ID é obrigatório', 400);
+            const subscription = await ShopperSubscription.findByPk(id);
+            if (!subscription) return createError(`Assinatura com ID ${id} não encontrada`, 404);
+            await subscription.update({ status });
+            return { success: true, data: subscription };
+        } catch (error) {
+            console.error('Erro ao atualizar status local da assinatura:', error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new ShopperSubscriptionService();
