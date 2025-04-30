@@ -82,7 +82,18 @@ const ShopperSubscription = sequelize.define('ShopperSubscription', {
     type: DataTypes.JSON,
     allowNull: true,
     comment: 'Dados adicionais sobre a assinatura'
+  },
+  
+  // Campo para soft delete
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Data de exclusão (soft delete)'
   }
+}, {
+  // Adicionar paranoid: true para habilitar o soft delete no Sequelize
+  paranoid: true,
+  deletedAt: 'deleted_at'
 });
 
 const Shopper = require('./Shopper');
