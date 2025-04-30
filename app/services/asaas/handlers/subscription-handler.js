@@ -27,9 +27,9 @@ async function handleSubscriptionDeleted(eventData) {
             found = true;
             type = 'seller_subscription';
             
-            // Aplicar soft delete à assinatura do vendedor
+            // Sempre atualizar o status para "canceled" antes do soft delete
             await SellerSubscriptionService.update(sellerSubResult.data.id, {
-                status: 'inactive',
+                status: 'canceled',
                 end_date: new Date()
             });
             
@@ -38,7 +38,7 @@ async function handleSubscriptionDeleted(eventData) {
                 where: { id: sellerSubResult.data.id }
             });
             
-            console.log(`Assinatura de vendedor ID ${sellerSubResult.data.id} marcada como excluída (soft delete)`);
+            console.log(`Assinatura de vendedor ID ${sellerSubResult.data.id} marcada como cancelada e aplicado soft delete`);
         }
         
         // 2. Se não for vendedor, verificar se é uma assinatura de shopper
@@ -48,9 +48,9 @@ async function handleSubscriptionDeleted(eventData) {
                 found = true;
                 type = 'shopper_subscription';
                 
-                // Aplicar soft delete à assinatura do shopper
+                // Sempre atualizar o status para "canceled" antes do soft delete
                 await ShopperSubscriptionService.update(shopperSubResult.data.id, {
-                    status: 'inactive',
+                    status: 'canceled',
                     end_date: new Date()
                 });
                 
@@ -59,7 +59,7 @@ async function handleSubscriptionDeleted(eventData) {
                     where: { id: shopperSubResult.data.id }
                 });
                 
-                console.log(`Assinatura de shopper ID ${shopperSubResult.data.id} marcada como excluída (soft delete)`);
+                console.log(`Assinatura de shopper ID ${shopperSubResult.data.id} marcada como cancelada e aplicado soft delete`);
             }
         }
         
@@ -77,7 +77,7 @@ async function handleSubscriptionDeleted(eventData) {
             event: eventData.event,
             subscriptionId: subscriptionId,
             type: type,
-            message: `Assinatura ${subscriptionId} marcada como excluída com sucesso (soft delete)`
+            message: `Assinatura ${subscriptionId} marcada como cancelada e aplicado soft delete com sucesso`
         };
     } catch (error) {
         console.error('Erro ao processar exclusão de assinatura:', error);
