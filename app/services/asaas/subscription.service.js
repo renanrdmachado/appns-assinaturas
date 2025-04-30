@@ -1,8 +1,6 @@
 const AsaasApiClient = require('../../helpers/AsaasApiClient');
 const { formatError, createError } = require('../../utils/errorHandler');
 const SubscriptionValidator = require('../../validators/subscription-validator');
-const SellerSubscriptionService = require('../seller-subscription.service');
-const ShopperSubscriptionService = require('../shopper-subscription.service');
 
 class SubscriptionService {
     /**
@@ -204,7 +202,7 @@ class SubscriptionService {
     }
     
     /**
-     * Deleta uma assinatura no Asaas (na verdade, apenas a cancela)
+     * Deleta uma assinatura no Asaas
      * @param {string} id - ID da assinatura
      * @returns {Object} - Resultado da operação
      */
@@ -214,35 +212,7 @@ class SubscriptionService {
                 return createError('ID da assinatura é obrigatório', 400);
             }
             
-            // Na verdade, estamos apenas cancelando a assinatura no Asaas
-            // O soft delete será aplicado pelo webhook SUBSCRIPTION_DELETED
-            console.log(`Cancelando (não excluindo) assinatura ${id} no Asaas`);
-            
-            // Verificar se é uma assinatura de vendedor
-            const sellerSubResult = await SellerSubscriptionService.getByExternalId(id);
-            if (sellerSubResult.success && sellerSubResult.data) {
-                // Atualiza status para 'canceled' e define a data de término
-                await SellerSubscriptionService.update(sellerSubResult.data.id, {
-                    status: 'canceled',
-                    end_date: new Date()
-                });
-                
-                console.log(`Assinatura de vendedor ID ${sellerSubResult.data.id} marcada como cancelada`);
-            }
-            
-            // Verificar se é uma assinatura de comprador
-            const shopperSubResult = await ShopperSubscriptionService.getByExternalId(id);
-            if (shopperSubResult.success && shopperSubResult.data) {
-                // Atualiza status para 'canceled' e define a data de término
-                await ShopperSubscriptionService.update(shopperSubResult.data.id, {
-                    status: 'canceled',
-                    end_date: new Date()
-                });
-                
-                console.log(`Assinatura de comprador ID ${shopperSubResult.data.id} marcada como cancelada`);
-            }
-            
-            // Enviar solicitação de cancelamento para a API do Asaas
+            // Enviar solicitação para a API do Asaas
             await AsaasApiClient.request({
                 method: 'DELETE',
                 endpoint: `subscriptions/${id}`
@@ -250,10 +220,10 @@ class SubscriptionService {
             
             return { 
                 success: true, 
-                message: 'Assinatura cancelada com sucesso'
+                message: 'Assinatura removida com sucesso'
             };
         } catch (error) {
-            console.error(`Erro ao cancelar assinatura ID ${id} no Asaas:`, error);
+            console.error(`Erro ao deletar assinatura ID ${id} no Asaas:`, error);
             return formatError(error);
         }
     }
