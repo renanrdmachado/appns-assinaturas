@@ -7,7 +7,10 @@ const port = 10000;
 
 // Configuração do CORS
 app.use(cors({
-    origin: ['http://localhost:5173'], // Origem da aplicação Vue.js
+    origin: [
+        'http://localhost:5173',
+        'https://assinaturas.appns.com.br'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
