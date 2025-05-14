@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Shopper = require('../models/Shopper');
 const Seller = require('../models/Seller');
+const Product = require('../models/Product');
 const { formatError, createError } = require('../utils/errorHandler');
 const OrderValidator = require('../validators/order-validator');
 
@@ -55,15 +56,30 @@ class OrderService {
             // Validar dados do pedido usando o validator
             try {
                 OrderValidator.validateOrderData(data);
-                
-                // Verificar se o comprador existe
                 await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
-    
-                // Verificar se o vendedor existe
                 await OrderValidator.validateSellerExists(data.seller_id, Seller);
             } catch (validationError) {
                 return formatError(validationError);
             }
+
+            // Calcular o valor total dos produtos
+            let total = 0;
+            if (!Array.isArray(data.products) || data.products.length === 0) {
+                return createError('Lista de produtos é obrigatória e deve conter ao menos um produto', 400);
+            }
+            // Buscar todos os produtos pelo array de IDs
+            const productIds = data.products.map(p => typeof p === 'object' && p.product_id ? p.product_id : p);
+            const foundProducts = await Product.findAll({ where: { id: productIds } });
+            if (foundProducts.length !== productIds.length) {
+                return createError('Um ou mais produtos não foram encontrados', 404);
+            }
+            // Somar os preços multiplicados pela quantidade (se houver)
+            total = foundProducts.reduce((sum, prod) => {
+                // Verifica se há quantidade informada no array de produtos
+                const prodInfo = data.products.find(p => (p.product_id || p) == prod.id);
+                const quantity = prodInfo && prodInfo.quantity ? parseInt(prodInfo.quantity) : 1;
+                return sum + (prod.price * quantity);
+            }, 0);
 
             const order = await Order.create({
                 seller_id: data.seller_id,
@@ -71,7 +87,7 @@ class OrderService {
                 products: data.products,
                 customer_info: data.customer_info,
                 nuvemshop: data.nuvemshop,
-                value: data.value,
+                value: total,
                 cycle: data.cycle,
                 next_due_date: data.next_due_date,
                 external_id: data.external_id,
