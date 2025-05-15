@@ -3,6 +3,11 @@ const SellerService = require('../../services/seller.service');
 const NsProductsService = require('../../services/ns/products.service');
 const { formatError, createError } = require('../../utils/errorHandler');
 
+// Função utilitária para validação DRY
+function isProductFromSeller(product, sellerId) {
+    return product && product.seller_id && product.seller_id.toString() === sellerId.toString();
+}
+
 class SellerProductsController {
     /**
      * Lista todos os produtos de um seller específico
@@ -57,7 +62,7 @@ class SellerProductsController {
             }
             
             // Verificar se o produto pertence ao seller
-            if (productResult.data.seller_id !== parseInt(seller_id)) {
+            if (!isProductFromSeller(productResult.data, seller_id)) {
                 return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
             }
             
@@ -130,7 +135,7 @@ class SellerProductsController {
             }
             
             // Verificar se o produto pertence ao seller
-            if (productResult.data.seller_id !== parseInt(seller_id)) {
+            if (!isProductFromSeller(productResult.data, seller_id)) {
                 return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
             }
             
@@ -177,7 +182,7 @@ class SellerProductsController {
             }
             
             // Verificar se o produto pertence ao seller
-            if (productResult.data.seller_id !== parseInt(seller_id)) {
+            if (!isProductFromSeller(productResult.data, seller_id)) {
                 return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
             }
             
@@ -214,8 +219,11 @@ class SellerProductsController {
             if (!productResult.success) {
                 return res.status(productResult.status || 404).json(productResult);
             }
+            // Debug: logar os valores antes da comparação
+            console.log('[DEBUG] seller_id param:', seller_id, 'productResult.data.seller_id:', productResult.data.seller_id, 'typeof seller_id:', typeof seller_id, 'typeof productResult.data.seller_id:', typeof productResult.data.seller_id);
             // Verificar se o produto pertence ao seller
-            if (productResult.data.seller_id !== parseInt(seller_id)) {
+            if (!isProductFromSeller(productResult.data, seller_id)) {
+                console.log('[DEBUG] Falha na validação de pertencimento:', { seller_id, productDataSellerId: productResult.data.seller_id });
                 return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
             }
             // Adicionar/atualizar tag appns_prod_id

@@ -312,11 +312,8 @@ class NsProductsController {
             
             const productData = product.data;
             
-            // Debug: logar os valores antes da comparação
-            console.log('[DEBUG] seller_id param:', seller_id, 'productData.seller_id:', productData.seller_id, 'typeof seller_id:', typeof seller_id, 'typeof productData.seller_id:', typeof productData.seller_id);
             // Verificar se o produto pertence a este seller
-            if (String(productData.seller_id) !== String(seller_id)) {
-                console.log('[DEBUG] Falha na validação de pertencimento:', { seller_id, productDataSellerId: productData.seller_id });
+            if (productData.seller_id.toString() !== seller_id.toString()) {
                 return res.status(403).json(createError('Este produto não pertence a este vendedor', 403));
             }
             
