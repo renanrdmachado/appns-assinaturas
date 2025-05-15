@@ -219,11 +219,8 @@ class SellerProductsController {
             if (!productResult.success) {
                 return res.status(productResult.status || 404).json(productResult);
             }
-            // Debug: logar os valores antes da comparação
-            console.log('[DEBUG] seller_id param:', seller_id, 'productResult.data.seller_id:', productResult.data.seller_id, 'typeof seller_id:', typeof seller_id, 'typeof productResult.data.seller_id:', typeof productResult.data.seller_id);
             // Verificar se o produto pertence ao seller
             if (!isProductFromSeller(productResult.data, seller_id)) {
-                console.log('[DEBUG] Falha na validação de pertencimento:', { seller_id, productDataSellerId: productResult.data.seller_id });
                 return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
             }
             // Garantir objeto plano e id como string
@@ -232,12 +229,21 @@ class SellerProductsController {
                 productPlain = productPlain.get({ plain: true });
             }
             // Adicionar/atualizar tag appns_prod_id
-            let tags = Array.isArray(productPlain.tags) ? [...productPlain.tags] : [];
             const tag = `appns_prod_id:${productPlain.id}`;
-            if (!tags.includes(tag)) tags.push(tag);
+            let tagsArr = [];
+            if (productPlain.tags) {
+                if (Array.isArray(productPlain.tags)) {
+                    tagsArr = productPlain.tags;
+                } else if (typeof productPlain.tags === 'string' && productPlain.tags.length > 0) {
+                    tagsArr = productPlain.tags.split(',').map(t => t.trim()).filter(Boolean);
+                }
+            }
+            if (!tagsArr.includes(tag)) tagsArr.push(tag);
+            const tags = tagsArr.join(',');
+            // Atualizar o produto localmente com a tag
+            await ProductService.update(product_id, { tags });
             // Montar objeto para sync
             const productToSync = { ...productPlain, id: productPlain.id.toString(), tags };
-            console.log('[DEBUG] Enviando para syncProduct:', productToSync);
             // Chamar sync do service NS
             const result = await NsProductsService.syncProduct(
                 sellerResult.data.nuvemshop_id,
