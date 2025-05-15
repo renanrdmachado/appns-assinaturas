@@ -226,12 +226,18 @@ class SellerProductsController {
                 console.log('[DEBUG] Falha na validação de pertencimento:', { seller_id, productDataSellerId: productResult.data.seller_id });
                 return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
             }
+            // Garantir objeto plano e id como string
+            let productPlain = productResult.data;
+            if (typeof productPlain.get === 'function') {
+                productPlain = productPlain.get({ plain: true });
+            }
             // Adicionar/atualizar tag appns_prod_id
-            let tags = Array.isArray(productResult.data.tags) ? [...productResult.data.tags] : [];
-            const tag = `appns_prod_id:${productResult.data.id}`;
+            let tags = Array.isArray(productPlain.tags) ? [...productPlain.tags] : [];
+            const tag = `appns_prod_id:${productPlain.id}`;
             if (!tags.includes(tag)) tags.push(tag);
             // Montar objeto para sync
-            const productToSync = { ...productResult.data, tags };
+            const productToSync = { ...productPlain, id: productPlain.id.toString(), tags };
+            console.log('[DEBUG] Enviando para syncProduct:', productToSync);
             // Chamar sync do service NS
             const result = await NsProductsService.syncProduct(
                 sellerResult.data.nuvemshop_id,
@@ -243,6 +249,7 @@ class SellerProductsController {
             }
             return res.json({ success: true, ...result });
         } catch (error) {
+            console.error('Erro ao sincronizar produto com a Nuvemshop:', error);
             return res.status(500).json(formatError(error));
         }
     }
