@@ -313,7 +313,7 @@ class NsProductsController {
             const productData = product.data;
             
             // Verificar se o produto pertence a este seller
-            if (productData.seller_id.toString() !== seller_id.toString()) {
+            if (String(productData.seller_id) !== String(seller_id)) {
                 return res.status(403).json(createError('Este produto não pertence a este vendedor', 403));
             }
             
