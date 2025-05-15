@@ -219,7 +219,8 @@ class NsProductsService {
                 sku: product.sku || "",
                 description: product.description || "",
                 categories: categories, // Agora com formato correto
-                external_id: product.id.toString()
+                external_id: product.id.toString(),
+                tags: product.tags || "" // <-- garantir envio do campo tags
             };
             
             // Log dos dados formatados para debug
