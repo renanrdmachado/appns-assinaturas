@@ -205,30 +205,25 @@ class SellerProductsController {
 
     /**
      * Sincroniza um produto do seller com a Nuvemshop
+     * - Garante que a tag appns_prod_id:<id> esteja salva localmente (campo tags, string)
+     * - Envia o produto para a Nuvemshop no formato esperado (tags como string, id como string)
+     * - Só permite sync se o produto pertencer ao seller
      */
     async syncProduct(req, res) {
         try {
             const { seller_id, product_id } = req.params;
-            // Verificar se o seller existe
+            // Busca e valida o seller
             const sellerResult = await SellerService.get(seller_id);
-            if (!sellerResult.success) {
-                return res.status(sellerResult.status || 404).json(sellerResult);
-            }
-            // Verificar se o produto existe
+            if (!sellerResult.success) return res.status(sellerResult.status || 404).json(sellerResult);
+            // Busca e valida o produto
             const productResult = await ProductService.get(product_id);
-            if (!productResult.success) {
-                return res.status(productResult.status || 404).json(productResult);
-            }
-            // Verificar se o produto pertence ao seller
-            if (!isProductFromSeller(productResult.data, seller_id)) {
-                return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
-            }
-            // Garantir objeto plano e id como string
+            if (!productResult.success) return res.status(productResult.status || 404).json(productResult);
+            // Garante que o produto pertence ao seller
+            if (!isProductFromSeller(productResult.data, seller_id)) return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
+            // Garante objeto plano e id como string
             let productPlain = productResult.data;
-            if (typeof productPlain.get === 'function') {
-                productPlain = productPlain.get({ plain: true });
-            }
-            // Adicionar/atualizar tag appns_prod_id
+            if (typeof productPlain.get === 'function') productPlain = productPlain.get({ plain: true });
+            // Monta/atualiza a tag appns_prod_id:<id> (evita duplicidade)
             const tag = `appns_prod_id:${productPlain.id}`;
             let tagsArr = [];
             if (productPlain.tags) {
@@ -239,23 +234,20 @@ class SellerProductsController {
                 }
             }
             if (!tagsArr.includes(tag)) tagsArr.push(tag);
-            const tags = tagsArr.join(',');
-            // Atualizar o produto localmente com a tag
+            const tags = Array.from(new Set(tagsArr)).join(',');
+            // Atualiza o produto localmente com a tag
             await ProductService.update(product_id, { tags });
-            // Montar objeto para sync
+            // Monta objeto para sync (tags string, id string)
             const productToSync = { ...productPlain, id: productPlain.id.toString(), tags };
-            // Chamar sync do service NS
+            // Chama o serviço de sync da Nuvemshop
             const result = await NsProductsService.syncProduct(
                 sellerResult.data.nuvemshop_id,
                 sellerResult.data.nuvemshop_api_token,
                 productToSync
             );
-            if (!result.success) {
-                return res.status(result.status || 400).json(result);
-            }
+            if (!result.success) return res.status(result.status || 400).json(result);
             return res.json({ success: true, ...result });
         } catch (error) {
-            console.error('Erro ao sincronizar produto com a Nuvemshop:', error);
             return res.status(500).json(formatError(error));
         }
     }
