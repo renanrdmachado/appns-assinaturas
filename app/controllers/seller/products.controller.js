@@ -1,5 +1,6 @@
 const ProductService = require('../../services/product.service');
 const SellerService = require('../../services/seller.service');
+const NsProductsService = require('../../services/ns/products.service');
 const { formatError, createError } = require('../../utils/errorHandler');
 
 class SellerProductsController {
@@ -193,6 +194,47 @@ class SellerProductsController {
             });
         } catch (error) {
             console.error(`Erro ao excluir produto ID ${req.params.product_id} do seller ID ${req.params.seller_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Sincroniza um produto do seller com a Nuvemshop
+     */
+    async syncProduct(req, res) {
+        try {
+            const { seller_id, product_id } = req.params;
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+            // Verificar se o produto existe
+            const productResult = await ProductService.get(product_id);
+            if (!productResult.success) {
+                return res.status(productResult.status || 404).json(productResult);
+            }
+            // Verificar se o produto pertence ao seller
+            if (productResult.data.seller_id !== parseInt(seller_id)) {
+                return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
+            }
+            // Adicionar/atualizar tag appns_prod_id
+            let tags = Array.isArray(productResult.data.tags) ? [...productResult.data.tags] : [];
+            const tag = `appns_prod_id:${productResult.data.id}`;
+            if (!tags.includes(tag)) tags.push(tag);
+            // Montar objeto para sync
+            const productToSync = { ...productResult.data, tags };
+            // Chamar sync do service NS
+            const result = await NsProductsService.syncProduct(
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                productToSync
+            );
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            return res.json({ success: true, ...result });
+        } catch (error) {
             return res.status(500).json(formatError(error));
         }
     }

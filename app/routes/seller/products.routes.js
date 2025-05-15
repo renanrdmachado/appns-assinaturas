@@ -37,4 +37,11 @@ router.put('/:product_id', SellerProductsController.updateProduct);
  */
 router.delete('/:product_id', SellerProductsController.deleteProduct);
 
+/**
+ * @route POST /sellers/:seller_id/products/:product_id/sync
+ * @desc Sincroniza um produto do seller com a Nuvemshop
+ * @access Privado
+ */
+router.post('/:product_id/sync', SellerProductsController.syncProduct);
+
 module.exports = router;

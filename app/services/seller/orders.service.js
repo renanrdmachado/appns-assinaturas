@@ -1,9 +1,6 @@
 const { formatError, createError } = require('../../utils/errorHandler');
 const Seller = require('../../models/Seller');
 const Order = require('../../models/Order');
-const Shopper = require('../../models/Shopper');
-const User = require('../../models/User');
-const UserData = require('../../models/UserData');
 const { Op } = require('sequelize');
 
 /**
