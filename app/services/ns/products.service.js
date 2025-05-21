@@ -213,14 +213,20 @@ class NsProductsService {
             
             // Mapear produto local para o formato da Nuvemshop
             const nsProductData = {
-                name: product.name,
-                price: String(product.price),
-                stock: product.stock || 0,
-                sku: product.sku || "",
-                description: product.description || "",
-                categories: categories, // Agora com formato correto
+                name: { pt: product.name },
+                description: { pt: product.description || "" },
+                handle: { pt: (product.name || "").toLowerCase().replace(/\s+/g, '-') },
+                categories: categories, // array de ids
+                tags: product.tags || "",
                 external_id: product.id.toString(),
-                tags: product.tags || "" // <-- garantir envio do campo tags
+                variants: [
+                    {
+                        position: 1,
+                        price: String(product.price),
+                        sku: product.sku || "",
+                    }
+                ],
+                images: images
             };
             
             // Log dos dados formatados para debug
