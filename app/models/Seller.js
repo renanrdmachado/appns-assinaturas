@@ -78,6 +78,18 @@ const Seller = sequelize.define('Seller', {
     type: DataTypes.STRING,
     allowNull: true,
     comment: 'ID do cliente no sistema de pagamento (Asaas)'
+  },
+  accepted_payment_methods: {
+    type: DataTypes.JSON,
+    defaultValue: ['credit_card', 'pix', 'boleto'],
+    get() {
+      const value = this.getDataValue('accepted_payment_methods');
+      if (!value) return ['credit_card', 'pix', 'boleto'];
+      return typeof value === 'string' ? JSON.parse(value) : value;
+    },
+    set(value) {
+      this.setDataValue('accepted_payment_methods', JSON.stringify(value));
+    }
   }
 });
 
@@ -88,5 +100,29 @@ Seller.belongsTo(User, {
   foreignKey: 'user_id',
   as: 'user'
 });
+
+// Métodos para gerenciar formas de pagamento
+Seller.prototype.isPaymentMethodAccepted = function(method) {
+  const acceptedMethods = this.accepted_payment_methods || ['credit_card', 'pix', 'boleto'];
+  return acceptedMethods.includes(method);
+};
+
+Seller.prototype.addPaymentMethod = function(method) {
+  const validMethods = ['credit_card', 'pix', 'boleto'];
+  if (!validMethods.includes(method)) {
+    throw new Error(`Método de pagamento inválido: ${method}`);
+  }
+  
+  let currentMethods = this.accepted_payment_methods || [];
+  if (!currentMethods.includes(method)) {
+    currentMethods.push(method);
+    this.accepted_payment_methods = currentMethods;
+  }
+};
+
+Seller.prototype.removePaymentMethod = function(method) {
+  let currentMethods = this.accepted_payment_methods || [];
+  this.accepted_payment_methods = currentMethods.filter(m => m !== method);
+};
 
 module.exports = Seller;

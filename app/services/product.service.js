@@ -50,16 +50,25 @@ class ProductService {
             if (!data.price || isNaN(parseFloat(data.price))) {
                 return createError('Preço deve ser um valor numérico válido', 400);
             }
+
+            // Validar subscription_price se fornecido
+            if (data.subscription_price !== undefined && data.subscription_price !== null) {
+                if (isNaN(parseFloat(data.subscription_price))) {
+                    return createError('Preço de assinatura deve ser um valor numérico válido', 400);
+                }
+            }
             
             const product = await Product.create({
                 seller_id: data.seller_id,
                 name: data.name,
                 price: data.price,
+                subscription_price: data.subscription_price || null,
                 stock: data.stock,
                 sku: data.sku,
                 description: data.description,
                 categories: data.categories,
-                images: data.images
+                images: data.images,
+                tags: data.tags
             });
             
             console.log('Product created:', product.toJSON());
@@ -86,16 +95,25 @@ class ProductService {
             if (data.price !== undefined && isNaN(parseFloat(data.price))) {
                 return createError('Preço deve ser um valor numérico válido', 400);
             }
-            
+
+            // Validar subscription_price se fornecido
+            if (data.subscription_price !== undefined && data.subscription_price !== null) {
+                if (isNaN(parseFloat(data.subscription_price))) {
+                    return createError('Preço de assinatura deve ser um valor numérico válido', 400);
+                }
+            }
+
             await product.update({
-                seller_id: data.seller_id,
-                name: data.name,
-                price: data.price,
-                stock: data.stock,
-                sku: data.sku,
-                description: data.description,
-                categories: data.categories,
-                images: data.images
+                seller_id: data.seller_id !== undefined ? data.seller_id : product.seller_id,
+                name: data.name !== undefined ? data.name : product.name,
+                price: data.price !== undefined ? data.price : product.price,
+                subscription_price: data.subscription_price !== undefined ? data.subscription_price : product.subscription_price,
+                stock: data.stock !== undefined ? data.stock : product.stock,
+                sku: data.sku !== undefined ? data.sku : product.sku,
+                description: data.description !== undefined ? data.description : product.description,
+                categories: data.categories !== undefined ? data.categories : product.categories,
+                images: data.images !== undefined ? data.images : product.images,
+                tags: data.tags !== undefined ? data.tags : product.tags
             });
             
             console.log('Product updated:', product.toJSON());

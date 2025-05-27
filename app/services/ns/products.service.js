@@ -222,12 +222,24 @@ class NsProductsService {
                 variants: [
                     {
                         position: 1,
-                        price: String(product.price),
+                        price: String(product.getUnitPrice ? product.getUnitPrice() : product.price),
                         sku: product.sku || "",
+                        stock: product.stock || 0
                     }
                 ],
                 images: images
             };
+
+            // Se o produto tem preço de assinatura diferente, adicionar variante para assinatura
+            if (product.subscription_price && product.subscription_price !== product.price) {
+                nsProductData.variants.push({
+                    position: 2,
+                    price: String(product.getSubscriptionPrice()),
+                    sku: (product.sku || "") + "-SUB",
+                    stock: product.stock || 0,
+                    title: "Assinatura Mensal"
+                });
+            }
             
             // Log dos dados formatados para debug
             console.log('Dados do produto formatados para a Nuvemshop:', JSON.stringify(nsProductData, null, 2));

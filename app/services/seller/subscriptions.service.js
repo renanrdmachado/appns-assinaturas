@@ -232,6 +232,94 @@ class SellerSubscriptionsService {
             return formatError(error);
         }
     }
+
+    /**
+     * Atualiza uma assinatura completa
+     */
+    async updateSubscription(sellerId, subscriptionId, updateData) {
+        try {
+            if (!sellerId || !subscriptionId) {
+                return createError('ID do vendedor e da assinatura são obrigatórios', 400);
+            }
+
+            // Verificar se a assinatura pertence ao seller
+            const subscriptionCheck = await this.getSellerSubscriptionById(sellerId, subscriptionId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+
+            // Filtrar apenas campos permitidos para atualização
+            const allowedFields = ['status', 'payment_method', 'price', 'notes'];
+            const filteredData = {};
+            
+            allowedFields.forEach(field => {
+                if (updateData[field] !== undefined) {
+                    filteredData[field] = updateData[field];
+                }
+            });
+
+            if (Object.keys(filteredData).length === 0) {
+                return createError('Nenhum campo válido para atualização foi fornecido', 400);
+            }
+
+            // Atualizar a assinatura
+            const [updatedRows] = await ShopperSubscription.update(filteredData, {
+                where: { id: subscriptionId }
+            });
+
+            if (updatedRows === 0) {
+                return createError('Nenhuma assinatura foi atualizada', 400);
+            }
+
+            // Buscar a assinatura atualizada
+            const updatedSubscription = await this.getSellerSubscriptionById(sellerId, subscriptionId);
+            
+            return {
+                success: true,
+                data: updatedSubscription.data,
+                message: 'Assinatura atualizada com sucesso'
+            };
+        } catch (error) {
+            console.error(`Erro ao atualizar assinatura ${subscriptionId}:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Atualiza apenas o status da assinatura
+     */
+    async updateSubscriptionStatus(sellerId, subscriptionId, status) {
+        try {
+            return await this.updateSubscription(sellerId, subscriptionId, { status });
+        } catch (error) {
+            console.error(`Erro ao atualizar status da assinatura ${subscriptionId}:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Atualiza método de pagamento da assinatura
+     */
+    async updateSubscriptionPaymentMethod(sellerId, subscriptionId, paymentMethod) {
+        try {
+            return await this.updateSubscription(sellerId, subscriptionId, { payment_method: paymentMethod });
+        } catch (error) {
+            console.error(`Erro ao atualizar método de pagamento da assinatura ${subscriptionId}:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Atualiza preço da assinatura
+     */
+    async updateSubscriptionPrice(sellerId, subscriptionId, price) {
+        try {
+            return await this.updateSubscription(sellerId, subscriptionId, { price });
+        } catch (error) {
+            console.error(`Erro ao atualizar preço da assinatura ${subscriptionId}:`, error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new SellerSubscriptionsService();
