@@ -220,17 +220,76 @@ class SellerService {
                 return createError('ID da Nuvemshop é obrigatório', 400);
             }
             
+            if (!storeInfo || !storeInfo.email) {
+                return createError('Email da loja é obrigatório', 400);
+            }
+            
             const nuvemshopInfo = typeof storeInfo === 'string' 
                 ? storeInfo 
                 : JSON.stringify(storeInfo);
             
-            const [seller, created] = await Seller.upsert({
-                nuvemshop_id: nuvemshopId,
-                nuvemshop_info: nuvemshopInfo,
-                nuvemshop_api_token: api_token
+            // Usar transação para garantir consistência
+            const result = await sequelize.transaction(async (t) => {
+                // 1. Verificar se já existe um seller com este nuvemshop_id
+                let seller = await Seller.findOne({ 
+                    where: { nuvemshop_id: nuvemshopId },
+                    include: [{ model: User, as: 'user' }],
+                    transaction: t
+                });
+                
+                if (seller) {
+                    // Se o seller já existe, apenas atualizar as informações
+                    await seller.update({
+                        nuvemshop_info: nuvemshopInfo,
+                        nuvemshop_api_token: api_token
+                    }, { transaction: t });
+                    
+                    // Atualizar o email do usuário se necessário
+                    if (seller.user && seller.user.email !== storeInfo.email) {
+                        await seller.user.update({
+                            email: storeInfo.email
+                        }, { transaction: t });
+                    }
+                    
+                    return seller;
+                }
+                
+                // 2. Se não existe seller, buscar ou criar o User baseado no email
+                let user = await User.findOne({ 
+                    where: { email: storeInfo.email },
+                    transaction: t
+                });
+                
+                if (!user) {
+                    // Criar novo usuário com base nos dados da loja
+                    user = await User.create({
+                        email: storeInfo.email,
+                        username: storeInfo.name?.pt || `loja_${nuvemshopId}`,
+                        password: null // Senha será definida posteriormente se necessário
+                    }, { transaction: t });
+                }
+                
+                // 3. Criar o Seller vinculado ao User
+                seller = await Seller.create({
+                    nuvemshop_id: nuvemshopId,
+                    nuvemshop_info: nuvemshopInfo,
+                    nuvemshop_api_token: api_token,
+                    user_id: user.id,
+                    app_status: 'pending'
+                }, { transaction: t });
+                
+                // Recarregar com as relações
+                await seller.reload({
+                    include: [{ model: User, as: 'user' }],
+                    transaction: t
+                });
+                
+                return seller;
             });
             
-            return { success: true, data: seller };
+            console.log(`Informações da loja ${nuvemshopId} salvas com sucesso`);
+            return { success: true, data: result };
+            
         } catch (error) {
             console.error('Erro ao atualizar informações da loja:', error.message);
             return formatError(error);

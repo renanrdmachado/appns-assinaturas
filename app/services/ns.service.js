@@ -71,7 +71,7 @@ class NsService {
             
             // Usando o novo cliente de API NsApiClient
             const storeData = await NsApiClient.get({
-                storeId: store.user_id, // Este é o ID correto da loja na Nuvemshop
+                storeId: store.user_id,
                 endpoint: 'store',
                 accessToken: store.access_token
             });
