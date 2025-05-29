@@ -1,167 +1,139 @@
 const crypto = require('crypto');
 
 /**
- * Middleware para capturar o raw body necessário para validação de webhooks
- * Deve ser usado antes do express.json() nas rotas de webhook
+ * Middleware único para webhooks Nuvemshop que resolve TUDO de uma vez:
+ * - Captura raw body para validação de assinatura
+ * - Parseia JSON mantendo raw body
+ * - Valida assinatura HMAC
+ * - Valida estrutura do payload
+ * - Log de auditoria
  */
-const captureRawBody = (req, res, next) => {
-    if (req.headers['content-type'] === 'application/json') {
-        let rawBody = '';
-        req.on('data', chunk => {
-            rawBody += chunk.toString();
-        });
-        req.on('end', () => {
-            req.rawBody = rawBody;
-            try {
-                req.body = JSON.parse(rawBody);
-            } catch (error) {
-                req.body = {};
-            }
-            next();
-        });
-    } else {
-        next();
-    }
-};
-
-/**
- * Middleware para validar assinatura de webhooks da Nuvemshop
- * A Nuvemshop envia a assinatura no header x-linkedstore-hmac-sha256
- * Baseado na documentação oficial: https://tiendanube.github.io/api-documentation/resources/webhook
- */
-const validateNuvemshopWebhook = (req, res, next) => {
-    try {
-        // Header correto conforme documentação da Nuvemshop
-        const signature = req.headers['x-linkedstore-hmac-sha256'] || req.headers['http_x_linkedstore_hmac_sha256'];
-        
-        // Para validação, precisamos do raw body, não do JSON parsed
-        // O Express deve estar configurado com express.raw() para webhooks
-        const payload = req.rawBody || JSON.stringify(req.body);
-        
-        // Em produção, usar o webhook secret real fornecido pela Nuvemshop
-        const webhookSecret = process.env.NUVEMSHOP_WEBHOOK_SECRET;
-        
-        if (!webhookSecret || webhookSecret === 'your_webhook_secret_here') {
-            console.warn('⚠️  NUVEMSHOP_WEBHOOK_SECRET não configurado - pulando validação de assinatura');
-            return next(); // Em desenvolvimento, pular validação se secret não estiver configurado
-        }
-        
-        if (!signature) {
-            console.error('❌ Webhook recusado: Assinatura ausente');
-            console.error('❌ Headers recebidos:', Object.keys(req.headers));
-            return res.status(401).json({
-                success: false,
-                message: 'Assinatura do webhook é obrigatória'
-            });
-        }
-        
-        // Calcular a assinatura esperada usando o App Secret
-        const expectedSignature = crypto
-            .createHmac('sha256', webhookSecret)
-            .update(payload, 'utf8')
-            .digest('hex');
-        
-        // A Nuvemshop envia a assinatura sem prefixo, apenas o hash
-        const providedSignature = signature.toLowerCase();
-        
-        if (!crypto.timingSafeEqual(
-            Buffer.from(expectedSignature, 'hex'),
-            Buffer.from(providedSignature, 'hex')
-        )) {
-            console.error('❌ Webhook recusado: Assinatura inválida');
-            console.error('❌ Esperado:', expectedSignature);
-            console.error('❌ Recebido:', providedSignature);
-            return res.status(401).json({
-                success: false,
-                message: 'Assinatura do webhook inválida'
-            });
-        }
-        
-        console.log('✅ Webhook validado: Assinatura correta');
-        next();
-        
-    } catch (error) {
-        console.error('❌ Erro na validação do webhook:', error.message);
-        return res.status(500).json({
-            success: false,
-            message: 'Erro interno na validação do webhook'
-        });
-    }
-};
-
-/**
- * Middleware mais simples para validação básica de estrutura dos dados LGPD
- */
-const validateLgpdWebhookStructure = (expectedFields) => {
+const nuvemshopWebhook = (requiredFields = []) => {
     return (req, res, next) => {
-        try {
-            const body = req.body;
-            
-            if (!body) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Corpo da requisição é obrigatório'
+        // Buffer para capturar dados brutos
+        let rawBody = '';
+        
+        // Configurar encoding para capturar o body como string
+        req.setEncoding('utf8');
+        
+        // Capturar dados brutos
+        req.on('data', chunk => {
+            rawBody += chunk;
+        });
+        
+        req.on('end', () => {
+            try {
+                // Parsear JSON
+                req.body = JSON.parse(rawBody);
+                req.rawBody = rawBody;
+                
+                // Log de auditoria
+                console.log(`📩 Webhook Nuvemshop recebido:`, {
+                    url: req.originalUrl,
+                    method: req.method,
+                    body: req.body,
+                    signature: req.headers['x-linkedstore-hmac-sha256'] ? '[PRESENTE]' : '[AUSENTE]',
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Validar assinatura
+                if (!validateSignature(req, res)) return;
+                
+                // Validar estrutura
+                if (!validateStructure(req, res, requiredFields)) return;
+                
+                console.log('✅ Webhook validado com sucesso');
+                next();
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar webhook:', {
+                    error: error.message,
+                    rawBody: rawBody,
+                    url: req.originalUrl
+                });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Formato JSON inválido',
+                    details: error.message
                 });
             }
-            
-            // Verificar campos obrigatórios
-            for (const field of expectedFields) {
-                if (!body[field]) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Campo '${field}' é obrigatório`
-                    });
-                }
-            }
-            
-            console.log('✅ Estrutura do webhook LGPD validada');
-            next();
-            
-        } catch (error) {
-            console.error('❌ Erro na validação da estrutura LGPD:', error.message);
-            return res.status(500).json({
+        });
+        
+        req.on('error', (error) => {
+            console.error('❌ Erro na requisição do webhook:', error);
+            res.status(400).json({
                 success: false,
-                message: 'Erro interno na validação da estrutura'
+                message: 'Erro ao processar requisição'
             });
-        }
+        });
     };
 };
 
 /**
- * Middleware específico para store/redact
- * Baseado no payload oficial: { store_id: 123 }
+ * Valida assinatura HMAC do webhook Nuvemshop
  */
-const validateStoreRedactWebhook = validateLgpdWebhookStructure(['store_id']);
+function validateSignature(req, res) {
+    const signature = req.headers['x-linkedstore-hmac-sha256'];
+    const webhookSecret = process.env.NUVEMSHOP_WEBHOOK_SECRET;
+    
+    // Em desenvolvimento, pular validação se secret não configurado
+    if (!webhookSecret || webhookSecret === 'your_webhook_secret_here') {
+        console.warn('⚠️  NUVEMSHOP_WEBHOOK_SECRET não configurado - pulando validação');
+        return true;
+    }
+    
+    if (!signature) {
+        console.error('❌ Assinatura ausente');
+        res.status(401).json({ success: false, message: 'Assinatura obrigatória' });
+        return false;
+    }
+    
+    const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(req.rawBody, 'utf8')
+        .digest('hex');
+    
+    if (!crypto.timingSafeEqual(
+        Buffer.from(expectedSignature, 'hex'),
+        Buffer.from(signature, 'hex')
+    )) {
+        console.error('❌ Assinatura inválida');
+        res.status(401).json({ success: false, message: 'Assinatura inválida' });
+        return false;
+    }
+    
+    return true;
+}
 
 /**
- * Middleware específico para customers/redact e customers/data_request
- * Baseado no payload oficial: { store_id: 123, customer: {...}, ... }
+ * Valida estrutura do payload
  */
-const validateCustomersWebhook = validateLgpdWebhookStructure(['store_id', 'customer']);
+function validateStructure(req, res, requiredFields) {
+    const missingFields = requiredFields.filter(field => 
+        req.body[field] === undefined || 
+        req.body[field] === null || 
+        req.body[field] === ''
+    );
+    
+    if (missingFields.length > 0) {
+        console.error('❌ Campos ausentes:', missingFields);
+        res.status(400).json({
+            success: false,
+            message: `Campos obrigatórios ausentes: ${missingFields.join(', ')}`,
+            missing_fields: missingFields
+        });
+        return false;
+    }
+    
+    return true;
+}
 
-/**
- * Middleware para log de webhooks recebidos (útil para debug e auditoria)
- */
-const logWebhookReceived = (webhookType) => {
-    return (req, res, next) => {
-        const timestamp = new Date().toISOString();
-        const ip = req.ip || req.connection.remoteAddress;
-        
-        console.log(`📩 [${timestamp}] Webhook LGPD recebido:`);
-        console.log(`   Tipo: ${webhookType}`);
-        console.log(`   IP: ${ip}`);
-        console.log(`   User-Agent: ${req.headers['user-agent'] || 'N/A'}`);
-        console.log(`   Payload: ${JSON.stringify(req.body, null, 2)}`);
-        
-        next();
-    };
-};
+// Middlewares específicos para cada endpoint
+const storeRedactWebhook = nuvemshopWebhook(['store_id']);
+const customersWebhook = nuvemshopWebhook(['store_id', 'customer']);
 
 module.exports = {
-    captureRawBody,
-    validateNuvemshopWebhook,
-    validateLgpdWebhookStructure,
-    validateStoreRedactWebhook,
-    validateCustomersWebhook,
-    logWebhookReceived
+    nuvemshopWebhook,
+    storeRedactWebhook,
+    customersWebhook
 };

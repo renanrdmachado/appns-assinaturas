@@ -60,6 +60,32 @@ NS_CLIENT_SECRET=403186e44061ec5678eff316793fa2f074d77b68ec6e77de
 - `POST /api/ns/lgpd-webhooks/customers/redact`
 - `POST /api/ns/lgpd-webhooks/customers/data-request`
 
+## 🐛 Correções de Bugs Implementadas
+
+### Problema do Campo `store_id` Ausente
+
+**Problema Identificado:** O campo `store_id` estava sendo reportado como ausente durante a validação dos webhooks LGPD, mesmo sendo enviado pela Nuvemshop.
+
+**Causa Raiz:** Conflito entre middleware de captura do raw body e parsing automático do JSON pelo Express:
+1. O Express aplicava `express.json()` globalmente **antes** das rotas de webhook
+2. O body JSON era parseado imediatamente, impedindo a captura do raw body
+3. A validação de estrutura recebia um body mal formado ou vazio
+4. O campo `store_id` não era encontrado, causando erro de validação
+
+**Solução Implementada:**
+- Reorganização da ordem dos middlewares no Express
+- Aplicação do `captureRawBody` especificamente para rotas de webhook LGPD
+- Remoção de middlewares duplicados nas rotas individuais
+- Melhoramento do debug para facilitar troubleshooting futuro
+
+### Middleware Simplificado
+
+Foi implementada uma abordagem simplificada e elegante para o middleware de webhooks:
+- `storeRedactWebhook`: Middleware unificado para webhook store/redact
+- `customersWebhook`: Middleware unificado para webhooks customers/redact e customers/data_request
+- Mantém os princípios Clean Code, DRY e SOLID
+- Evita complexidade desnecessária de múltiplos middlewares encadeados
+
 ## 📊 Fluxo de Funcionamento
 
 ### 1. **Autorização da Loja**
