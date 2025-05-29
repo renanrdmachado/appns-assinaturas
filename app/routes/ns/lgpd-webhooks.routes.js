@@ -12,7 +12,7 @@ const { storeRedactWebhook, customersWebhook } = require('../../middleware/webho
  * @flow LGPD Compliance - handles mandatory store data deletion
  */
 router.post('/store/redact', 
-    ...storeRedactWebhook,
+    storeRedactWebhook,
     LgpdWebhooksController.storeRedact
 );
 
@@ -25,7 +25,7 @@ router.post('/store/redact',
  * @flow LGPD Compliance - handles mandatory customer data deletion
  */
 router.post('/customers/redact',
-    ...customersWebhook,
+    customersWebhook,
     LgpdWebhooksController.customersRedact
 );
 
@@ -38,7 +38,7 @@ router.post('/customers/redact',
  * @flow LGPD Compliance - handles mandatory customer data reporting
  */
 router.post('/customers/data-request',
-    ...customersWebhook,
+    customersWebhook,
     LgpdWebhooksController.customersDataRequest
 );
 
