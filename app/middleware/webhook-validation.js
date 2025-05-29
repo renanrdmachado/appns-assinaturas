@@ -39,10 +39,10 @@ const validateNuvemshopWebhook = (req, res, next) => {
         const payload = req.rawBody || JSON.stringify(req.body);
         
         // Em produção, usar o webhook secret real fornecido pela Nuvemshop
-        const webhookSecret = process.env.NS_CLIENT_SECRET;
+        const webhookSecret = process.env.NUVEMSHOP_WEBHOOK_SECRET;
         
-        if (!webhookSecret) {
-            console.warn('⚠️  NS_CLIENT_SECRET não configurado - pulando validação de assinatura');
+        if (!webhookSecret || webhookSecret === 'your_webhook_secret_here') {
+            console.warn('⚠️  NUVEMSHOP_WEBHOOK_SECRET não configurado - pulando validação de assinatura');
             return next(); // Em desenvolvimento, pular validação se secret não estiver configurado
         }
         
