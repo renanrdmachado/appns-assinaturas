@@ -25,18 +25,7 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// Aplicar express.json() apenas para rotas que NÃO são webhooks
-// Os webhooks precisam capturar o raw body para validação HMAC
-app.use((req, res, next) => {
-    if (req.path.includes('/webhooks')) {
-        // Pular express.json() para webhooks - será processado pelo middleware específico
-        next();
-    } else {
-        // Aplicar express.json() para todas as outras rotas
-        express.json()(req, res, next);
-    }
-});
-
+app.use(express.json());
 app.use('/', routes);
 
 app.listen(port, () => {
