@@ -9,23 +9,34 @@ const crypto = require('crypto');
  * - Log de auditoria
  */
 const nuvemshopWebhook = (requiredFields = []) => {
-    return (req, res, next) => {
-        // Buffer para capturar dados brutos
-        let rawBody = '';
+    return [
+        // Primeiro: capturar raw body
+        (req, res, next) => {
+            req.rawBody = '';
+            req.setEncoding('utf8');
+            
+            req.on('data', chunk => {
+                req.rawBody += chunk;
+            });
+            
+            req.on('end', () => {
+                next();
+            });
+            
+            req.on('error', (error) => {
+                console.error('❌ Erro na requisição do webhook:', error);
+                res.status(400).json({
+                    success: false,
+                    message: 'Erro ao processar requisição'
+                });
+            });
+        },
         
-        // Configurar encoding para capturar o body como string
-        req.setEncoding('utf8');
-        
-        // Capturar dados brutos
-        req.on('data', chunk => {
-            rawBody += chunk;
-        });
-        
-        req.on('end', () => {
+        // Segundo: processar e validar
+        (req, res, next) => {
             try {
-                // Parsear JSON
-                req.body = JSON.parse(rawBody);
-                req.rawBody = rawBody;
+                // Parsear JSON do raw body
+                req.body = JSON.parse(req.rawBody);
                 
                 // Log de auditoria
                 console.log(`📩 Webhook Nuvemshop recebido:`, {
@@ -48,7 +59,7 @@ const nuvemshopWebhook = (requiredFields = []) => {
             } catch (error) {
                 console.error('❌ Erro ao processar webhook:', {
                     error: error.message,
-                    rawBody: rawBody,
+                    rawBody: req.rawBody,
                     url: req.originalUrl
                 });
                 return res.status(400).json({ 
@@ -57,16 +68,8 @@ const nuvemshopWebhook = (requiredFields = []) => {
                     details: error.message
                 });
             }
-        });
-        
-        req.on('error', (error) => {
-            console.error('❌ Erro na requisição do webhook:', error);
-            res.status(400).json({
-                success: false,
-                message: 'Erro ao processar requisição'
-            });
-        });
-    };
+        }
+    ];
 };
 
 /**
