@@ -1,44 +1,76 @@
 const crypto = require('crypto');
 
 /**
+ * Middleware para capturar o raw body necessário para validação de webhooks
+ * Deve ser usado antes do express.json() nas rotas de webhook
+ */
+const captureRawBody = (req, res, next) => {
+    if (req.headers['content-type'] === 'application/json') {
+        let rawBody = '';
+        req.on('data', chunk => {
+            rawBody += chunk.toString();
+        });
+        req.on('end', () => {
+            req.rawBody = rawBody;
+            try {
+                req.body = JSON.parse(rawBody);
+            } catch (error) {
+                req.body = {};
+            }
+            next();
+        });
+    } else {
+        next();
+    }
+};
+
+/**
  * Middleware para validar assinatura de webhooks da Nuvemshop
- * A Nuvemshop envia a assinatura no header X-Tiendanube-Hmac-Sha256
+ * A Nuvemshop envia a assinatura no header x-linkedstore-hmac-sha256
+ * Baseado na documentação oficial: https://tiendanube.github.io/api-documentation/resources/webhook
  */
 const validateNuvemshopWebhook = (req, res, next) => {
     try {
-        const signature = req.headers['x-tiendanube-hmac-sha256'];
-        const payload = JSON.stringify(req.body);
+        // Header correto conforme documentação da Nuvemshop
+        const signature = req.headers['x-linkedstore-hmac-sha256'] || req.headers['http_x_linkedstore_hmac_sha256'];
+        
+        // Para validação, precisamos do raw body, não do JSON parsed
+        // O Express deve estar configurado com express.raw() para webhooks
+        const payload = req.rawBody || JSON.stringify(req.body);
         
         // Em produção, usar o webhook secret real fornecido pela Nuvemshop
-        const webhookSecret = process.env.NUVEMSHOP_WEBHOOK_SECRET;
+        const webhookSecret = process.env.NS_CLIENT_SECRET;
         
         if (!webhookSecret) {
-            console.warn('⚠️  NUVEMSHOP_WEBHOOK_SECRET não configurado - pulando validação de assinatura');
+            console.warn('⚠️  NS_CLIENT_SECRET não configurado - pulando validação de assinatura');
             return next(); // Em desenvolvimento, pular validação se secret não estiver configurado
         }
         
         if (!signature) {
             console.error('❌ Webhook recusado: Assinatura ausente');
+            console.error('❌ Headers recebidos:', Object.keys(req.headers));
             return res.status(401).json({
                 success: false,
                 message: 'Assinatura do webhook é obrigatória'
             });
         }
         
-        // Calcular a assinatura esperada
+        // Calcular a assinatura esperada usando o App Secret
         const expectedSignature = crypto
             .createHmac('sha256', webhookSecret)
-            .update(payload)
+            .update(payload, 'utf8')
             .digest('hex');
         
-        // Comparar assinaturas de forma segura
-        const providedSignature = signature.replace('sha256=', '');
+        // A Nuvemshop envia a assinatura sem prefixo, apenas o hash
+        const providedSignature = signature.toLowerCase();
         
         if (!crypto.timingSafeEqual(
             Buffer.from(expectedSignature, 'hex'),
             Buffer.from(providedSignature, 'hex')
         )) {
             console.error('❌ Webhook recusado: Assinatura inválida');
+            console.error('❌ Esperado:', expectedSignature);
+            console.error('❌ Recebido:', providedSignature);
             return res.status(401).json({
                 success: false,
                 message: 'Assinatura do webhook inválida'
@@ -97,13 +129,15 @@ const validateLgpdWebhookStructure = (expectedFields) => {
 
 /**
  * Middleware específico para store/redact
+ * Baseado no payload oficial: { store_id: 123 }
  */
-const validateStoreRedactWebhook = validateLgpdWebhookStructure(['shop_id', 'shop_domain']);
+const validateStoreRedactWebhook = validateLgpdWebhookStructure(['store_id']);
 
 /**
  * Middleware específico para customers/redact e customers/data_request
+ * Baseado no payload oficial: { store_id: 123, customer: {...}, ... }
  */
-const validateCustomersWebhook = validateLgpdWebhookStructure(['shop_id', 'customer']);
+const validateCustomersWebhook = validateLgpdWebhookStructure(['store_id', 'customer']);
 
 /**
  * Middleware para log de webhooks recebidos (útil para debug e auditoria)
@@ -124,6 +158,7 @@ const logWebhookReceived = (webhookType) => {
 };
 
 module.exports = {
+    captureRawBody,
     validateNuvemshopWebhook,
     validateLgpdWebhookStructure,
     validateStoreRedactWebhook,
