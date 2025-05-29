@@ -544,6 +544,73 @@ class ShopperService {
             notificationDisabled: false
         };
     }
+    
+    /**
+     * Obtém um shopper pelo email
+     * @param {string} email - Email do shopper
+     */
+    async getByEmail(email) {
+        try {
+            if (!email) {
+                return createError('Email é obrigatório', 400);
+            }
+            
+            const shopper = await Shopper.findOne({
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        where: { email: email },
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
+            
+            if (!shopper) {
+                return createError(`Shopper com email ${email} não encontrado`, 404);
+            }
+            
+            return { success: true, data: shopper };
+        } catch (error) {
+            console.error('Erro ao buscar shopper por email:', error.message);
+            return formatError(error);
+        }
+    }
+    
+    /**
+     * Obtém um shopper pelo CPF/CNPJ
+     * @param {string} cpfCnpj - CPF ou CNPJ do shopper
+     */
+    async getByCpfCnpj(cpfCnpj) {
+        try {
+            if (!cpfCnpj) {
+                return createError('CPF/CNPJ é obrigatório', 400);
+            }
+            
+            const shopper = await Shopper.findOne({
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ 
+                            model: UserData, 
+                            as: 'userData',
+                            where: { cpfCnpj: cpfCnpj }
+                        }] 
+                    }
+                ]
+            });
+            
+            if (!shopper) {
+                return createError(`Shopper com CPF/CNPJ ${cpfCnpj} não encontrado`, 404);
+            }
+            
+            return { success: true, data: shopper };
+        } catch (error) {
+            console.error('Erro ao buscar shopper por CPF/CNPJ:', error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new ShopperService();

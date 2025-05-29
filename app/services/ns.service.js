@@ -82,6 +82,28 @@ class NsService {
                 return result; // Propagar erro do SellerService
             }
             
+            // Configurar webhooks LGPD automaticamente após autorização bem-sucedida
+            try {
+                const NsWebhooksService = require('./ns/webhooks.service');
+                const baseUrl = process.env.APP_BASE_URL || 'https://seuapp.com'; // Configure no .env
+                
+                console.log('Configurando webhooks LGPD automaticamente...');
+                const webhooksResult = await NsWebhooksService.setupLgpdWebhooks(
+                    store.user_id,
+                    store.access_token,
+                    baseUrl
+                );
+                
+                if (webhooksResult.success) {
+                    console.log('Webhooks LGPD configurados com sucesso');
+                } else {
+                    console.warn('Aviso: Falha ao configurar webhooks LGPD:', webhooksResult.message);
+                }
+            } catch (webhookError) {
+                console.warn('Aviso: Erro ao configurar webhooks LGPD:', webhookError.message);
+                // Não falhar o processo de autorização por causa dos webhooks
+            }
+            
             return { success: true, data: storeData };
         } catch (error) {
             console.error('Erro ao obter informações da loja:', error.message);
