@@ -13,4 +13,9 @@ router.post('/:id/subaccount', SellerController.addSubAccount);
 // Nova rota para sincronização com o Asaas
 router.post('/:id/sync-asaas', SellerController.syncWithAsaas);
 
+// Novas rotas para gerenciar métodos de pagamento
+router.patch('/:id/payment-methods', SellerController.updatePaymentMethods);
+router.post('/:id/payment-methods', SellerController.addPaymentMethod);
+router.delete('/:id/payment-methods', SellerController.removePaymentMethod);
+
 module.exports = router;

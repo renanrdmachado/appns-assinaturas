@@ -5,6 +5,7 @@ const Shopper = require('../models/Shopper'); // Adicionando importação do Sho
 const { createError, formatError } = require('../utils/errorHandler');
 const AsaasCustomerService = require('./asaas/customer.service');
 const SellerValidator = require('../validators/seller-validator');
+const PaymentMethodsValidator = require('../validators/payment-methods-validator');
 const AsaasMapper = require('../utils/asaas-mapper');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
@@ -703,25 +704,10 @@ class SellerService {
             );
             
             if (result.success) {
-                // Sempre atualiza o ID do customer no seller
-                await seller.update({ 
-                    payments_customer_id: result.data.id 
-                });
-                
-                // Recarregar o objeto depois da atualização
-                await seller.reload();
+                return { success: true, message: 'Sincronização com Asaas realizada com sucesso', data: result.data };
             } else {
-                return createError(`Falha ao sincronizar com Asaas: ${result.message}`, result.status || 400);
+                return createError(`Erro ao sincronizar com Asaas: ${result.message}`, result.status || 400);
             }
-            
-            return { 
-                success: true,
-                data: {
-                    seller: seller,
-                    asaasCustomer: result.data
-                },
-                message: 'Vendedor sincronizado com sucesso no Asaas'
-            };
         } catch (error) {
             console.error('Erro ao sincronizar vendedor com Asaas:', error.message);
             return formatError(error);
@@ -729,19 +715,123 @@ class SellerService {
     }
 
     /**
-     * Busca um seller pelo nuvemshop_id (storeId)
-     * @param {string} storeId
-     * @returns {Promise<Object>} seller
+     * Atualiza os métodos de pagamento aceitos pelo seller
+     * @param {number} id - ID do seller
+     * @param {Array} paymentMethods - Array com os métodos de pagamento
+     * @returns {Promise<Object>} Resultado da operação
      */
-    async getByStoreId(storeId) {
+    async updatePaymentMethods(id, paymentMethods) {
         try {
-            const seller = await Seller.findOne({ where: { nuvemshop_id: storeId } });
+            // Validação do ID
+            SellerValidator.validateId(id);
+            
+            // Validação dos métodos de pagamento
+            PaymentMethodsValidator.validatePaymentMethods(paymentMethods);
+            
+            // Buscar o seller
+            const seller = await Seller.findByPk(id);
             if (!seller) {
-                return { success: false, message: 'Seller não encontrado para este storeId', status: 404 };
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
-            return { success: true, data: seller };
+            
+            // Atualizar os métodos de pagamento
+            seller.accepted_payment_methods = paymentMethods;
+            await seller.save();
+            
+            return { 
+                success: true, 
+                message: 'Métodos de pagamento atualizados com sucesso', 
+                data: seller 
+            };
         } catch (error) {
-            return { success: false, message: error.message, status: 500 };
+            console.error('Erro ao atualizar métodos de pagamento:', error.message);
+            return formatError(error);
+        }
+    }
+    
+    /**
+     * Adiciona um método de pagamento aos aceitos pelo seller
+     * @param {number} id - ID do seller 
+     * @param {string} paymentMethod - Método de pagamento a ser adicionado
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async addPaymentMethod(id, paymentMethod) {
+        try {
+            // Validação do ID
+            SellerValidator.validateId(id);
+            
+            // Validação do método de pagamento
+            PaymentMethodsValidator.validateSinglePaymentMethod(paymentMethod);
+            
+            // Buscar o seller
+            const seller = await Seller.findByPk(id);
+            if (!seller) {
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
+            }
+            
+            // Verificar se o método já está aceito
+            if (seller.isPaymentMethodAccepted(paymentMethod)) {
+                return createError(`Método de pagamento '${paymentMethod}' já está aceito pelo vendedor`, 400);
+            }
+            
+            // Adicionar o método de pagamento
+            seller.addPaymentMethod(paymentMethod);
+            await seller.save();
+            
+            return { 
+                success: true, 
+                message: `Método de pagamento '${paymentMethod}' adicionado com sucesso`, 
+                data: seller 
+            };
+        } catch (error) {
+            console.error('Erro ao adicionar método de pagamento:', error.message);
+            return formatError(error);
+        }
+    }
+    
+    /**
+     * Remove um método de pagamento dos aceitos pelo seller
+     * @param {number} id - ID do seller
+     * @param {string} paymentMethod - Método de pagamento a ser removido
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async removePaymentMethod(id, paymentMethod) {
+        try {
+            // Validação do ID
+            SellerValidator.validateId(id);
+            
+            // Validação do método de pagamento
+            PaymentMethodsValidator.validateSinglePaymentMethod(paymentMethod);
+            
+            // Buscar o seller
+            const seller = await Seller.findByPk(id);
+            if (!seller) {
+                return createError(`Vendedor com ID ${id} não encontrado`, 404);
+            }
+            
+            // Verificar se o método está aceito
+            if (!seller.isPaymentMethodAccepted(paymentMethod)) {
+                return createError(`Método de pagamento '${paymentMethod}' não está aceito pelo vendedor`, 400);
+            }
+            
+            // Verificar se é o último método de pagamento
+            const currentMethods = seller.accepted_payment_methods || [];
+            if (currentMethods.length <= 1) {
+                return createError('Não é possível remover o último método de pagamento', 400);
+            }
+            
+            // Remover o método de pagamento
+            seller.removePaymentMethod(paymentMethod);
+            await seller.save();
+            
+            return { 
+                success: true, 
+                message: `Método de pagamento '${paymentMethod}' removido com sucesso`, 
+                data: seller 
+            };
+        } catch (error) {
+            console.error('Erro ao remover método de pagamento:', error.message);
+            return formatError(error);
         }
     }
 }

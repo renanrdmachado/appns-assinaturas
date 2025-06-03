@@ -222,64 +222,6 @@ class SellerSubscriptionsController {
     }
 
     /**
-     * Atualiza método de pagamento da assinatura
-     */
-    async updatePaymentMethod(req, res) {
-        try {
-            const { seller_id, subscription_id } = req.params;
-            const { payment_method } = req.body;
-
-            // Validar dados de entrada
-            try {
-                SubscriptionValidator.validatePaymentMethodUpdate({ payment_method });
-            } catch (validationError) {
-                return res.status(400).json(formatError(validationError));
-            }
-
-            // Validar se o seller existe
-            const seller = await SellerService.get(seller_id);
-            if (!seller.success) {
-                return res.status(seller.status || 404).json({ 
-                    success: false, 
-                    message: 'Vendedor não encontrado' 
-                });
-            }
-
-            // Buscar a assinatura para validar se pode ser editada
-            const subscriptionResult = await SellerSubscriptionsService.getSellerSubscriptionById(seller_id, subscription_id);
-            if (!subscriptionResult.success) {
-                return res.status(subscriptionResult.status || 404).json(subscriptionResult);
-            }
-
-            // Validar se a assinatura pode ser editada
-            try {
-                SubscriptionValidator.validateSubscriptionCanBeEdited(subscriptionResult.data, 'payment_method');
-            } catch (validationError) {
-                return res.status(400).json(formatError(validationError));
-            }
-
-            const result = await SellerSubscriptionsService.updateSubscriptionPaymentMethod(
-                seller_id,
-                subscription_id,
-                payment_method
-            );
-
-            if (!result.success) {
-                return res.status(result.status || 400).json(result);
-            }
-
-            return res.status(200).json(result);
-        } catch (error) {
-            console.error('Erro ao atualizar método de pagamento da assinatura:', error);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Erro interno do servidor', 
-                error: error.message 
-            });
-        }
-    }
-
-    /**
      * Atualiza preço da assinatura
      */
     async updateSubscriptionPrice(req, res) {

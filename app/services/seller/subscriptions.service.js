@@ -298,18 +298,6 @@ class SellerSubscriptionsService {
     }
 
     /**
-     * Atualiza método de pagamento da assinatura
-     */
-    async updateSubscriptionPaymentMethod(sellerId, subscriptionId, paymentMethod) {
-        try {
-            return await this.updateSubscription(sellerId, subscriptionId, { payment_method: paymentMethod });
-        } catch (error) {
-            console.error(`Erro ao atualizar método de pagamento da assinatura ${subscriptionId}:`, error.message);
-            return formatError(error);
-        }
-    }
-
-    /**
      * Atualiza preço da assinatura
      */
     async updateSubscriptionPrice(sellerId, subscriptionId, price) {

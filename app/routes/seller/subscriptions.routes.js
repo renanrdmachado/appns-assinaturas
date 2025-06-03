@@ -27,13 +27,6 @@ router.put('/:subscription_id', SubscriptionsController.updateSubscription);
 router.patch('/:subscription_id/status', SubscriptionsController.updateSubscriptionStatus);
 
 /**
- * @route PATCH /sellers/:seller_id/subscriptions/:subscription_id/payment-method
- * @desc Atualiza método de pagamento da assinatura
- * @access Proprietário ou Admin
- */
-router.patch('/:subscription_id/payment-method', SubscriptionsController.updatePaymentMethod);
-
-/**
  * @route PATCH /sellers/:seller_id/subscriptions/:subscription_id/price
  * @desc Atualiza preço da assinatura
  * @access Proprietário ou Admin

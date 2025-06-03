@@ -1,5 +1,6 @@
 require('dotenv').config();
 const SellerService = require('../services/seller.service');
+const PaymentMethodsValidator = require('../validators/payment-methods-validator');
 const { formatError } = require('../utils/errorHandler');
 
 // Listar todos os vendedores
@@ -158,6 +159,81 @@ const syncWithAsaas = async (req, res) => {
     }
 };
 
+// Atualizar métodos de pagamento aceitos pelo seller
+const updatePaymentMethods = async (req, res) => {
+    console.log("Controller - SellerController/updatePaymentMethods");
+    try {
+        const { id } = req.params;
+        const { payment_methods } = req.body;
+        
+        const result = await SellerService.updatePaymentMethods(id, payment_methods);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Métodos de pagamento atualizados com sucesso', 
+            data: result.data 
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar métodos de pagamento:", error);
+        return res.status(500).json(formatError(error));
+    }
+};
+
+// Adicionar método de pagamento aos aceitos pelo seller
+const addPaymentMethod = async (req, res) => {
+    console.log("Controller - SellerController/addPaymentMethod");
+    try {
+        const { id } = req.params;
+        const { payment_method } = req.body;
+        
+        const result = await SellerService.addPaymentMethod(id, payment_method);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: `Método de pagamento '${payment_method}' adicionado com sucesso`, 
+            data: result.data 
+        });
+    } catch (error) {
+        console.error("Erro ao adicionar método de pagamento:", error);
+        return res.status(500).json(formatError(error));
+    }
+};
+
+// Remover método de pagamento dos aceitos pelo seller
+const removePaymentMethod = async (req, res) => {
+    console.log("Controller - SellerController/removePaymentMethod");
+    try {
+        const { id } = req.params;
+        const { payment_method } = req.body;
+        
+        const result = await SellerService.removePaymentMethod(id, payment_method);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: `Método de pagamento '${payment_method}' removido com sucesso`, 
+            data: result.data 
+        });
+    } catch (error) {
+        console.error("Erro ao remover método de pagamento:", error);
+        return res.status(500).json(formatError(error));
+    }
+};
+
 module.exports = {
     index,
     show,
@@ -165,5 +241,8 @@ module.exports = {
     update,
     destroy,
     addSubAccount,
-    syncWithAsaas
+    syncWithAsaas,
+    updatePaymentMethods,
+    addPaymentMethod,
+    removePaymentMethod
 };

@@ -19,7 +19,12 @@
 - ✅ `PATCH /sellers/:seller_id/subscriptions/:subscription_id/payment-method` - Atualização de método de pagamento
 - ✅ `PATCH /sellers/:seller_id/subscriptions/:subscription_id/price` - Atualização de preço
 
-### 4. **Controller de Assinaturas do Vendedor Atualizado**
+### 4. **Novas Rotas para Gerenciamento de Métodos de Pagamento do Seller**
+- ✅ `PATCH /sellers/:id/payment-methods` - Atualização de todos os métodos de pagamento aceitos
+- ✅ `POST /sellers/:id/payment-methods` - Adicionar um método de pagamento
+- ✅ `DELETE /sellers/:id/payment-methods` - Remover um método de pagamento
+
+### 5. **Controller de Assinaturas do Vendedor Atualizado**
 - ✅ Métodos implementados:
   - `updateSubscription()` - Atualização completa com validação
   - `updateSubscriptionStatus()` - Atualização apenas do status
@@ -27,12 +32,23 @@
   - `updateSubscriptionPrice()` - Atualização do preço
 - ✅ Validações integradas com `SubscriptionValidator`
 
-### 5. **Service Layer Aprimorado**
+### 6. **Controller do Seller Atualizado para Gerenciar Métodos de Pagamento**
+- ✅ Métodos implementados:
+  - `updatePaymentMethods()` - Atualizar todos os métodos de pagamento aceitos
+  - `addPaymentMethod()` - Adicionar um novo método de pagamento
+  - `removePaymentMethod()` - Remover um método de pagamento
+- ✅ Validações integradas com `PaymentMethodsValidator`
+
+### 7. **Service Layer Aprimorado**
 - ✅ `SellerSubscriptionsService` com novos métodos para edição
 - ✅ `ProductService` atualizado para novos campos
+- ✅ `SellerService` com métodos específicos para gerenciar métodos de pagamento:
+  - `updatePaymentMethods()`
+  - `addPaymentMethod()`
+  - `removePaymentMethod()`
 - ✅ Integração Nuvemshop atualizada para preços de assinatura
 
-### 6. **Validadores Criados/Atualizados**
+### 8. **Validadores Criados/Atualizados**
 
 #### ProductValidator (`/app/validators/product-validator.js`)
 - ✅ `validateCreate()` - Validação para criação
@@ -50,7 +66,19 @@
 - ✅ `validateSubscriptionCanBeEdited()` - Validação se pode ser editada
 - ✅ `sanitizeUpdateData()` - Sanitização de dados de atualização
 
-### 7. **Integração com APIs Externas**
+#### PaymentMethodsValidator (`/app/validators/payment-methods-validator.js`)
+- ✅ `validatePaymentMethods()` - Validação da lista de métodos de pagamento
+- ✅ `validateSinglePaymentMethod()` - Validação de um único método
+- ✅ `getValidPaymentMethods()` - Retorna métodos válidos (credit_card, pix, boleto)
+
+### 9. **Correção de Duplicação de Email no ShopperService**
+- ✅ Validação implementada para prevenir criação de shopper com email já existente
+- ✅ Lógica de reutilização de User existente sem Shopper vinculado
+- ✅ Tratamento adequado de erros de duplicação com mensagens claras
+- ✅ Transação atomica para garantir consistência dos dados
+- ✅ Testes unitários implementados para validar o comportamento
+
+### 10. **Integração com APIs Externas**
 - ✅ Nuvemshop sync atualizado para dual pricing (unitário vs assinatura)
 - ✅ Criação de variantes separadas quando `subscription_price` difere do `price`
 - ✅ Manutenção da compatibilidade com Asaas
@@ -79,8 +107,9 @@
 ### Para o Deploy
 1. **Resetar banco de desenvolvimento** (como mencionado pelo usuário)
 2. **Testar rotas de edição de assinaturas**
-3. **Verificar sincronização Nuvemshop** com novos campos
-4. **Validar integração Asaas** com preços de assinatura
+3. **Testar rotas de gerenciamento de métodos de pagamento do seller**
+4. **Verificar sincronização Nuvemshop** com novos campos
+5. **Validar integração Asaas** com preços de assinatura
 
 ### Melhorias Futuras
 1. **Documentação da API** para novas rotas
@@ -92,9 +121,10 @@
 
 - ✅ **Modelos atualizados** - Product e Seller
 - ✅ **Rotas implementadas** - CRUD completo para assinaturas
+- ✅ **Rotas de métodos de pagamento** - Gerenciamento completo dos métodos de pagamento do seller
 - ✅ **Controllers funcionais** - Com validações integradas
 - ✅ **Services atualizados** - Lógica de negócio implementada
-- ✅ **Validadores criados** - Product e Subscription
+- ✅ **Validadores criados** - Product, Subscription e PaymentMethods
 - ✅ **Integração externa** - Nuvemshop e Asaas compatíveis
 - ⏳ **Banco de dados** - Aguardando reset para aplicar mudanças
 - ⏳ **Testes** - Aguardando ambiente para validação
@@ -144,6 +174,36 @@ Content-Type: application/json
 }
 ```
 
+### Atualizar Métodos de Pagamento do Seller
+```http
+PATCH /sellers/123/payment-methods
+Content-Type: application/json
+
+{
+  "payment_methods": ["credit_card", "pix"]
+}
+```
+
+### Adicionar Método de Pagamento ao Seller
+```http
+POST /sellers/123/payment-methods
+Content-Type: application/json
+
+{
+  "payment_method": "boleto"
+}
+```
+
+### Remover Método de Pagamento do Seller
+```http
+DELETE /sellers/123/payment-methods
+Content-Type: application/json
+
+{
+  "payment_method": "boleto"
+}
+```
+
 ---
 
-*Implementação concluída em 26 de maio de 2025*
+*Implementação atualizada em 3 de junho de 2025*

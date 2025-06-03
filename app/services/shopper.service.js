@@ -175,16 +175,61 @@ class ShopperService {
                     }, { transaction: t });
                 }
                 
-                // Criar User vinculado ao UserData
-                const user = await User.create({
-                    username: data.username || null,
-                    email: data.email,
-                    password: data.password || null,
-                    user_data_id: userData?.id
-                }, { transaction: t });
+                // Verificar se já existe um User com este email
+                let user = await User.findOne({ 
+                    where: { email: data.email },
+                    transaction: t 
+                });
                 
-                // Criar Shopper vinculado ao User
-                const shopper = await Shopper.create({
+                if (user) {
+                    // Se existe User com este email, verificar se já tem um Shopper vinculado
+                    const existingShopper = await Shopper.findOne({
+                        where: { user_id: user.id },
+                        transaction: t
+                    });
+                    
+                    if (existingShopper) {
+                        // Se já existe um Shopper com este User, atualizar os dados do shopper existente
+                        console.log('Atualizando shopper existente:', existingShopper.id);
+                        
+                        // Atualizar campos individuais
+                        existingShopper.nuvemshop_id = data.nuvemshop_id || existingShopper.nuvemshop_id;
+                        existingShopper.nuvemshop_info = data.nuvemshop_info || existingShopper.nuvemshop_info;
+                        existingShopper.name = data.name || existingShopper.name;
+                        existingShopper.payments_customer_id = data.payments_customer_id || existingShopper.payments_customer_id;
+                        existingShopper.payments_status = data.payments_status || existingShopper.payments_status;
+                        
+                        // Salvar as alterações
+                        await existingShopper.save({ transaction: t });
+                        
+                        // Atualizar também os dados do usuário se fornecidos
+                        if (userData && user.user_data_id !== userData.id) {
+                            user.user_data_id = userData.id;
+                            await user.save({ transaction: t });
+                        }
+                        
+                        // Retornar o shopper atualizado
+                        return existingShopper.id;
+                    }
+                    
+                    // Se User existe mas não tem Shopper, atualizar user_data_id se necessário
+                    if (userData && user.user_data_id !== userData.id) {
+                        await user.update({ 
+                            user_data_id: userData.id 
+                        }, { transaction: t });
+                    }
+                } else {
+                    // Criar novo User se não existe
+                    user = await User.create({
+                        username: data.username || null,
+                        email: data.email,
+                        password: data.password || null,
+                        user_data_id: userData?.id
+                    }, { transaction: t });
+                }
+                
+                // Criar Shopper vinculado ao User (apenas se não foi atualizado um existente)
+                let shopper = await Shopper.create({
                     nuvemshop_id: data.nuvemshop_id || null,
                     nuvemshop_info: data.nuvemshop_info || null,
                     name: data.name,
@@ -197,8 +242,18 @@ class ShopperService {
                 return shopper;
             });
             
+            // Determinar o ID do shopper
+            let shopperId;
+            if (typeof result === 'number') {
+                // Foi atualizado um shopper existente
+                shopperId = result;
+            } else {
+                // Foi criado um novo shopper
+                shopperId = result.id;
+            }
+            
             // Carregar o shopper com as relações
-            const shopperWithRelations = await Shopper.findByPk(result.id, {
+            const shopperWithRelations = await Shopper.findByPk(shopperId, {
                 include: [
                     { 
                         model: User, 
@@ -208,12 +263,14 @@ class ShopperService {
                 ]
             });
             
-            console.log('Shopper created:', shopperWithRelations.id);
+            const isUpdate = typeof result === 'number';
+            console.log(`Shopper ${isUpdate ? 'updated' : 'created'}:`, shopperWithRelations.id);
             
             return { 
                 success: true, 
-                message: 'Shopper criado com sucesso',
-                data: shopperWithRelations
+                message: `Shopper ${isUpdate ? 'atualizado' : 'criado'} com sucesso`,
+                data: shopperWithRelations,
+                isUpdate: isUpdate
             };
         } catch (error) {
             console.error('Erro ao criar shopper:', error.message);
