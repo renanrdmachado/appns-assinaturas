@@ -814,12 +814,6 @@ class SellerService {
                 return createError(`Método de pagamento '${paymentMethod}' não está aceito pelo vendedor`, 400);
             }
             
-            // Verificar se é o último método de pagamento
-            const currentMethods = seller.accepted_payment_methods || [];
-            if (currentMethods.length <= 1) {
-                return createError('Não é possível remover o último método de pagamento', 400);
-            }
-            
             // Remover o método de pagamento
             seller.removePaymentMethod(paymentMethod);
             await seller.save();
@@ -834,6 +828,44 @@ class SellerService {
             return formatError(error);
         }
     }
+    
+    /**
+     * Busca um seller pelo ID da loja (store_id) da Nuvemshop
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async getByStoreId(storeId) {
+        try {
+            if (!storeId) {
+                return createError('ID da loja é obrigatório', 400);
+            }
+            
+            const seller = await Seller.findOne({
+                where: { nuvemshop_id: storeId },
+                include: [{ 
+                    model: User, 
+                    as: 'user',
+                    include: [{ model: UserData, as: 'userData' }] 
+                }]
+            });
+            
+            if (!seller) {
+                return createError(`Seller com store_id ${storeId} não encontrado`, 404);
+            }
+            
+            return { 
+                success: true, 
+                data: seller 
+            };
+        } catch (error) {
+            console.error('Erro ao buscar seller por store_id:', error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Adicionar subconta ao seller
+     */
 }
 
 module.exports = new SellerService();
