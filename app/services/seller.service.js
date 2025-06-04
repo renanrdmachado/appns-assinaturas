@@ -734,6 +734,13 @@ class SellerService {
                 return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
             
+            // Verificar se os métodos são válidos
+            const defaultMethods = ['credit_card', 'pix', 'boleto'];
+            if (!paymentMethods || !Array.isArray(paymentMethods) || paymentMethods.length === 0) {
+                paymentMethods = defaultMethods;
+                console.log(`Seller ID ${id}: Usando métodos de pagamento padrão:`, defaultMethods);
+            }
+            
             // Atualizar os métodos de pagamento
             seller.accepted_payment_methods = paymentMethods;
             await seller.save();
@@ -767,6 +774,11 @@ class SellerService {
             const seller = await Seller.findByPk(id);
             if (!seller) {
                 return createError(`Vendedor com ID ${id} não encontrado`, 404);
+            }
+            
+            // Garantir que accepted_payment_methods tenha um valor padrão se for null
+            if (!seller.accepted_payment_methods || !Array.isArray(seller.accepted_payment_methods)) {
+                seller.accepted_payment_methods = ['credit_card', 'pix', 'boleto'];
             }
             
             // Verificar se o método já está aceito
@@ -807,6 +819,11 @@ class SellerService {
             const seller = await Seller.findByPk(id);
             if (!seller) {
                 return createError(`Vendedor com ID ${id} não encontrado`, 404);
+            }
+            
+            // Garantir que accepted_payment_methods tenha um valor padrão se for null
+            if (!seller.accepted_payment_methods || !Array.isArray(seller.accepted_payment_methods)) {
+                seller.accepted_payment_methods = ['credit_card', 'pix', 'boleto'];
             }
             
             // Verificar se o método está aceito

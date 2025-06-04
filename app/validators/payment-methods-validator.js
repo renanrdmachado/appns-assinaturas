@@ -49,6 +49,11 @@ class PaymentMethodsValidator {
         if (typeof paymentMethod !== 'string') {
             throw new Error('Método de pagamento deve ser uma string');
         }
+        
+        // Verificar se é um dos métodos válidos
+        if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+            throw new Error(`Método de pagamento inválido: ${paymentMethod}. Métodos válidos: ${VALID_PAYMENT_METHODS.join(', ')}`);
+        }
 
         if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
             throw new Error(`Método de pagamento inválido: ${paymentMethod}. Métodos válidos: ${VALID_PAYMENT_METHODS.join(', ')}`);

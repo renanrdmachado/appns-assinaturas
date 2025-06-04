@@ -248,12 +248,22 @@ const getPaymentMethods = async (req, res) => {
             return res.status(result.status || 400).json(result);
         }
         
-        const { accepted_payment_methods } = result.data;
+        // Garantir que os métodos de pagamento nunca sejam null ou undefined
+        const defaultMethods = ['credit_card', 'pix', 'boleto'];
+        let accepted_payment_methods = result.data.accepted_payment_methods;
+        
+        // Se não houver métodos ou se não for um array válido, usar os padrões
+        if (!accepted_payment_methods || !Array.isArray(accepted_payment_methods) || accepted_payment_methods.length === 0) {
+            accepted_payment_methods = defaultMethods;
+            console.log(`Seller ID ${sellerId}: Usando métodos de pagamento padrão:`, defaultMethods);
+        } else {
+            console.log(`Seller ID ${sellerId}: Métodos de pagamento encontrados:`, accepted_payment_methods);
+        }
         
         return res.status(200).json({ 
             success: true,
             data: {
-                payment_methods: accepted_payment_methods || ['credit_card', 'pix', 'boleto']
+                payment_methods: accepted_payment_methods
             }
         });
     } catch (error) {
