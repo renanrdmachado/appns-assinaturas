@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
+// Importar controlador do seller
+const SellerController = require('../../controllers/seller.controller');
+
 // Importar rotas
 const productRoutes = require('./products.routes');
 const shopperRoutes = require('./shoppers.routes');
@@ -18,5 +21,9 @@ router.use('/store', storeRoutes);
 // Rota específica para assinaturas de um shopper de um seller
 const SubscriptionsController = require('../../controllers/seller/subscriptions.controller');
 router.get('/:seller_id/shoppers/:shopper_id/subscriptions', SubscriptionsController.getShopperSubscriptions);
+
+// Rotas para payment methods
+router.get('/:seller_id/payment-methods', SellerController.getPaymentMethods);
+router.put('/:seller_id/payment-methods/:method', SellerController.updateSinglePaymentMethod);
 
 module.exports = router;

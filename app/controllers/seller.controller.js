@@ -234,6 +234,100 @@ const removePaymentMethod = async (req, res) => {
     }
 };
 
+// Obter os métodos de pagamento aceitos pelo seller
+const getPaymentMethods = async (req, res) => {
+    console.log("Controller - SellerController/getPaymentMethods");
+    try {
+        const sellerId = req.params.id || req.params.seller_id;
+        
+        // Buscar o seller para obter seus métodos de pagamento
+        const result = await SellerService.get(sellerId);
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        const { accepted_payment_methods } = result.data;
+        
+        return res.status(200).json({ 
+            success: true,
+            data: {
+                payment_methods: accepted_payment_methods || ['credit_card', 'pix', 'boleto']
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao obter métodos de pagamento:", error);
+        return res.status(500).json(formatError(error));
+    }
+};
+
+// Atualizar um método de pagamento específico (PUT)
+const updateSinglePaymentMethod = async (req, res) => {
+    console.log("Controller - SellerController/updateSinglePaymentMethod");
+    try {
+        const sellerId = req.params.id || req.params.seller_id;
+        const { method } = req.params;
+        const isActive = req.body.active !== false; // Se não for explicitamente false, consideramos como true
+        
+        // Validar o método de pagamento
+        try {
+            PaymentMethodsValidator.validateSinglePaymentMethod(method);
+        } catch (error) {
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
+        }
+        
+        // Buscar o seller atual
+        const sellerResult = await SellerService.get(sellerId);
+        if (!sellerResult.success) {
+            return res.status(sellerResult.status || 404).json(sellerResult);
+        }
+        
+        const seller = sellerResult.data;
+        const currentMethods = seller.accepted_payment_methods || ['credit_card', 'pix', 'boleto'];
+        
+        // Se já está no estado desejado, retornar sucesso sem fazer alterações
+        const isCurrentlyActive = currentMethods.includes(method);
+        if (isCurrentlyActive === isActive) {
+            return res.status(200).json({ 
+                success: true, 
+                message: `Método de pagamento '${method}' já está ${isActive ? 'ativo' : 'inativo'}`, 
+                data: {
+                    payment_methods: currentMethods
+                }
+            });
+        }
+        
+        let result;
+        if (isActive) {
+            // Adicionar o método
+            result = await SellerService.addPaymentMethod(sellerId, method);
+        } else {
+            // Remover o método
+            result = await SellerService.removePaymentMethod(sellerId, method);
+        }
+        
+        // Verificar se a operação foi bem-sucedida
+        if (!result.success) {
+            return res.status(result.status || 400).json(result);
+        }
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: `Método de pagamento '${method}' ${isActive ? 'ativado' : 'desativado'} com sucesso`, 
+            data: {
+                payment_methods: result.data.accepted_payment_methods
+            }
+        });
+    } catch (error) {
+        console.error(`Erro ao ${req.body.active ? 'ativar' : 'desativar'} método de pagamento:`, error);
+        return res.status(500).json(formatError(error));
+    }
+};
+
 module.exports = {
     index,
     show,
@@ -244,5 +338,7 @@ module.exports = {
     syncWithAsaas,
     updatePaymentMethods,
     addPaymentMethod,
-    removePaymentMethod
+    removePaymentMethod,
+    getPaymentMethods,
+    updateSinglePaymentMethod
 };

@@ -12,6 +12,11 @@
 - ✅ Adicionado campo `accepted_payment_methods` (JSON)
 - ✅ Implementados métodos: `isPaymentMethodAccepted()`, `addPaymentMethod()`, `removePaymentMethod()`
 - ✅ Transferência da lógica de métodos de pagamento do produto para o vendedor
+- ✅ Novas rotas para gestão de métodos de pagamento:
+  - `GET /app/seller/:seller_id/payment-methods` - Listar métodos de pagamento aceitos
+  - `PUT /app/seller/:seller_id/payment-methods/:method` - Atualizar status de um método específico
+  - `GET /api/app/seller/:seller_id/payment-methods` - Listar métodos de pagamento aceitos (compatibilidade com frontend)
+  - `PUT /api/app/seller/:seller_id/payment-methods/:method` - Atualizar status de um método específico (compatibilidade com frontend)
 
 ### 3. **Novas Rotas para Edição de Assinaturas**
 - ✅ `PUT /sellers/:seller_id/subscriptions/:subscription_id` - Atualização completa
