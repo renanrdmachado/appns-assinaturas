@@ -25,5 +25,6 @@ router.get('/:seller_id/shoppers/:shopper_id/subscriptions', SubscriptionsContro
 // Rotas para payment methods
 router.get('/:seller_id/payment-methods', SellerController.getPaymentMethods);
 router.put('/:seller_id/payment-methods/:method', SellerController.updateSinglePaymentMethod);
+router.delete('/:seller_id/payment-methods', SellerController.removePaymentMethod);
 
 module.exports = router;
