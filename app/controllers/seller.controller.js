@@ -163,10 +163,10 @@ const syncWithAsaas = async (req, res) => {
 const updatePaymentMethods = async (req, res) => {
     console.log("Controller - SellerController/updatePaymentMethods");
     try {
-        const { id } = req.params;
+        const sellerId = req.params.id || req.params.seller_id;
         const { payment_methods } = req.body;
         
-        const result = await SellerService.updatePaymentMethods(id, payment_methods);
+        const result = await SellerService.updatePaymentMethods(sellerId, payment_methods);
         
         // Verificar se a operação foi bem-sucedida
         if (!result.success) {
@@ -188,10 +188,10 @@ const updatePaymentMethods = async (req, res) => {
 const addPaymentMethod = async (req, res) => {
     console.log("Controller - SellerController/addPaymentMethod");
     try {
-        const { id } = req.params;
+        const sellerId = req.params.id || req.params.seller_id;
         const { payment_method } = req.body;
         
-        const result = await SellerService.addPaymentMethod(id, payment_method);
+        const result = await SellerService.addPaymentMethod(sellerId, payment_method);
         
         // Verificar se a operação foi bem-sucedida
         if (!result.success) {
@@ -213,10 +213,10 @@ const addPaymentMethod = async (req, res) => {
 const removePaymentMethod = async (req, res) => {
     console.log("Controller - SellerController/removePaymentMethod");
     try {
-        const { id } = req.params;
+        const sellerId = req.params.id || req.params.seller_id;
         const { payment_method } = req.body;
         
-        const result = await SellerService.removePaymentMethod(id, payment_method);
+        const result = await SellerService.removePaymentMethod(sellerId, payment_method);
         
         // Verificar se a operação foi bem-sucedida
         if (!result.success) {
