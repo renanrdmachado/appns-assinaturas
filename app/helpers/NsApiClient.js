@@ -133,6 +133,60 @@ class NsApiClient {
             headers 
         });
     }
+    
+    static async getShippingCarriers({ storeId, accessToken }) {
+        return this.get({
+            storeId, 
+            endpoint: 'shipping_carriers', 
+            accessToken
+        });
+    }
+    
+    static async getShippingCarrier({ storeId, accessToken, carrierId }) {
+        return this.get({
+            storeId, 
+            endpoint: `shipping_carriers/${carrierId}`, 
+            accessToken
+        });
+    }
+    
+    // Métodos POST, PUT e DELETE de transportadoras removidos, mantendo apenas os GETs
+    
+    static async getShippingCarrierOptions({ storeId, accessToken, carrierId }) {
+        return this.get({
+            storeId, 
+            endpoint: `shipping_carriers/${carrierId}/options`, 
+            accessToken
+        });
+    }
+    
+    static async getShippingCarrierOption({ storeId, accessToken, carrierId, optionId }) {
+        return this.get({
+            storeId, 
+            endpoint: `shipping_carriers/${carrierId}/options/${optionId}`, 
+            accessToken
+        });
+    }
+    
+    // Métodos POST, PUT e DELETE de opções de transportadoras removidos, mantendo apenas os GETs
+    
+    static async getFulfillmentEvents({ storeId, accessToken, orderId }) {
+        return this.get({
+            storeId, 
+            endpoint: `orders/${orderId}/fulfillments`, 
+            accessToken
+        });
+    }
+    
+    static async getFulfillmentEvent({ storeId, accessToken, orderId, fulfillmentId }) {
+        return this.get({
+            storeId, 
+            endpoint: `orders/${orderId}/fulfillments/${fulfillmentId}`, 
+            accessToken
+        });
+    }
+    
+    // Métodos POST e DELETE de eventos de entrega removidos, mantendo apenas os GETs
 }
 
 module.exports = NsApiClient;
