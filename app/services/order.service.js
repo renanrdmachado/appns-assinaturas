@@ -53,47 +53,67 @@ class OrderService {
     async create(data) {
         console.log('Order - creating...');
         console.log('DEBUG - Dados recebidos para criar order:', JSON.stringify(data, null, 2));
-        console.log('DEBUG - seller_id recebido:', data.seller_id, typeof data.seller_id);
         
         try {
-            // Validar dados do pedido usando o validator
-            try {
-                OrderValidator.validateOrderData(data);
-                await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
-                await OrderValidator.validateSellerExists(data.seller_id, Seller);
-            } catch (validationError) {
-                return formatError(validationError);
-            }
-
-            // Calcular o valor total dos produtos
+            // Calcular o valor total dos produtos E determinar o seller_id automaticamente
             let total = 0;
+            let automaticSellerId = null;
+            
             if (!Array.isArray(data.products) || data.products.length === 0) {
                 return createError('Lista de produtos é obrigatória e deve conter ao menos um produto', 400);
             }
+            
             // Buscar todos os produtos pelo array de IDs
             const productIds = data.products.map(p => typeof p === 'object' && p.product_id ? p.product_id : p);
+            console.log('DEBUG - productIds extraídos:', productIds);
+            
             const foundProducts = await Product.findAll({ where: { id: productIds } });
+            console.log('DEBUG - foundProducts:', foundProducts.map(p => ({ id: p.id, seller_id: p.seller_id, name: p.name })));
+            
             if (foundProducts.length !== productIds.length) {
                 return createError('Um ou mais produtos não foram encontrados', 404);
             }
+            
+            // Verificar se todos os produtos pertencem ao mesmo seller
+            const sellersFromProducts = [...new Set(foundProducts.map(p => p.seller_id))];
+            if (sellersFromProducts.length > 1) {
+                return createError('Todos os produtos devem pertencer ao mesmo seller. Produtos de sellers diferentes encontrados: ' + sellersFromProducts.join(', '), 400);
+            }
+            
+            automaticSellerId = sellersFromProducts[0];
+            console.log('DEBUG - seller_id determinado automaticamente pelos produtos:', automaticSellerId);
+            
+            // Se foi passado um seller_id diferente do produto, usar o do produto e avisar
+            if (data.seller_id && data.seller_id != automaticSellerId) {
+                console.log('DEBUG - seller_id do front-end ignorado. Usando seller_id do produto:', automaticSellerId);
+            }
+            
             // Somar os preços multiplicados pela quantidade (se houver)
             total = foundProducts.reduce((sum, prod) => {
-                // Verifica se há quantidade informada no array de produtos
                 const prodInfo = data.products.find(p => (p.product_id || p) == prod.id);
                 const quantity = prodInfo && prodInfo.quantity ? parseInt(prodInfo.quantity) : 1;
                 return sum + (prod.price * quantity);
             }, 0);
 
-            console.log('DEBUG - Antes de criar order, seller_id:', data.seller_id);
+            // Validar dados do pedido usando o validator (agora com o seller_id correto)
+            try {
+                const orderDataWithCorrectSeller = { ...data, seller_id: automaticSellerId };
+                OrderValidator.validateOrderData(orderDataWithCorrectSeller);
+                await OrderValidator.validateShopperExists(data.shopper_id, Shopper);
+                await OrderValidator.validateSellerExists(automaticSellerId, Seller);
+            } catch (validationError) {
+                return formatError(validationError);
+            }
+
             console.log('DEBUG - Dados que serão enviados para Order.create:', {
-                seller_id: data.seller_id,
+                seller_id: automaticSellerId,
                 shopper_id: data.shopper_id,
                 products: data.products,
                 value: total
             });
 
             const order = await Order.create({
-                seller_id: data.seller_id,
+                seller_id: automaticSellerId,  // Usar o seller_id do produto
                 shopper_id: data.shopper_id,
                 products: data.products,
                 customer_info: data.customer_info,

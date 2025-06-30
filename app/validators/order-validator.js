@@ -8,8 +8,8 @@ class OrderValidator extends BaseValidator {
             this.throwError("Dados do pedido são obrigatórios", 400);
         }
 
-        // Validar campos obrigatórios
-        const requiredFields = ['seller_id', 'shopper_id', 'products', 'customer_info', 
+        // Validar campos obrigatórios (seller_id será determinado automaticamente pelos produtos)
+        const requiredFields = ['shopper_id', 'products', 'customer_info', 
                              'value', 'cycle', 'next_due_date'];
         errors.push(...this.validateRequiredFields(orderData, requiredFields, 'pedido'));
         
