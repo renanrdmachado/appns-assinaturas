@@ -89,11 +89,14 @@ class OrderValidator extends BaseValidator {
      * @returns {Promise<boolean>} - Retorna true se o vendedor existir
      */
     static async validateSellerExists(sellerId, Seller) {
+        console.log('DEBUG - Validator - validateSellerExists chamado com:', sellerId, typeof sellerId);
+        
         if (!sellerId) {
             this.throwError("ID do vendedor é obrigatório", 400);
         }
 
         const seller = await Seller.findByPk(sellerId);
+        console.log('DEBUG - Validator - Seller encontrado:', seller ? `ID: ${seller.id}` : 'null');
         
         if (!seller) {
             this.throwError(`Vendedor com ID ${sellerId} não encontrado`, 404);

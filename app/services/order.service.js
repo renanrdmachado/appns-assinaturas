@@ -52,6 +52,9 @@ class OrderService {
     
     async create(data) {
         console.log('Order - creating...');
+        console.log('DEBUG - Dados recebidos para criar order:', JSON.stringify(data, null, 2));
+        console.log('DEBUG - seller_id recebido:', data.seller_id, typeof data.seller_id);
+        
         try {
             // Validar dados do pedido usando o validator
             try {
@@ -81,6 +84,14 @@ class OrderService {
                 return sum + (prod.price * quantity);
             }, 0);
 
+            console.log('DEBUG - Antes de criar order, seller_id:', data.seller_id);
+            console.log('DEBUG - Dados que serão enviados para Order.create:', {
+                seller_id: data.seller_id,
+                shopper_id: data.shopper_id,
+                products: data.products,
+                value: total
+            });
+
             const order = await Order.create({
                 seller_id: data.seller_id,
                 shopper_id: data.shopper_id,
@@ -97,6 +108,7 @@ class OrderService {
                 metadata: data.metadata
             });
             
+            console.log('DEBUG - Order criada com seller_id:', order.seller_id);
             console.log('Order created:', order.toJSON());
             return { success: true, data: order.toJSON() };
         } catch (error) {
