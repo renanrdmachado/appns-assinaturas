@@ -24,7 +24,7 @@ router.use('/app/products', productRoutes);
 router.use('/app/orders', orderRoutes);
 router.use('/app/sellers', sellerRoutes);
 // router.use('/app/users', userRoutes);
-// router.use('/app/shoppers', shopperRoutes);
+router.use('/app/shoppers', shopperRoutes);
 router.use('/app/shopper-subscriptions', shopperSubscriptionRoutes);
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
