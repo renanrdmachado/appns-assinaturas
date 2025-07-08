@@ -40,7 +40,7 @@ class NsApiClient {
                 url,
                 headers: {
                     'Authentication': `bearer ${accessTokenStr}`,
-                    'User-Agent': process.env.NS_APP_NAME || 'AppNS Assinaturas',
+                    'User-Agent': process.env.NS_USER_AGENT || 'APPNS / Assinaturas (https://assinaturas.appns.com.br/shop/suporte)',
                     'Accept': 'application/json',
                     ...headers
                 },
