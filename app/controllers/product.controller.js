@@ -95,17 +95,22 @@ const destroy = async (req, res) => {
 // Buscar seller pelo ID do produto
 const getSellerByProductId = async (req, res) => {
     console.log("Controller - ProductController/getSellerByProductId");
+    console.log("req.params:", req.params); // Debug
+    console.log("req.url:", req.url); // Debug
+    console.log("req.originalUrl:", req.originalUrl); // Debug
     try {
-        const { productId } = req.params;
+        const { id } = req.params; // Mudança aqui: usar 'id' em vez de 'productId'
+        console.log("Extracted id:", id); // Debug
         
-        if (!productId) {
+        if (!id) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'ID do produto é obrigatório' 
             });
         }
 
-        const result = await ProductService.getSellerByProductId(productId);
+        console.log("Calling ProductService.getSellerByProductId with id:", id); // Debug
+        const result = await ProductService.getSellerByProductId(id);
         
         if (!result.success) {
             return res.status(result.status || 404).json(result);
