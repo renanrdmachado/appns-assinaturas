@@ -226,31 +226,13 @@ class NsProductsService {
                 free_shipping: false,
                 variants: [
                     {
-                        price: String(product.price),
+                        price: String(product.price), // Apenas o preço unitário vai para a Nuvemshop
                         sku: product.sku || "",
                         stock: product.stock || 0,
                         stock_management: true
                     }
                 ]
             };
-
-            // Se o produto tem preço de assinatura diferente, adicionar variante para assinatura
-            const subscriptionPrice = product.subscription_price || product.price;
-            if (product.subscription_price && product.subscription_price !== product.price) {
-                nsProductData.variants.push({
-                    price: String(subscriptionPrice),
-                    sku: (product.sku || "") + "-SUB",
-                    stock: product.stock || 0,
-                    stock_management: true,
-                    values: [{ pt: "Assinatura Mensal" }]
-                });
-                
-                // Adicionar atributos se tivermos múltiplas variantes
-                nsProductData.attributes = [{ pt: "Tipo" }];
-                
-                // Atualizar a primeira variante com valor
-                nsProductData.variants[0].values = [{ pt: "Compra Unitária" }];
-            }
 
             // Adicionar external_id apenas se for permitido pela API
             if (product.id) {

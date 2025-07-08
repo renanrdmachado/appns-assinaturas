@@ -176,27 +176,19 @@ class ProductValidator extends BaseValidator {
             handle: { pt: (product.name || "").toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') },
             external_id: product.id.toString(),
             tags: product.tags || "",
+            published: true,
             variants: [
                 {
-                    position: 1,
-                    price: String(product.price),
+                    price: String(product.price), // Apenas preço unitário para Nuvemshop
                     sku: product.sku || "",
                     stock: product.stock || 0,
-                    title: "Compra Unitária"
+                    stock_management: true
                 }
             ]
         };
 
-        // Adicionar variante de assinatura se houver preço diferente
-        if (product.subscription_price && product.subscription_price !== product.price) {
-            formatted.variants.push({
-                position: 2,
-                price: String(product.subscription_price || product.price),
-                sku: (product.sku || "") + "-SUB",
-                stock: product.stock || 0,
-                title: "Assinatura Mensal"
-            });
-        }
+        // Nota: subscription_price é mantido apenas no banco local
+        // Não enviamos variantes de assinatura para a Nuvemshop
 
         // Adicionar categorias se existirem
         if (product.categories && Array.isArray(product.categories)) {
