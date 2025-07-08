@@ -215,31 +215,51 @@ class NsProductsService {
             const nsProductData = {
                 name: { pt: product.name },
                 description: { pt: product.description || "" },
-                handle: { pt: (product.name || "").toLowerCase().replace(/\s+/g, '-') },
+                handle: { pt: (product.name || "").toLowerCase()
+                    .replace(/\s+/g, '-')
+                    .replace(/[^a-z0-9-]/g, '')
+                    .replace(/^-+|-+$/g, '') // remove hífens do início e fim
+                    .replace(/-+/g, '-') || 'produto' }, // fallback se ficar vazio
                 categories: categories, // array de ids
                 tags: product.tags || "",
-                external_id: product.id.toString(),
+                published: true,
+                free_shipping: false,
                 variants: [
                     {
-                        position: 1,
                         price: String(product.price),
                         sku: product.sku || "",
-                        stock: product.stock || 0
+                        stock: product.stock || 0,
+                        stock_management: true
                     }
-                ],
-                images: images
+                ]
             };
 
             // Se o produto tem preço de assinatura diferente, adicionar variante para assinatura
             const subscriptionPrice = product.subscription_price || product.price;
             if (product.subscription_price && product.subscription_price !== product.price) {
                 nsProductData.variants.push({
-                    position: 2,
                     price: String(subscriptionPrice),
                     sku: (product.sku || "") + "-SUB",
                     stock: product.stock || 0,
-                    title: "Assinatura Mensal"
+                    stock_management: true,
+                    values: [{ pt: "Assinatura Mensal" }]
                 });
+                
+                // Adicionar atributos se tivermos múltiplas variantes
+                nsProductData.attributes = [{ pt: "Tipo" }];
+                
+                // Atualizar a primeira variante com valor
+                nsProductData.variants[0].values = [{ pt: "Compra Unitária" }];
+            }
+
+            // Adicionar external_id apenas se for permitido pela API
+            if (product.id) {
+                nsProductData.external_id = product.id.toString();
+            }
+
+            // Adicionar imagens apenas se houver
+            if (images && images.length > 0) {
+                nsProductData.images = images;
             }
             
             // Log dos dados formatados para debug
@@ -271,9 +291,17 @@ class NsProductsService {
                 const nsProductId = existingProducts[0].id;
                 console.log(`Atualizando produto existente na Nuvemshop ID: ${nsProductId}`);
                 
-                // Se for uma atualização, enviar as imagens separadamente para evitar problemas
-                const productDataForUpdate = { ...nsProductData };
-                delete productDataForUpdate.images; // Remover imagens para evitar erro 422
+                // Para atualização, usar dados mais limpos
+                const productDataForUpdate = {
+                    name: nsProductData.name,
+                    description: nsProductData.description,
+                    variants: nsProductData.variants,
+                    tags: nsProductData.tags
+                };
+                
+                if (nsProductData.categories && nsProductData.categories.length > 0) {
+                    productDataForUpdate.categories = nsProductData.categories;
+                }
                 
                 result = await this.updateProduct(
                     storeId,
@@ -281,17 +309,6 @@ class NsProductsService {
                     nsProductId,
                     productDataForUpdate
                 );
-                
-                // Adicionar imagens separadamente se houver
-                if (result.success && images.length > 0) {
-                    try {
-                        console.log(`Atualizando imagens do produto ${nsProductId} separadamente...`);
-                        // Aqui você poderia implementar uma função específica para atualizar imagens
-                        // Isso seria ideal para uma implementação futura
-                    } catch (imgError) {
-                        console.warn(`Aviso: Erro ao atualizar imagens: ${imgError.message}`);
-                    }
-                }
                 
                 if (result.success) {
                     result.message = 'Produto atualizado com sucesso na Nuvemshop';
@@ -301,9 +318,30 @@ class NsProductsService {
                 // Produto não existe, criar
                 console.log('Criando novo produto na Nuvemshop');
                 
-                // Para criação, enviar dados mínimos primeiro e depois atualizar com imagens
-                const productDataForCreate = { ...nsProductData };
-                delete productDataForCreate.images; // Remover imagens para evitar erro 422
+                // Para criação, usar dados mínimos e válidos
+                const productDataForCreate = {
+                    name: nsProductData.name,
+                    description: nsProductData.description,
+                    published: true,
+                    variants: nsProductData.variants
+                };
+                
+                // Adicionar campos opcionais apenas se válidos
+                if (nsProductData.tags) {
+                    productDataForCreate.tags = nsProductData.tags;
+                }
+                
+                if (nsProductData.categories && nsProductData.categories.length > 0) {
+                    productDataForCreate.categories = nsProductData.categories;
+                }
+                
+                if (nsProductData.attributes && nsProductData.attributes.length > 0) {
+                    productDataForCreate.attributes = nsProductData.attributes;
+                }
+                
+                if (nsProductData.handle) {
+                    productDataForCreate.handle = nsProductData.handle;
+                }
                 
                 result = await this.createProduct(
                     storeId,
@@ -311,19 +349,24 @@ class NsProductsService {
                     productDataForCreate
                 );
                 
-                // Adicionar imagens separadamente se houver
-                if (result.success && images.length > 0) {
-                    try {
-                        console.log(`Adicionando imagens ao produto recém-criado ${result.data.id}...`);
-                        // Implementação futura para adicionar imagens
-                    } catch (imgError) {
-                        console.warn(`Aviso: Erro ao adicionar imagens: ${imgError.message}`);
-                    }
-                }
-                
                 if (result.success) {
                     result.message = 'Produto criado com sucesso na Nuvemshop';
                     result.nuvemshop_id = result.data.id;
+                    
+                    // Após criar, tentar adicionar external_id via update se necessário
+                    if (product.id && result.data.id) {
+                        try {
+                            console.log(`Adicionando external_id ao produto criado: ${result.data.id}`);
+                            await this.updateProduct(
+                                storeId,
+                                accessToken,
+                                result.data.id,
+                                { external_id: product.id.toString() }
+                            );
+                        } catch (externalIdError) {
+                            console.warn(`Aviso: Não foi possível adicionar external_id: ${externalIdError.message}`);
+                        }
+                    }
                 }
             }
             
