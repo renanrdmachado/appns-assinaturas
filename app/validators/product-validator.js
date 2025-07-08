@@ -136,8 +136,8 @@ class ProductValidator extends BaseValidator {
             name: product.name,
             price: product.price,
             subscription_price: product.subscription_price,
-            unit_price: product.getUnitPrice(),
-            subscription_price_calculated: product.getSubscriptionPrice(),
+            unit_price: product.price,
+            subscription_price_calculated: product.subscription_price || product.price,
             has_subscription_pricing: product.subscription_price !== null && product.subscription_price !== product.price,
             stock: product.stock,
             sku: product.sku,
@@ -179,7 +179,7 @@ class ProductValidator extends BaseValidator {
             variants: [
                 {
                     position: 1,
-                    price: String(product.getUnitPrice()),
+                    price: String(product.price),
                     sku: product.sku || "",
                     stock: product.stock || 0,
                     title: "Compra Unitária"
@@ -191,7 +191,7 @@ class ProductValidator extends BaseValidator {
         if (product.subscription_price && product.subscription_price !== product.price) {
             formatted.variants.push({
                 position: 2,
-                price: String(product.getSubscriptionPrice()),
+                price: String(product.subscription_price || product.price),
                 sku: (product.sku || "") + "-SUB",
                 stock: product.stock || 0,
                 title: "Assinatura Mensal"
@@ -224,8 +224,8 @@ class ProductValidator extends BaseValidator {
         return {
             id: product.id.toString(),
             name: product.name,
-            value: product.getUnitPrice(),
-            subscription_value: product.getSubscriptionPrice()
+            value: product.price,
+            subscription_value: product.subscription_price || product.price
         };
     }
 }

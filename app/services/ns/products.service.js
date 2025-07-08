@@ -222,7 +222,7 @@ class NsProductsService {
                 variants: [
                     {
                         position: 1,
-                        price: String(product.getUnitPrice ? product.getUnitPrice() : product.price),
+                        price: String(product.price),
                         sku: product.sku || "",
                         stock: product.stock || 0
                     }
@@ -231,10 +231,11 @@ class NsProductsService {
             };
 
             // Se o produto tem preço de assinatura diferente, adicionar variante para assinatura
+            const subscriptionPrice = product.subscription_price || product.price;
             if (product.subscription_price && product.subscription_price !== product.price) {
                 nsProductData.variants.push({
                     position: 2,
-                    price: String(product.getSubscriptionPrice()),
+                    price: String(subscriptionPrice),
                     sku: (product.sku || "") + "-SUB",
                     stock: product.stock || 0,
                     title: "Assinatura Mensal"
