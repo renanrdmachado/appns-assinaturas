@@ -92,10 +92,41 @@ const destroy = async (req, res) => {
     }
 };
 
+// Buscar seller pelo ID do produto
+const getSellerByProductId = async (req, res) => {
+    console.log("Controller - ProductController/getSellerByProductId");
+    try {
+        const { productId } = req.params;
+        
+        if (!productId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ID do produto é obrigatório' 
+            });
+        }
+
+        const result = await ProductService.getSellerByProductId(productId);
+        
+        if (!result.success) {
+            return res.status(result.status || 404).json(result);
+        }
+        
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Erro ao buscar seller pelo produto:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Falha ao buscar seller pelo produto',
+            error: error.message 
+        });
+    }
+};
+
 module.exports = {
     index,
     show,
     store,
     update,
-    destroy
+    destroy,
+    getSellerByProductId
 };

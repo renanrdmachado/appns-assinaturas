@@ -144,6 +144,53 @@ class ProductService {
             return formatError(error);
         }
     }
+
+    /**
+     * Busca o seller de um produto pelo ID do produto
+     * @param {number} productId - ID do produto
+     * @returns {Object} - Dados do seller
+     */
+    async getSellerByProductId(productId) {
+        try {
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+
+            // Buscar o produto com seu seller
+            const product = await Product.findOne({
+                where: { id: productId },
+                attributes: ['id', 'name', 'seller_id']
+            });
+
+            if (!product) {
+                return createError(`Produto com ID ${productId} não encontrado`, 404);
+            }
+
+            // Buscar o seller completo
+            const SellerService = require('./seller.service');
+            const sellerResult = await SellerService.get(product.seller_id);
+
+            if (!sellerResult.success) {
+                return createError(`Seller ${product.seller_id} não encontrado para o produto ${productId}`, 404);
+            }
+
+            return {
+                success: true,
+                data: {
+                    product: {
+                        id: product.id,
+                        name: product.name,
+                        seller_id: product.seller_id
+                    },
+                    seller: sellerResult.data
+                }
+            };
+
+        } catch (error) {
+            console.error('Erro ao buscar seller pelo produto:', error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new ProductService();
