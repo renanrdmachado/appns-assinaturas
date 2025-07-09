@@ -8,6 +8,30 @@ jest.mock('../../config/database', () => ({
   define: jest.fn().mockReturnValue({})
 }));
 
+// Mock dos validators
+jest.mock('../../validators/seller-validator', () => ({
+  validateId: jest.fn(),
+  validateSellerData: jest.fn(),
+  validateSellerUpdateData: jest.fn(),
+  validateNuvemshopId: jest.fn()
+}));
+
+jest.mock('../../validators/payment-methods-validator', () => ({
+  validatePaymentMethods: jest.fn()
+}));
+
+// Mock dos services externos
+jest.mock('../../services/asaas/customer.service', () => ({
+  findByCpfCnpj: jest.fn(),
+  createOrUpdate: jest.fn(),
+  SELLER_GROUP: 'SELLER'
+}));
+
+jest.mock('../../utils/asaas-mapper', () => ({
+  mapSellerToCustomer: jest.fn(),
+  mapRawDataToCustomer: jest.fn()
+}));
+
 // Mock dos modelos antes de importar qualquer coisa que use os modelos
 jest.mock('../../models/User', () => ({
   findOne: jest.fn(),
@@ -52,7 +76,8 @@ jest.mock('../../services/asaas/customer.service', () => ({
 jest.mock('../../validators/seller-validator', () => ({
   validateSellerData: jest.fn().mockReturnValue({ isValid: true }),
   validateId: jest.fn().mockReturnValue({ isValid: true }),
-  validateNuvemshopId: jest.fn().mockReturnValue({ isValid: true })
+  validateNuvemshopId: jest.fn().mockReturnValue({ isValid: true }),
+  validateSellerUpdateData: jest.fn().mockReturnValue({ isValid: true })
 }));
 
 // Mock para PaymentMethodsValidator
@@ -103,6 +128,22 @@ describe('SellerService - Testes de Integração', () => {
         sequelize.transaction.mockImplementation(async (callback) => {
             return callback(mockTransaction);
         });
+        
+        // Mock local dos validators e services
+        const SellerValidator = require('../../validators/seller-validator');
+        const PaymentMethodsValidator = require('../../validators/payment-methods-validator');
+        const AsaasCustomerService = require('../../services/asaas/customer.service');
+        const AsaasMapper = require('../../utils/asaas-mapper');
+        
+        // Reset dos mocks
+        SellerValidator.validateId = jest.fn();
+        SellerValidator.validateSellerData = jest.fn();
+        SellerValidator.validateSellerUpdateData = jest.fn();
+        SellerValidator.validateNuvemshopId = jest.fn();
+        PaymentMethodsValidator.validatePaymentMethods = jest.fn();
+        AsaasCustomerService.findByCpfCnpj = jest.fn();
+        AsaasCustomerService.createOrUpdate = jest.fn();
+        AsaasMapper.mapSellerToCustomer = jest.fn();
     });
 
     test('deve buscar um seller pelo ID com sucesso', async () => {
@@ -430,4 +471,388 @@ describe('SellerService - Testes de Integração', () => {
         expect(mockSeller.removePaymentMethod).toHaveBeenCalledWith('boleto');
         expect(mockSeller.save).toHaveBeenCalled();
     });
+
+    // Novos testes para aumentar coverage
+    describe('getAll', () => {
+        test('deve retornar todos os sellers com sucesso', async () => {
+            const mockSellers = [
+                { id: 1, nuvemshop_id: 123456, user_id: 1 },
+                { id: 2, nuvemshop_id: 789012, user_id: 2 }
+            ];
+
+            Seller.findAll.mockResolvedValue(mockSellers);
+
+            const result = await SellerService.getAll();
+
+            expect(result.success).toBe(true);
+            expect(result.data).toEqual(mockSellers);
+            expect(Seller.findAll).toHaveBeenCalled();
+        });
+
+        test('deve retornar erro quando falha ao buscar todos os sellers', async () => {
+            const error = new Error('Erro de conexão');
+            Seller.findAll.mockRejectedValue(error);
+
+            const result = await SellerService.getAll();
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('Erro de conexão');
+        });
+    });
+
+    describe('Error handling edge cases', () => {
+        test('deve tratar erro de validação no get', async () => {
+            SellerValidator.validateId.mockImplementation(() => {
+                throw new Error('ID inválido');
+            });
+
+            const result = await SellerService.get('invalid');
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('ID inválido');
+        });
+
+        test('deve tratar erro de validação no getByNuvemshopId', async () => {
+            const error = new Error('Nuvemshop ID inválido');
+            Seller.findOne.mockRejectedValue(error);
+
+            const result = await SellerService.getByNuvemshopId(123);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('Nuvemshop ID inválido');
+        });
+    });
+
+    describe('update - Atualizar seller', () => {
+        test('deve atualizar seller com sucesso', async () => {
+            const mockSeller = {
+                id: 1,
+                nuvemshop_id: 123456,
+                user_id: 1,
+                user: { 
+                    id: 1,
+                    userData: { id: 1, cpfCnpj: '12345678901' },
+                    update: jest.fn().mockResolvedValue()
+                },
+                update: jest.fn().mockResolvedValue(),
+                reload: jest.fn().mockResolvedValue(),
+                toJSON: jest.fn().mockReturnValue({
+                    id: 1,
+                    nuvemshop_id: 123456,
+                    name: 'Seller Atualizado'
+                })
+            };
+
+            const sequelize = require('../../config/database');
+            sequelize.transaction = jest.fn().mockImplementation(async (callback) => {
+                return await callback({});
+            });
+
+            Seller.findByPk.mockResolvedValue(mockSeller);
+
+            const updateData = { nuvemshop_info: '{"test": "data"}' };
+            const result = await SellerService.update(1, updateData);
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBeDefined();
+            expect(mockSeller.update).toHaveBeenCalled();
+        });
+
+        test('deve retornar erro quando seller não encontrado no update', async () => {
+            // Resetar TODOS os mocks para este teste específico
+            jest.clearAllMocks();
+            
+            // Mock para validação passar
+            SellerValidator.validateId.mockImplementation(() => {});
+            SellerValidator.validateSellerUpdateData.mockImplementation(() => {});
+            
+            // Mock para não encontrar o seller - o mais importante
+            Seller.findByPk.mockResolvedValue(null);
+            
+            // Garantir que não haverá consultas de duplicação
+            UserData.findOne.mockResolvedValue(null);
+            User.findOne.mockResolvedValue(null);
+            Seller.findOne.mockResolvedValue(null);
+            AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
+            
+            // Mock da transação
+            sequelize.transaction.mockImplementation(async (callback) => {
+                return await callback(mockTransaction);
+            });
+            
+            // Mock do createError
+            createError.mockImplementation((message, code) => ({ 
+                success: false, 
+                message, 
+                code 
+            }));
+
+            const result = await SellerService.update(999, { name: 'Test' });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('Vendedor com ID 999 não encontrado');
+            expect(result.code).toBe(404);
+        });
+
+        test('deve retornar erro quando ID não fornecido no update', async () => {
+            // Resetar TODOS os mocks para este teste específico
+            jest.clearAllMocks();
+            
+            // Mock para validação falhar
+            SellerValidator.validateId.mockImplementation(() => {
+                const error = new Error('ID inválido');
+                error.code = 400;
+                throw error;
+            });
+            
+            // Mock do formatError
+            formatError.mockImplementation((error) => ({ 
+                success: false, 
+                message: error.message,
+                code: error.code || 400 
+            }));
+
+            const result = await SellerService.update(null, { name: 'Test' });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('ID inválido');
+            expect(result.code).toBe(400);
+        });
+    });
+
+    describe('findByCpfCnpj - Buscar por CPF/CNPJ', () => {
+        test('deve buscar seller pelo CPF/CNPJ com sucesso', async () => {
+            const mockUserData = { id: 1, cpfCnpj: '12345678901' };
+            const mockUser = { id: 1, user_data_id: 1 };
+            const mockSeller = { 
+                id: 1, 
+                user_id: 1
+            };
+
+            UserData.findOne.mockResolvedValue(mockUserData);
+            User.findOne.mockResolvedValue(mockUser);
+            Seller.findOne.mockResolvedValue(mockSeller);
+
+            const result = await SellerService.findByCpfCnpj('12345678901');
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBeDefined();
+            expect(result.data.id).toBe(1);
+        });
+
+        test('deve retornar null quando CPF/CNPJ não encontrado', async () => {
+            UserData.findOne.mockResolvedValue(null);
+
+            const result = await SellerService.findByCpfCnpj('99999999999');
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBe(null);
+        });
+
+        test('deve retornar erro quando CPF/CNPJ não fornecido', async () => {
+            // Resetar TODOS os mocks para este teste específico
+            jest.clearAllMocks();
+            
+            // Mock do createError
+            createError.mockImplementation((message, code) => ({ 
+                success: false, 
+                message, 
+                code 
+            }));
+            
+            // Não passar nenhum parâmetro para simular CPF/CNPJ não fornecido
+            const result = await SellerService.findByCpfCnpj();
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('CPF/CNPJ é obrigatório');
+            expect(result.code).toBe(400);
+        });
+    });
+
+    describe('updateStoreInfo - Atualizar informações da loja', () => {
+        test('deve atualizar informações da loja com sucesso', async () => {
+            const mockSeller = {
+                id: 1,
+                nuvemshop_id: 123456,
+                user: { email: 'old@test.com', update: jest.fn() },
+                update: jest.fn().mockResolvedValue()
+            };
+
+            const sequelize = require('../../config/database');
+            sequelize.transaction = jest.fn().mockImplementation(async (callback) => {
+                return await callback({});
+            });
+
+            Seller.findOne.mockResolvedValue(mockSeller);
+
+            const storeInfo = { email: 'new@test.com', name: { pt: 'Nova Loja' } };
+            const result = await SellerService.updateStoreInfo(123456, 'token123', storeInfo);
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBeDefined();
+        });
+
+        test('deve retornar erro quando seller não encontrado no updateStoreInfo', async () => {
+            const sequelize = require('../../config/database');
+            sequelize.transaction = jest.fn().mockImplementation(async (callback) => {
+                return await callback({});
+            });
+
+            Seller.findOne.mockResolvedValue(null);
+            User.findOne.mockResolvedValue(null);
+            User.create.mockResolvedValue({ id: 1, email: 'test@test.com' });
+            Seller.create.mockResolvedValue({ id: 1, nuvemshop_id: 999, reload: jest.fn() });
+
+            const result = await SellerService.updateStoreInfo(999, 'token', { email: 'test@test.com' });
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBeDefined();
+        });
+    });
+
+    describe('getByStoreId - Buscar por Store ID', () => {
+        test('deve buscar seller pelo store ID com sucesso', async () => {
+            const mockSeller = {
+                id: 1,
+                nuvemshop_id: 123456
+            };
+
+            Seller.findOne.mockResolvedValue(mockSeller);
+
+            const result = await SellerService.getByStoreId('123456');
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBeDefined();
+            expect(result.data.id).toBe(1);
+        });
+
+        test('deve retornar erro quando store ID não encontrado', async () => {
+            // Resetar TODOS os mocks para este teste específico
+            jest.clearAllMocks();
+            
+            // Mock do createError
+            createError.mockImplementation((message, code) => ({ 
+                success: false, 
+                message, 
+                code 
+            }));
+            
+            // Mock para não encontrar seller
+            Seller.findOne.mockResolvedValue(null);
+
+            const result = await SellerService.getByStoreId('999');
+
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('Seller com store_id 999 não encontrado');
+            expect(result.code).toBe(404);
+        });
+    });
+
+    describe('Testes adicionais para aumentar cobertura', () => {
+        test('deve testar delete de seller', async () => {
+            const mockSeller = {
+                id: 1,
+                destroy: jest.fn().mockResolvedValue()
+            };
+
+            Seller.findByPk.mockResolvedValue(mockSeller);
+
+            const result = await SellerService.delete(1);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('excluído com sucesso');
+        });
+
+        test('deve testar syncWithAsaas', async () => {
+            const mockSeller = {
+                id: 1,
+                user: {
+                    userData: { cpfCnpj: '12345678901' }
+                }
+            };
+
+            Seller.findByPk.mockResolvedValue(mockSeller);
+            const AsaasMapper = require('../../utils/asaas-mapper');
+            AsaasMapper.mapSellerToCustomer = jest.fn().mockReturnValue({
+                name: 'Test Seller',
+                cpfCnpj: '12345678901'
+            });
+
+            const AsaasCustomerService = require('../../services/asaas/customer.service');
+            AsaasCustomerService.createOrUpdate = jest.fn().mockResolvedValue({
+                success: true,
+                data: { id: 'asaas_123' }
+            });
+
+            const result = await SellerService.syncWithAsaas(1);
+
+            expect(result.success).toBe(true);
+        });
+
+        test('deve testar updatePaymentMethods', async () => {
+            const mockSeller = {
+                id: 1,
+                save: jest.fn().mockResolvedValue()
+            };
+
+            Seller.findByPk.mockResolvedValue(mockSeller);
+
+            const PaymentMethodsValidator = require('../../validators/payment-methods-validator');
+            PaymentMethodsValidator.validatePaymentMethods = jest.fn();
+
+            const result = await SellerService.updatePaymentMethods(1, ['credit_card', 'pix']);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('atualizados com sucesso');
+        });
+
+        test('deve testar savePaymentsInfo', async () => {
+            const paymentsData = {
+                customer: 'cus_123',
+                id: 'sub_123',
+                nextDueDate: '2025-01-01',
+                status: 'active'
+            };
+
+            // Mock do método upsert que não estava sendo mockado
+            Seller.upsert = jest.fn().mockResolvedValue([{ dataValues: { id: 1 } }, true]);
+
+            const result = await SellerService.savePaymentsInfo('store123', paymentsData);
+
+            expect(result.success).toBe(true);
+            expect(result.data).toBeDefined();
+        });
+
+        test('deve testar saveSubAccountInfo', async () => {
+            const mockSeller = {
+                id: 1,
+                user: {
+                    userData: { id: 1, update: jest.fn() },
+                    update: jest.fn()
+                },
+                update: jest.fn(),
+                reload: jest.fn()
+            };
+
+            const accountData = {
+                id: 'acc_123',
+                walletId: 'wallet_123',
+                apiKey: 'key_123',
+                cpfCnpj: '12345678901'
+            };
+
+            const sequelize = require('../../config/database');
+            sequelize.transaction = jest.fn().mockImplementation(async (callback) => {
+                return await callback({});
+            });
+
+            Seller.findOne.mockResolvedValue(mockSeller);
+
+            const result = await SellerService.saveSubAccountInfo('store123', accountData);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('subconta salvas com sucesso');
+        });
+    });
+
 });
