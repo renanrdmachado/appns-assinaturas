@@ -1,4 +1,5 @@
 const { formatError, createError } = require('../../utils/errorHandler');
+const subscriptionValidator = require('../../utils/subscription-validator');
 const Seller = require('../../models/Seller');
 const Shopper = require('../../models/Shopper');
 const Order = require('../../models/Order');
@@ -20,6 +21,12 @@ class SellerShoppersService {
         try {
             if (!sellerId) {
                 return createError('ID do vendedor é obrigatório', 400);
+            }
+
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (subscriptionError) {
+                return subscriptionError;
             }
 
             // Verificar se o vendedor existe
@@ -100,6 +107,12 @@ class SellerShoppersService {
 
             if (!shopperId) {
                 return createError('ID do cliente é obrigatório', 400);
+            }
+
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (subscriptionError) {
+                return subscriptionError;
             }
 
             // Verificar se o vendedor existe

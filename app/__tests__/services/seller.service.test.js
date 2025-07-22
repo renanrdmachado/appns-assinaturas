@@ -65,6 +65,13 @@ jest.mock('../../models/Shopper', () => ({
   belongsTo: jest.fn()
 }));
 
+jest.mock('../../models/SellerSubscription', () => ({
+  findOne: jest.fn(),
+  findAll: jest.fn(),
+  create: jest.fn(),
+  belongsTo: jest.fn()
+}));
+
 // Apenas fazemos mock do que é externo ao nosso serviço principal
 jest.mock('../../services/asaas/customer.service', () => ({
   findByCpfCnpj: jest.fn().mockResolvedValue({ success: false }),
@@ -100,12 +107,19 @@ jest.mock('../../utils/asaas-mapper', () => ({
   })
 }));
 
+// Mock do subscription validator
+jest.mock('../../utils/subscription-validator', () => ({
+  checkSubscriptionMiddleware: jest.fn().mockResolvedValue(null), // Por padrão, assinatura válida
+  validateSellerSubscription: jest.fn().mockResolvedValue({ success: true })
+}));
+
 // Agora importamos os módulos que serão usados
 const SellerService = require('../../services/seller.service');
 const User = require('../../models/User');
 const UserData = require('../../models/UserData');
 const Seller = require('../../models/Seller');
 const Shopper = require('../../models/Shopper');
+const SellerSubscription = require('../../models/SellerSubscription');
 const sequelize = require('../../config/database');
 const SellerValidator = require('../../validators/seller-validator');
 const AsaasCustomerService = require('../../services/asaas/customer.service');
@@ -238,8 +252,39 @@ describe('SellerService - Testes de Integração', () => {
         User.create.mockResolvedValue(mockUser);
         Seller.create.mockResolvedValue(mockSeller);
         Seller.findByPk.mockResolvedValue(mockSellerWithRelations);
+        
+        // Mock para SellerSubscription (assinatura)
+        SellerSubscription.findOne.mockResolvedValue(null); // Não existe assinatura
+        SellerSubscription.create.mockResolvedValue({
+            id: 1,
+            seller_id: 1,
+            plan_name: 'Plano Básico',
+            value: 29.90,
+            status: 'active',
+            cycle: 'MONTHLY'
+        });
 
         const result = await SellerService.create(mockSellerData);
+
+        expect(result.success).toBe(true);
+        expect(result.message).toBe('Vendedor criado com sucesso');
+        expect(result.data).toEqual(mockSellerWithRelations);
+        
+        // Verificar se a assinatura foi criada
+        expect(SellerSubscription.findOne).toHaveBeenCalledWith({
+            where: { seller_id: 1 },
+            transaction: mockTransaction
+        });
+        expect(SellerSubscription.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                seller_id: 1,
+                plan_name: 'Plano Básico',
+                value: 29.90,
+                status: 'active',
+                cycle: 'MONTHLY'
+            }),
+            { transaction: mockTransaction }
+        );
 
         expect(result.success).toBe(true);
         expect(result.message).toBe('Vendedor criado com sucesso');
@@ -674,8 +719,9 @@ describe('SellerService - Testes de Integração', () => {
             const mockSeller = {
                 id: 1,
                 nuvemshop_id: 123456,
-                user: { email: 'old@test.com', update: jest.fn() },
-                update: jest.fn().mockResolvedValue()
+                save: jest.fn().mockResolvedValue(),
+                nuvemshop_info: null,
+                app_status: null
             };
 
             const sequelize = require('../../config/database');
@@ -684,12 +730,15 @@ describe('SellerService - Testes de Integração', () => {
             });
 
             Seller.findOne.mockResolvedValue(mockSeller);
+            Seller.findByPk.mockResolvedValue(mockSeller);
+            SellerSubscription.findOne.mockResolvedValue(null); // Não tem assinatura ainda
 
-            const storeInfo = { email: 'new@test.com', name: { pt: 'Nova Loja' } };
-            const result = await SellerService.updateStoreInfo(123456, 'token123', storeInfo);
+            const storeInfo = { email: 'new@test.com', name: { pt: 'Nova Loja' }, plan_name: 'PREMIUM' };
+            const result = await SellerService.updateStoreInfo(123456, storeInfo);
 
             expect(result.success).toBe(true);
             expect(result.data).toBeDefined();
+            expect(mockSeller.save).toHaveBeenCalled();
         });
 
         test('deve retornar erro quando seller não encontrado no updateStoreInfo', async () => {
@@ -699,14 +748,11 @@ describe('SellerService - Testes de Integração', () => {
             });
 
             Seller.findOne.mockResolvedValue(null);
-            User.findOne.mockResolvedValue(null);
-            User.create.mockResolvedValue({ id: 1, email: 'test@test.com' });
-            Seller.create.mockResolvedValue({ id: 1, nuvemshop_id: 999, reload: jest.fn() });
 
-            const result = await SellerService.updateStoreInfo(999, 'token', { email: 'test@test.com' });
+            const result = await SellerService.updateStoreInfo(999, { email: 'test@test.com' });
 
-            expect(result.success).toBe(true);
-            expect(result.data).toBeDefined();
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('não encontrado');
         });
     });
 

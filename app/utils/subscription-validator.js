@@ -1,0 +1,77 @@
+const { formatError, createError } = require('./errorHandler');
+const SellerSubscription = require('../models/SellerSubscription');
+const { Op } = require('sequelize');
+
+/**
+ * Utilitário para validação de assinaturas de sellers
+ */
+class SubscriptionValidator {
+    
+    /**
+     * Valida se o seller possui assinatura ativa e válida
+     * @param {number} sellerId - ID do seller
+     * @returns {Object} - Resultado da validação
+     */
+    async validateSellerSubscription(sellerId) {
+        try {
+            if (!sellerId) {
+                return createError('ID do seller é obrigatório', 400);
+            }
+
+            // Buscar assinatura ativa do seller
+            const subscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: sellerId,
+                    status: {
+                        [Op.in]: ['active', 'overdue', 'pending']
+                    }
+                },
+                order: [['createdAt', 'DESC']] // Pegar a mais recente
+            });
+
+            if (!subscription) {
+                return createError('Seller não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.', 403);
+            }
+
+            // Verificar se a assinatura está vencida
+            const now = new Date();
+            const dueDate = new Date(subscription.next_due_date);
+
+            if (subscription.status === 'overdue' || (dueDate < now && subscription.status !== 'active')) {
+                return createError('Assinatura do seller está vencida. Renove sua assinatura para continuar utilizando o serviço.', 403);
+            }
+
+            // Verificar se está inativa ou cancelada
+            if (subscription.status === 'inactive' || subscription.status === 'canceled') {
+                return createError('Assinatura do seller está inativa. Ative sua assinatura para utilizar este serviço.', 403);
+            }
+
+            return {
+                success: true,
+                subscription: subscription
+            };
+
+        } catch (error) {
+            console.error('Erro ao validar assinatura do seller:', error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Middleware para validação automática de assinatura
+     * Pode ser usado nos métodos dos serviços
+     * @param {number} sellerId - ID do seller
+     * @returns {Promise<Object|null>} - Retorna erro se inválida, null se válida
+     */
+    async checkSubscriptionMiddleware(sellerId) {
+        const validation = await this.validateSellerSubscription(sellerId);
+        
+        if (!validation.success) {
+            return validation; // Retorna o erro
+        }
+        
+        return null; // Assinatura válida, continua o fluxo
+    }
+}
+
+module.exports = new SubscriptionValidator();

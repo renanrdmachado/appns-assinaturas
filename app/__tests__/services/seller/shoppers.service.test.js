@@ -47,14 +47,36 @@ jest.mock('../../../models/UserData', () => ({
   hasMany: jest.fn()
 }));
 
+jest.mock('../../../models/SellerSubscription', () => ({
+  findOne: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  count: jest.fn(),
+  create: jest.fn()
+}));
+
 // Mock do error handler
 jest.mock('../../../utils/errorHandler', () => ({
-  formatError: jest.fn(error => ({ success: false, message: error.message })),
-  createError: jest.fn((message, code) => ({ success: false, message, code }))
+  formatError: jest.fn().mockImplementation((error) => ({
+    success: false,
+    message: error.message,
+    status: 500
+  })),
+  createError: jest.fn().mockImplementation((message, status) => ({
+    success: false,
+    message,
+    code: status
+  }))
+}));
+
+// Mock do subscription validator
+jest.mock('../../../utils/subscription-validator', () => ({
+  checkSubscriptionMiddleware: jest.fn().mockResolvedValue(null) // Por padrão, retorna null (assinatura válida)
 }));
 
 // Agora importamos os módulos que serão usados
 const SellerShoppersService = require('../../../services/seller/shoppers.service');
+const subscriptionValidator = require('../../../utils/subscription-validator');
 const Seller = require('../../../models/Seller');
 const Shopper = require('../../../models/Shopper');
 const Order = require('../../../models/Order');

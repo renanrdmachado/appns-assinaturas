@@ -2,6 +2,7 @@ const Seller = require('../models/Seller');
 const User = require('../models/User');
 const UserData = require('../models/UserData');
 const Shopper = require('../models/Shopper'); // Adicionando importação do Shopper
+const SellerSubscription = require('../models/SellerSubscription');
 const { createError, formatError } = require('../utils/errorHandler');
 const AsaasCustomerService = require('./asaas/customer.service');
 const SellerValidator = require('../validators/seller-validator');
@@ -68,8 +69,6 @@ class SellerService {
      * e verifica duplicidade tanto no banco quanto no Asaas
      */
     async create(data) {
-        console.log("Seller - creating...");
-        
         try {
             // Validação dos dados usando o validator
             SellerValidator.validateSellerData(data);
@@ -99,14 +98,12 @@ class SellerService {
             }
             
             // 3. Verificar se já existe um cliente com este CPF/CNPJ no Asaas
-            console.log(`Verificando se já existe cliente com CPF/CNPJ ${data.cpfCnpj} no Asaas...`);
             const existingAsaasCustomer = await AsaasCustomerService.findByCpfCnpj(data.cpfCnpj, AsaasCustomerService.SELLER_GROUP);
             
             let asaasCustomerId;
             
             if (existingAsaasCustomer.success) {
                 // Se já existe cliente no Asaas, usamos o ID existente
-                console.log(`Cliente já existe no Asaas com ID: ${existingAsaasCustomer.data.id}`);
                 asaasCustomerId = existingAsaasCustomer.data.id;
                 
                 // Verificar se há um vendedor vinculado a este ID do Asaas
@@ -197,6 +194,9 @@ class SellerService {
                         transaction: t
                     });
 
+                    // Criar assinatura padrão para o seller
+                    await this.createDefaultSubscription(seller.id, t);
+
                     return sellerWithRelations;
                 });
 
@@ -215,82 +215,57 @@ class SellerService {
         }
     }
 
-    async updateStoreInfo(nuvemshopId, api_token, storeInfo) {
+    async updateStoreInfo(nuvemshop_id, storeInfo) {
         try {
-            if (!nuvemshopId) {
-                return createError('ID da Nuvemshop é obrigatório', 400);
+            const seller = await Seller.findOne({
+                where: { nuvemshop_id },
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ]
+            });
+
+            if (!seller) {
+                return createError(`Vendedor com nuvemshop_id ${nuvemshop_id} não encontrado`, 404);
             }
-            
-            if (!storeInfo || !storeInfo.email) {
-                return createError('Email da loja é obrigatório', 400);
-            }
-            
-            const nuvemshopInfo = typeof storeInfo === 'string' 
-                ? storeInfo 
-                : JSON.stringify(storeInfo);
-            
+
             // Usar transação para garantir consistência
             const result = await sequelize.transaction(async (t) => {
-                // 1. Verificar se já existe um seller com este nuvemshop_id
-                let seller = await Seller.findOne({ 
-                    where: { nuvemshop_id: nuvemshopId },
-                    include: [{ model: User, as: 'user' }],
+                // Atualizar informações do vendedor
+                seller.nuvemshop_info = JSON.stringify(storeInfo);
+                seller.app_status = storeInfo.plan_name || null;
+                await seller.save({ transaction: t });
+
+                // Verificar se possui assinatura, se não criar uma padrão
+                const hasSubscription = await SellerSubscription.findOne({
+                    where: { seller_id: seller.id },
                     transaction: t
                 });
-                
-                if (seller) {
-                    // Se o seller já existe, apenas atualizar as informações
-                    await seller.update({
-                        nuvemshop_info: nuvemshopInfo,
-                        nuvemshop_api_token: api_token
-                    }, { transaction: t });
-                    
-                    // Atualizar o email do usuário se necessário
-                    if (seller.user && seller.user.email !== storeInfo.email) {
-                        await seller.user.update({
-                            email: storeInfo.email
-                        }, { transaction: t });
-                    }
-                    
-                    return seller;
+
+                if (!hasSubscription) {
+                    await this.createDefaultSubscription(seller.id, t);
                 }
-                
-                // 2. Se não existe seller, buscar ou criar o User baseado no email
-                let user = await User.findOne({ 
-                    where: { email: storeInfo.email },
+
+                return await Seller.findByPk(seller.id, {
+                    include: [
+                        { 
+                            model: User, 
+                            as: 'user',
+                            include: [{ model: UserData, as: 'userData' }] 
+                        }
+                    ],
                     transaction: t
                 });
-                
-                if (!user) {
-                    // Criar novo usuário com base nos dados da loja
-                    user = await User.create({
-                        email: storeInfo.email,
-                        username: storeInfo.name?.pt || `loja_${nuvemshopId}`,
-                        password: null // Senha será definida posteriormente se necessário
-                    }, { transaction: t });
-                }
-                
-                // 3. Criar o Seller vinculado ao User
-                seller = await Seller.create({
-                    nuvemshop_id: nuvemshopId,
-                    nuvemshop_info: nuvemshopInfo,
-                    nuvemshop_api_token: api_token,
-                    user_id: user.id,
-                    app_status: 'pending'
-                }, { transaction: t });
-                
-                // Recarregar com as relações
-                await seller.reload({
-                    include: [{ model: User, as: 'user' }],
-                    transaction: t
-                });
-                
-                return seller;
             });
-            
-            console.log(`Informações da loja ${nuvemshopId} salvas com sucesso`);
-            return { success: true, data: result };
-            
+
+            return {
+                success: true,
+                message: 'Informações da loja atualizadas com sucesso',
+                data: result
+            };
         } catch (error) {
             console.error('Erro ao atualizar informações da loja:', error.message);
             return formatError(error);
@@ -883,6 +858,92 @@ class SellerService {
     /**
      * Adicionar subconta ao seller
      */
+
+    /**
+     * Cria uma assinatura padrão para o seller
+     * Seguindo princípios SOLID: Single Responsibility - apenas cria assinatura
+     */
+    async createDefaultSubscription(sellerId, transaction = null) {
+        try {
+            // Verificar se já existe uma assinatura (DRY - evita duplicação)
+            const existingSubscription = await SellerSubscription.findOne({
+                where: { seller_id: sellerId },
+                transaction
+            });
+
+            if (existingSubscription) {
+                return { success: true, message: 'Assinatura já existe', data: existingSubscription };
+            }
+
+            // Configuração padrão da assinatura (centralizada para facilitar manutenção)
+            const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId);
+
+            // Criar a assinatura
+            const subscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
+            
+            return { 
+                success: true, 
+                message: 'Assinatura padrão criada com sucesso',
+                data: subscription 
+            };
+
+        } catch (error) {
+            console.error(`Erro ao criar assinatura padrão para seller ${sellerId}:`, error.message);
+            // Não falha a criação do seller por conta da assinatura
+            return { 
+                success: false, 
+                message: `Erro ao criar assinatura padrão: ${error.message}`,
+                data: null 
+            };
+        }
+    }
+
+    /**
+     * Configuração padrão da assinatura (DRY - centraliza configuração)
+     * Seguindo princípios SOLID: Open/Closed - fácil de estender sem modificar
+     */
+    getDefaultSubscriptionConfig(sellerId) {
+        return {
+            seller_id: sellerId,
+            plan_name: 'Plano Básico',
+            value: 29.90,
+            status: 'active',
+            cycle: 'MONTHLY',
+            start_date: new Date(),
+            next_due_date: this.calculateNextDueDate(new Date(), 'MONTHLY'),
+            features: {
+                max_products: 100,
+                max_orders_per_month: 500,
+                support_level: 'basic'
+            },
+            metadata: {
+                created_automatically: true,
+                creation_source: 'seller_creation'
+            }
+        };
+    }
+
+    /**
+     * Calcula a próxima data de vencimento (Utility method - SOLID)
+     */
+    calculateNextDueDate(startDate, cycle) {
+        const date = new Date(startDate);
+        
+        const cycleMapping = {
+            'WEEKLY': () => date.setDate(date.getDate() + 7),
+            'BIWEEKLY': () => date.setDate(date.getDate() + 14),
+            'MONTHLY': () => date.setMonth(date.getMonth() + 1),
+            'BIMONTHLY': () => date.setMonth(date.getMonth() + 2),
+            'QUARTERLY': () => date.setMonth(date.getMonth() + 3),
+            'SEMIANNUALLY': () => date.setMonth(date.getMonth() + 6),
+            'YEARLY': () => date.setFullYear(date.getFullYear() + 1)
+        };
+        
+        const cycleFunction = cycleMapping[cycle] || cycleMapping['MONTHLY'];
+        cycleFunction();
+        
+        return date;
+    }
 }
 
 module.exports = new SellerService();
