@@ -38,6 +38,13 @@ router.put('/:product_id', SellerProductsController.updateProduct);
 router.delete('/:product_id', SellerProductsController.deleteProduct);
 
 /**
+ * @route GET /sellers/:seller_id/products/:product_id/variants
+ * @desc Obter variantes de um produto do seller
+ * @access Privado
+ */
+router.get('/:product_id/variants', SellerProductsController.getProductVariants);
+
+/**
  * @route POST /sellers/:seller_id/products/:product_id/sync
  * @desc Sincroniza um produto do seller com a Nuvemshop
  * @access Privado

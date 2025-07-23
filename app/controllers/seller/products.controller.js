@@ -204,6 +204,54 @@ class SellerProductsController {
     }
 
     /**
+     * Obter variantes de um produto do seller
+     */
+    async getProductVariants(req, res) {
+        try {
+            const { seller_id, product_id } = req.params;
+            
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+            
+            // Verificar se o produto existe
+            const productResult = await ProductService.get(product_id);
+            
+            if (!productResult.success) {
+                return res.status(productResult.status || 404).json(productResult);
+            }
+            
+            // Verificar se o produto pertence ao seller
+            if (!isProductFromSeller(productResult.data, seller_id)) {
+                return res.status(403).json(createError('Este produto não pertence ao vendedor especificado', 403));
+            }
+            
+            // Buscar variantes do produto na Nuvemshop
+            const result = await SellerProductsService.getProductVariants(
+                seller_id,
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                product_id
+            );
+            
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+            
+            return res.json({
+                success: true,
+                data: result.data
+            });
+        } catch (error) {
+            console.error(`Erro ao buscar variantes do produto ID ${req.params.product_id} do seller ID ${req.params.seller_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
      * Sincroniza um produto do seller com a Nuvemshop
      * - Garante que a tag appns_prod_id:<id> esteja salva localmente (campo tags, string)
      * - Envia o produto para a Nuvemshop no formato esperado (tags como string, id como string)
