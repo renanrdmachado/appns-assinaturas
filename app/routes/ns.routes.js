@@ -11,7 +11,7 @@ const shippingCarrierRoutes = require('./ns/shipping-carrier.routes');
 
 // Aplicando as rotas
 router.use('/', authRoutes);
-router.use('/seller/:seller_id/products', productsRoutes);
+// router.use('/seller/:seller_id/products', productsRoutes);
 router.use('/seller/:seller_id/orders', ordersRoutes);
 router.use('/seller/:seller_id/webhooks', webhooksRoutes);
 router.use('/lgpd-webhooks', lgpdWebhooksRoutes);
