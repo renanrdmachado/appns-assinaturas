@@ -1,6 +1,6 @@
 const ProductService = require('../../services/product.service');
 const SellerService = require('../../services/seller.service');
-const NsProductsService = require('../../services/ns/products.service');
+const SellerProductsService = require('../../services/seller/products.service');
 const { formatError, createError } = require('../../utils/errorHandler');
 
 // Função utilitária para validação DRY
@@ -240,7 +240,8 @@ class SellerProductsController {
             // Monta objeto para sync (tags string, id string)
             const productToSync = { ...productPlain, id: productPlain.id.toString(), tags };
             // Chama o serviço de sync da Nuvemshop
-            const result = await NsProductsService.syncProduct(
+            const result = await SellerProductsService.syncProduct(
+                seller_id,
                 sellerResult.data.nuvemshop_id,
                 sellerResult.data.nuvemshop_api_token,
                 productToSync
