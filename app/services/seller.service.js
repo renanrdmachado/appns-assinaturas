@@ -7,6 +7,7 @@ const { createError, formatError } = require('../utils/errorHandler');
 const AsaasCustomerService = require('./asaas/customer.service');
 const SellerValidator = require('../validators/seller-validator');
 const PaymentMethodsValidator = require('../validators/payment-methods-validator');
+const { checkSubscriptionMiddleware } = require('../utils/subscription-validator');
 const AsaasMapper = require('../utils/asaas-mapper');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
@@ -700,6 +701,12 @@ class SellerService {
             // Validação do ID
             SellerValidator.validateId(id);
             
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionError = await checkSubscriptionMiddleware(id);
+            if (subscriptionError) {
+                return subscriptionError;
+            }
+            
             // Validação dos métodos de pagamento
             PaymentMethodsValidator.validatePaymentMethods(paymentMethods);
             
@@ -741,6 +748,12 @@ class SellerService {
         try {
             // Validação do ID
             SellerValidator.validateId(id);
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionError = await checkSubscriptionMiddleware(id);
+            if (subscriptionError) {
+                return subscriptionError;
+            }
             
             // Validação do método de pagamento
             PaymentMethodsValidator.validateSinglePaymentMethod(paymentMethod);
@@ -786,6 +799,12 @@ class SellerService {
         try {
             // Validação do ID
             SellerValidator.validateId(id);
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionError = await checkSubscriptionMiddleware(id);
+            if (subscriptionError) {
+                return subscriptionError;
+            }
             
             // Validação do método de pagamento
             PaymentMethodsValidator.validateSinglePaymentMethod(paymentMethod);

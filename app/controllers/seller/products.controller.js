@@ -1,6 +1,7 @@
 const ProductService = require('../../services/product.service');
 const SellerService = require('../../services/seller.service');
 const SellerProductsService = require('../../services/seller/products.service');
+const { checkSubscriptionMiddleware } = require('../../utils/subscription-validator');
 const { formatError, createError } = require('../../utils/errorHandler');
 
 // Função utilitária para validação DRY
@@ -15,6 +16,12 @@ class SellerProductsController {
     async getProducts(req, res) {
         try {
             const { seller_id } = req.params;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
             
             // Verificar se o seller existe
             const sellerResult = await SellerService.get(seller_id);
@@ -46,6 +53,12 @@ class SellerProductsController {
     async getProductById(req, res) {
         try {
             const { seller_id, product_id } = req.params;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
             
             // Verificar se o seller existe
             const sellerResult = await SellerService.get(seller_id);
@@ -84,6 +97,12 @@ class SellerProductsController {
             const { seller_id } = req.params;
             const productData = req.body;
             
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
             // Verificar se o seller existe
             const sellerResult = await SellerService.get(seller_id);
             
@@ -119,6 +138,12 @@ class SellerProductsController {
         try {
             const { seller_id, product_id } = req.params;
             const productData = req.body;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
             
             // Verificar se o seller existe
             const sellerResult = await SellerService.get(seller_id);
@@ -167,6 +192,12 @@ class SellerProductsController {
         try {
             const { seller_id, product_id } = req.params;
             
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
             // Verificar se o seller existe
             const sellerResult = await SellerService.get(seller_id);
             
@@ -209,6 +240,12 @@ class SellerProductsController {
     async getProductVariants(req, res) {
         try {
             const { seller_id, product_id } = req.params;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
             
             // Verificar se o seller existe
             const sellerResult = await SellerService.get(seller_id);
@@ -260,6 +297,13 @@ class SellerProductsController {
     async syncProduct(req, res) {
         try {
             const { seller_id, product_id } = req.params;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
             // Busca e valida o seller
             const sellerResult = await SellerService.get(seller_id);
             if (!sellerResult.success) return res.status(sellerResult.status || 404).json(sellerResult);
