@@ -77,13 +77,52 @@ class SellerProductsService {
             if (!productData || !productData.name) {
                 return createError('Dados do produto são obrigatórios', 400);
             }
+
+            // Separar dados de imagens dos dados do produto
+            const { images, ...productDataOnly } = productData;
             
+            // Criar o produto primeiro
             const product = await NsApiClient.post({
                 storeId,
                 endpoint: 'products',
                 accessToken,
-                data: productData
+                data: productDataOnly
             });
+
+            // Se há imagens para adicionar, adicionar após a criação do produto
+            if (images && Array.isArray(images) && images.length > 0) {
+                console.log(`Adicionando ${images.length} imagem(ns) ao produto ${product.id}`);
+                
+                const imageResults = [];
+                for (let i = 0; i < images.length; i++) {
+                    const imageData = images[i];
+                    
+                    // Definir posição se não especificada
+                    if (!imageData.position) {
+                        imageData.position = i + 1;
+                    }
+                    
+                    try {
+                        const imageResult = await this.addProductImage(
+                            sellerId, 
+                            storeId, 
+                            accessToken, 
+                            product.id, 
+                            imageData
+                        );
+                        
+                        if (imageResult.success) {
+                            imageResults.push(imageResult.data);
+                        }
+                    } catch (imageError) {
+                        console.error(`Erro ao adicionar imagem ${i + 1}:`, imageError.message);
+                        // Continua com as outras imagens mesmo se uma falhar
+                    }
+                }
+                
+                // Anexar as imagens criadas ao resultado do produto
+                product.images = imageResults;
+            }
             
             return { success: true, data: product };
         } catch (error) {
@@ -169,6 +208,252 @@ class SellerProductsService {
         } catch (error) {
             console.error(`Erro ao obter variantes do produto ${productId} da Nuvemshop:`, error.message);
             return formatError(error);
+        }
+    }
+
+    // ========== MÉTODOS PARA GERENCIAMENTO DE IMAGENS ==========
+
+    /**
+     * Lista todas as imagens de um produto
+     * @param {string} sellerId - ID do seller
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @param {string} accessToken - Token de acesso à API da Nuvemshop
+     * @param {string} productId - ID do produto na Nuvemshop
+     * @param {Object} params - Parâmetros de filtro (since_id, src, position, page, per_page, fields)
+     * @returns {Object} - Lista de imagens do produto
+     */
+    async getProductImages(sellerId, storeId, accessToken, productId, params = {}) {
+        try {
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+
+            console.log(`SellerProductsService: Buscando imagens do produto ${productId} para seller ${sellerId}`);
+            
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+            
+            const paramsFormatted = new URLSearchParams(params);
+            console.log(`Parâmetros da requisição de imagens: ${paramsFormatted.toString() || 'nenhum'}`);
+            
+            const images = await NsApiClient.get({
+                storeId,
+                endpoint: `products/${productId}/images`,
+                accessToken,
+                params: paramsFormatted
+            });
+            
+            console.log(`Imagens encontradas: ${images.length || 0}`);
+            return { success: true, data: images };
+        } catch (error) {
+            console.error(`Erro ao obter imagens do produto ${productId} da Nuvemshop:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Obtém uma imagem específica de um produto
+     * @param {string} sellerId - ID do seller
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @param {string} accessToken - Token de acesso à API da Nuvemshop
+     * @param {string} productId - ID do produto na Nuvemshop
+     * @param {string} imageId - ID da imagem
+     * @param {Object} params - Parâmetros (fields)
+     * @returns {Object} - Dados da imagem
+     */
+    async getProductImageById(sellerId, storeId, accessToken, productId, imageId, params = {}) {
+        try {
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+            
+            if (!imageId) {
+                return createError('ID da imagem é obrigatório', 400);
+            }
+            
+            const paramsFormatted = new URLSearchParams(params);
+            
+            const image = await NsApiClient.get({
+                storeId,
+                endpoint: `products/${productId}/images/${imageId}`,
+                accessToken,
+                params: paramsFormatted
+            });
+            
+            return { success: true, data: image };
+        } catch (error) {
+            console.error(`Erro ao obter imagem ${imageId} do produto ${productId} da Nuvemshop:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Adiciona uma imagem a um produto
+     * @param {string} sellerId - ID do seller
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @param {string} accessToken - Token de acesso à API da Nuvemshop
+     * @param {string} productId - ID do produto na Nuvemshop
+     * @param {Object} imageData - Dados da imagem (src, attachment, filename, position, alt)
+     * @returns {Object} - Dados da imagem criada
+     */
+    async addProductImage(sellerId, storeId, accessToken, productId, imageData) {
+        try {
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+
+            console.log(`SellerProductsService: Adicionando imagem ao produto ${productId} para seller ${sellerId}`);
+            
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+            
+            if (!imageData || (!imageData.src && !imageData.attachment)) {
+                return createError('URL da imagem (src) ou anexo em Base64 (attachment) é obrigatório', 400);
+            }
+
+            // Validar formato de arquivo se for attachment
+            if (imageData.attachment && imageData.filename) {
+                const allowedFormats = ['.gif', '.jpg', '.jpeg', '.png', '.webp'];
+                const fileExtension = imageData.filename.toLowerCase().substring(imageData.filename.lastIndexOf('.'));
+                
+                if (!allowedFormats.includes(fileExtension)) {
+                    return createError('Formato de arquivo não suportado. Use: .gif, .jpg, .png ou .webp', 400);
+                }
+            }
+            
+            const image = await NsApiClient.post({
+                storeId,
+                endpoint: `products/${productId}/images`,
+                accessToken,
+                data: imageData
+            });
+            
+            console.log(`Imagem adicionada com sucesso: ID ${image.id}, posição ${image.position}`);
+            return { success: true, data: image };
+        } catch (error) {
+            console.error(`Erro ao adicionar imagem ao produto ${productId} da Nuvemshop:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Atualiza uma imagem de um produto
+     * @param {string} sellerId - ID do seller
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @param {string} accessToken - Token de acesso à API da Nuvemshop
+     * @param {string} productId - ID do produto na Nuvemshop
+     * @param {string} imageId - ID da imagem
+     * @param {Object} imageData - Dados da imagem a serem atualizados
+     * @returns {Object} - Dados da imagem atualizada
+     */
+    async updateProductImage(sellerId, storeId, accessToken, productId, imageId, imageData) {
+        try {
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+            
+            if (!imageId) {
+                return createError('ID da imagem é obrigatório', 400);
+            }
+            
+            if (!imageData) {
+                return createError('Dados da imagem são obrigatórios', 400);
+            }
+            
+            const image = await NsApiClient.put({
+                storeId,
+                endpoint: `products/${productId}/images/${imageId}`,
+                accessToken,
+                data: imageData
+            });
+            
+            return { success: true, data: image };
+        } catch (error) {
+            console.error(`Erro ao atualizar imagem ${imageId} do produto ${productId} da Nuvemshop:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Remove uma imagem de um produto
+     * @param {string} sellerId - ID do seller
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @param {string} accessToken - Token de acesso à API da Nuvemshop
+     * @param {string} productId - ID do produto na Nuvemshop
+     * @param {string} imageId - ID da imagem
+     * @returns {Object} - Resultado da operação
+     */
+    async removeProductImage(sellerId, storeId, accessToken, productId, imageId) {
+        try {
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+            
+            if (!imageId) {
+                return createError('ID da imagem é obrigatório', 400);
+            }
+            
+            await NsApiClient.delete({
+                storeId,
+                endpoint: `products/${productId}/images/${imageId}`,
+                accessToken
+            });
+            
+            return { success: true, message: 'Imagem removida com sucesso' };
+        } catch (error) {
+            console.error(`Erro ao remover imagem ${imageId} do produto ${productId} da Nuvemshop:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Método utilitário para redimensionar URL de imagem
+     * @param {string} imageUrl - URL original da imagem
+     * @param {string} size - Tamanho desejado (50, 100, 240, 320, 480, 640, 1024)
+     * @returns {string} - URL da imagem redimensionada
+     */
+    static resizeImageUrl(imageUrl, size = '640') {
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return imageUrl;
+        }
+
+        const validSizes = ['50', '100', '240', '320', '480', '640', '1024'];
+        const targetSize = validSizes.includes(size) ? size : '640';
+
+        // Para WEBP, só está disponível em 1024px no formato JPEG
+        if (imageUrl.includes('.webp') && targetSize === '1024') {
+            return imageUrl.replace(/\.webp$/, '.jpeg').replace(/-\d+-\d+\.jpeg$/, '-1024-1024.jpeg');
+        }
+
+        // Para outros formatos
+        if (targetSize === '1024') {
+            return imageUrl.replace(/-\d+-\d+\.(jpg|jpeg|png|gif)$/, `-1024-1024.$1`);
+        } else {
+            return imageUrl.replace(/-\d+-\d+\.(jpg|jpeg|png|gif|webp)$/, `-${targetSize}-0.$1`);
         }
     }
     

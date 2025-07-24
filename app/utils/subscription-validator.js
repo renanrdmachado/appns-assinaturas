@@ -15,10 +15,10 @@ class SubscriptionValidator {
     async validateSellerSubscription(sellerId) {
         try {
             if (!sellerId) {
-                return createError('ID do seller é obrigatório', 400);
+                return createError('ID do vendedor é obrigatório', 400);
             }
 
-            // Buscar assinatura ativa do seller
+            // Buscar assinatura ativa do vendedor
             const subscription = await SellerSubscription.findOne({
                 where: {
                     seller_id: sellerId,
@@ -30,7 +30,7 @@ class SubscriptionValidator {
             });
 
             if (!subscription) {
-                return createError('Seller não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.', 403);
+                return createError('O vendedor não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.', 403);
             }
 
             // Verificar se a assinatura está vencida
@@ -38,12 +38,12 @@ class SubscriptionValidator {
             const dueDate = new Date(subscription.next_due_date);
 
             if (subscription.status === 'overdue' || (dueDate < now && subscription.status !== 'active')) {
-                return createError('Assinatura do seller está vencida. Renove sua assinatura para continuar utilizando o serviço.', 403);
+                return createError('A assinatura do vendedor está vencida. Renove sua assinatura para continuar utilizando o serviço.', 403);
             }
 
             // Verificar se está inativa ou cancelada
             if (subscription.status === 'inactive' || subscription.status === 'canceled') {
-                return createError('Assinatura do seller está inativa. Ative sua assinatura para utilizar este serviço.', 403);
+                return createError('A assinatura do vendedor está inativa. Ative sua assinatura para utilizar este serviço.', 403);
             }
 
             return {
@@ -52,7 +52,7 @@ class SubscriptionValidator {
             };
 
         } catch (error) {
-            console.error('Erro ao validar assinatura do seller:', error.message);
+            console.error('Erro ao validar assinatura do vendedor:', error.message);
             return formatError(error);
         }
     }

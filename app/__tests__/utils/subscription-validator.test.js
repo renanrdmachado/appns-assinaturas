@@ -15,7 +15,7 @@ describe('SubscriptionValidator', () => {
             const result = await subscriptionValidator.validateSellerSubscription();
             
             expect(result.success).toBe(false);
-            expect(result.message).toBe('ID do seller é obrigatório');
+            expect(result.message).toBe('ID do vendedor é obrigatório');
             expect(result.status).toBe(400);
         });
 
@@ -25,7 +25,7 @@ describe('SubscriptionValidator', () => {
             const result = await subscriptionValidator.validateSellerSubscription(1);
             
             expect(result.success).toBe(false);
-            expect(result.message).toBe('Seller não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.');
+            expect(result.message).toBe('O vendedor não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.');
             expect(result.status).toBe(403);
         });
 
@@ -43,7 +43,7 @@ describe('SubscriptionValidator', () => {
             const result = await subscriptionValidator.validateSellerSubscription(1);
             
             expect(result.success).toBe(false);
-            expect(result.message).toBe('Assinatura do seller está vencida. Renove sua assinatura para continuar utilizando o serviço.');
+            expect(result.message).toBe('A assinatura do vendedor está vencida. Renove sua assinatura para continuar utilizando o serviço.');
             expect(result.status).toBe(403);
         });
 
@@ -61,7 +61,7 @@ describe('SubscriptionValidator', () => {
             const result = await subscriptionValidator.validateSellerSubscription(1);
             
             expect(result.success).toBe(false);
-            expect(result.message).toBe('Assinatura do seller está inativa. Ative sua assinatura para utilizar este serviço.');
+            expect(result.message).toBe('A assinatura do vendedor está inativa. Ative sua assinatura para utilizar este serviço.');
             expect(result.status).toBe(403);
         });
 
@@ -79,7 +79,7 @@ describe('SubscriptionValidator', () => {
             const result = await subscriptionValidator.validateSellerSubscription(1);
             
             expect(result.success).toBe(false);
-            expect(result.message).toBe('Assinatura do seller está inativa. Ative sua assinatura para utilizar este serviço.');
+            expect(result.message).toBe('A assinatura do vendedor está inativa. Ative sua assinatura para utilizar este serviço.');
             expect(result.status).toBe(403);
         });
 
@@ -100,7 +100,7 @@ describe('SubscriptionValidator', () => {
             const result = await subscriptionValidator.validateSellerSubscription(1);
             
             expect(result.success).toBe(false);
-            expect(result.message).toBe('Assinatura do seller está vencida. Renove sua assinatura para continuar utilizando o serviço.');
+            expect(result.message).toBe('A assinatura do vendedor está vencida. Renove sua assinatura para continuar utilizando o serviço.');
             expect(result.status).toBe(403);
         });
 

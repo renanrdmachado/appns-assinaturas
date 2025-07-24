@@ -344,6 +344,220 @@ class SellerProductsController {
             return res.status(500).json(formatError(error));
         }
     }
+
+    // ========== MÉTODOS PARA IMAGENS DE PRODUTOS ==========
+
+    /**
+     * Lista todas as imagens de um produto
+     * GET /seller/:seller_id/products/:product_id/images
+     */
+    async getProductImages(req, res) {
+        try {
+            const { seller_id, product_id } = req.params;
+            const { since_id, src, position, page, per_page, fields } = req.query;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+
+            const params = {};
+            if (since_id) params.since_id = since_id;
+            if (src) params.src = src;
+            if (position) params.position = position;
+            if (page) params.page = page;
+            if (per_page) params.per_page = per_page;
+            if (fields) params.fields = fields;
+
+            const result = await SellerProductsService.getProductImages(
+                seller_id,
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                product_id,
+                params
+            );
+
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+
+            return res.json(result);
+        } catch (error) {
+            console.error(`Erro ao buscar imagens do produto ${req.params.product_id} do seller ${req.params.seller_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Obtém uma imagem específica de um produto
+     * GET /seller/:seller_id/products/:product_id/images/:image_id
+     */
+    async getProductImageById(req, res) {
+        try {
+            const { seller_id, product_id, image_id } = req.params;
+            const { fields } = req.query;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+
+            const params = {};
+            if (fields) params.fields = fields;
+
+            const result = await SellerProductsService.getProductImageById(
+                seller_id,
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                product_id,
+                image_id,
+                params
+            );
+
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+
+            return res.json(result);
+        } catch (error) {
+            console.error(`Erro ao buscar imagem ${req.params.image_id} do produto ${req.params.product_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Adiciona uma imagem a um produto
+     * POST /seller/:seller_id/products/:product_id/images
+     */
+    async addProductImage(req, res) {
+        try {
+            const { seller_id, product_id } = req.params;
+            const imageData = req.body;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+
+            const result = await SellerProductsService.addProductImage(
+                seller_id,
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                product_id,
+                imageData
+            );
+
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+
+            return res.status(201).json(result);
+        } catch (error) {
+            console.error(`Erro ao adicionar imagem ao produto ${req.params.product_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Atualiza uma imagem de um produto
+     * PUT /seller/:seller_id/products/:product_id/images/:image_id
+     */
+    async updateProductImage(req, res) {
+        try {
+            const { seller_id, product_id, image_id } = req.params;
+            const imageData = req.body;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+
+            const result = await SellerProductsService.updateProductImage(
+                seller_id,
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                product_id,
+                image_id,
+                imageData
+            );
+
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+
+            return res.json(result);
+        } catch (error) {
+            console.error(`Erro ao atualizar imagem ${req.params.image_id} do produto ${req.params.product_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
+
+    /**
+     * Remove uma imagem de um produto
+     * DELETE /seller/:seller_id/products/:product_id/images/:image_id
+     */
+    async removeProductImage(req, res) {
+        try {
+            const { seller_id, product_id, image_id } = req.params;
+            
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            if (!subscriptionCheck.success) {
+                return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
+            }
+            
+            // Verificar se o seller existe
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(sellerResult.status || 404).json(sellerResult);
+            }
+
+            const result = await SellerProductsService.removeProductImage(
+                seller_id,
+                sellerResult.data.nuvemshop_id,
+                sellerResult.data.nuvemshop_api_token,
+                product_id,
+                image_id
+            );
+
+            if (!result.success) {
+                return res.status(result.status || 400).json(result);
+            }
+
+            return res.json(result);
+        } catch (error) {
+            console.error(`Erro ao remover imagem ${req.params.image_id} do produto ${req.params.product_id}:`, error);
+            return res.status(500).json(formatError(error));
+        }
+    }
 }
 
 module.exports = new SellerProductsController();

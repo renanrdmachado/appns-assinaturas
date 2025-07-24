@@ -51,4 +51,45 @@ router.get('/:product_id/variants', SellerProductsController.getProductVariants)
  */
 router.post('/:product_id/sync', SellerProductsController.syncProduct);
 
+// ========== ROTAS PARA IMAGENS DE PRODUTOS ==========
+
+/**
+ * @route GET /sellers/:seller_id/products/:product_id/images
+ * @desc Lista todas as imagens de um produto
+ * @access Privado
+ * @params since_id, src, position, page, per_page, fields
+ */
+router.get('/:product_id/images', SellerProductsController.getProductImages);
+
+/**
+ * @route GET /sellers/:seller_id/products/:product_id/images/:image_id
+ * @desc Obtém uma imagem específica de um produto
+ * @access Privado
+ * @params fields
+ */
+router.get('/:product_id/images/:image_id', SellerProductsController.getProductImageById);
+
+/**
+ * @route POST /sellers/:seller_id/products/:product_id/images
+ * @desc Adiciona uma imagem a um produto
+ * @access Privado
+ * @body { src, attachment, filename, position, alt }
+ */
+router.post('/:product_id/images', SellerProductsController.addProductImage);
+
+/**
+ * @route PUT /sellers/:seller_id/products/:product_id/images/:image_id
+ * @desc Atualiza uma imagem de um produto
+ * @access Privado
+ * @body { position, alt }
+ */
+router.put('/:product_id/images/:image_id', SellerProductsController.updateProductImage);
+
+/**
+ * @route DELETE /sellers/:seller_id/products/:product_id/images/:image_id
+ * @desc Remove uma imagem de um produto
+ * @access Privado
+ */
+router.delete('/:product_id/images/:image_id', SellerProductsController.removeProductImage);
+
 module.exports = router;

@@ -1,5 +1,5 @@
 const { formatError, createError } = require('../../utils/errorHandler');
-const subscriptionValidator = require('../../utils/subscription-validator');
+const { checkSubscriptionMiddleware } = require('../../utils/subscription-validator');
 const Seller = require('../../models/Seller');
 const Shopper = require('../../models/Shopper');
 const Order = require('../../models/Order');
@@ -25,7 +25,7 @@ class SellerSubscriptionsService {
             }
 
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            const subscriptionError = await checkSubscriptionMiddleware(sellerId);
             if (subscriptionError) {
                 return subscriptionError;
             }
@@ -118,7 +118,7 @@ class SellerSubscriptionsService {
             }
 
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            const subscriptionError = await checkSubscriptionMiddleware(sellerId);
             if (subscriptionError) {
                 return subscriptionError;
             }
@@ -206,7 +206,7 @@ class SellerSubscriptionsService {
             }
 
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            const subscriptionError = await checkSubscriptionMiddleware(sellerId);
             if (subscriptionError) {
                 return subscriptionError;
             }
@@ -262,7 +262,7 @@ class SellerSubscriptionsService {
             }
 
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            const subscriptionError = await checkSubscriptionMiddleware(sellerId);
             if (subscriptionError) {
                 return subscriptionError;
             }

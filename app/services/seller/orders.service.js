@@ -1,5 +1,5 @@
 const { formatError, createError } = require('../../utils/errorHandler');
-const subscriptionValidator = require('../../utils/subscription-validator');
+const { checkSubscriptionMiddleware } = require('../../utils/subscription-validator');
 const Seller = require('../../models/Seller');
 const Order = require('../../models/Order');
 const { Op } = require('sequelize');
@@ -21,7 +21,7 @@ class SellerOrdersService {
             }
 
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            const subscriptionError = await checkSubscriptionMiddleware(sellerId);
             if (subscriptionError) {
                 return subscriptionError;
             }
@@ -92,7 +92,7 @@ class SellerOrdersService {
             }
 
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            const subscriptionError = await checkSubscriptionMiddleware(sellerId);
             if (subscriptionError) {
                 return subscriptionError;
             }
