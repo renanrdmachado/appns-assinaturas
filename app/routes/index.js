@@ -36,9 +36,6 @@ router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);
 
-// Rota do seller/store SEM validação de assinatura
-router.use('/app/seller/store', sellerStoreRoutes);
-
 // Rotas específicas do seller COM validação de assinatura
 router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
 

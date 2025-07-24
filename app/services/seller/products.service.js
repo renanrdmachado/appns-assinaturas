@@ -1,15 +1,9 @@
 const NsApiClient = require('../../helpers/NsApiClient');
 const { formatError, createError } = require('../../utils/errorHandler');
-const subscriptionValidator = require('../../utils/subscription-validator');
 
 class SellerProductsService {
     async getProducts(sellerId, storeId, accessToken, params = {}) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             console.log(`SellerProductsService: Buscando produtos para seller ${sellerId}, storeId: ${storeId}`);
             
@@ -43,11 +37,6 @@ class SellerProductsService {
     
     async getProductById(sellerId, storeId, accessToken, productId) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -68,11 +57,6 @@ class SellerProductsService {
     
     async createProduct(sellerId, storeId, accessToken, productData) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productData || !productData.name) {
                 return createError('Dados do produto são obrigatórios', 400);
@@ -133,11 +117,6 @@ class SellerProductsService {
     
     async updateProduct(sellerId, storeId, accessToken, productId, productData) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -163,11 +142,6 @@ class SellerProductsService {
     
     async deleteProduct(sellerId, storeId, accessToken, productId) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -188,11 +162,6 @@ class SellerProductsService {
     
     async getProductVariants(sellerId, storeId, accessToken, productId) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -224,11 +193,6 @@ class SellerProductsService {
      */
     async getProductImages(sellerId, storeId, accessToken, productId, params = {}) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             console.log(`SellerProductsService: Buscando imagens do produto ${productId} para seller ${sellerId}`);
             
@@ -266,11 +230,6 @@ class SellerProductsService {
      */
     async getProductImageById(sellerId, storeId, accessToken, productId, imageId, params = {}) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -307,11 +266,6 @@ class SellerProductsService {
      */
     async addProductImage(sellerId, storeId, accessToken, productId, imageData) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             console.log(`SellerProductsService: Adicionando imagem ao produto ${productId} para seller ${sellerId}`);
             
@@ -360,11 +314,6 @@ class SellerProductsService {
      */
     async updateProductImage(sellerId, storeId, accessToken, productId, imageId, imageData) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -403,11 +352,6 @@ class SellerProductsService {
      */
     async removeProductImage(sellerId, storeId, accessToken, productId, imageId) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -466,11 +410,6 @@ class SellerProductsService {
      */
     async syncProduct(sellerId, storeId, accessToken, product) {
         try {
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (!subscriptionCheck.success) {
-                return subscriptionCheck;
-            }
 
             console.log(`Sincronizando produto ID ${product.id} com a Nuvemshop para seller ${sellerId}`);
             

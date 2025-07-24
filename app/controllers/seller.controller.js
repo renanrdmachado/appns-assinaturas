@@ -2,7 +2,6 @@ require('dotenv').config();
 const SellerService = require('../services/seller.service');
 const SellerSubaccountService = require('../services/seller-subaccount.service');
 const PaymentMethodsValidator = require('../validators/payment-methods-validator');
-const subscriptionValidator = require('../utils/subscription-validator');
 const { formatError } = require('../utils/errorHandler');
 
 // Listar todos os vendedores
@@ -168,12 +167,6 @@ const updatePaymentMethods = async (req, res) => {
         const sellerId = req.params.id || req.params.seller_id;
         const { payment_methods } = req.body;
         
-        // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-        if (!subscriptionCheck.success) {
-            return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
-        }
-        
         const result = await SellerService.updatePaymentMethods(sellerId, payment_methods);
         
         // Verificar se a operação foi bem-sucedida
@@ -198,12 +191,6 @@ const addPaymentMethod = async (req, res) => {
     try {
         const sellerId = req.params.id || req.params.seller_id;
         const { payment_method } = req.body;
-        
-        // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-        if (!subscriptionCheck.success) {
-            return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
-        }
         
         const result = await SellerService.addPaymentMethod(sellerId, payment_method);
         
@@ -230,12 +217,6 @@ const removePaymentMethod = async (req, res) => {
         const sellerId = req.params.id || req.params.seller_id;
         const { payment_method } = req.body;
         
-        // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-        if (!subscriptionCheck.success) {
-            return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
-        }
-        
         const result = await SellerService.removePaymentMethod(sellerId, payment_method);
         
         // Verificar se a operação foi bem-sucedida
@@ -259,12 +240,6 @@ const getPaymentMethods = async (req, res) => {
     console.log("Controller - SellerController/getPaymentMethods");
     try {
         const sellerId = req.params.id || req.params.seller_id;
-        
-        // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-        if (!subscriptionCheck.success) {
-            return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
-        }
         
         // Buscar o seller para obter seus métodos de pagamento
         const result = await SellerService.get(sellerId);
@@ -305,12 +280,6 @@ const updateSinglePaymentMethod = async (req, res) => {
         const sellerId = req.params.id || req.params.seller_id;
         const { method } = req.params;
         const isActive = req.body.active !== false; // Se não for explicitamente false, consideramos como true
-        
-        // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-        if (!subscriptionCheck.success) {
-            return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
-        }
         
         // Validar o método de pagamento
         try {
