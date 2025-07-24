@@ -1,5 +1,4 @@
 const { formatError, createError } = require('../../utils/errorHandler');
-const subscriptionValidator = require('../../utils/subscription-validator');
 const Seller = require('../../models/Seller');
 const Order = require('../../models/Order');
 const { Op } = require('sequelize');
@@ -18,12 +17,6 @@ class SellerOrdersService {
         try {
             if (!sellerId) {
                 return createError('ID do vendedor é obrigatório', 400);
-            }
-
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (subscriptionError) {
-                return subscriptionError;
             }
 
             // Verificar se o vendedor existe
@@ -89,12 +82,6 @@ class SellerOrdersService {
 
             if (!orderId) {
                 return createError('ID do pedido é obrigatório', 400);
-            }
-
-            // Validar assinatura do seller antes de prosseguir
-            const subscriptionError = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
-            if (subscriptionError) {
-                return subscriptionError;
             }
 
             // Verificar se o vendedor existe

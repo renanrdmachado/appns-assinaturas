@@ -61,7 +61,7 @@ class SubscriptionValidator {
      * Middleware para validação automática de assinatura
      * Pode ser usado nos métodos dos serviços
      * @param {number} sellerId - ID do seller
-     * @returns {Promise<Object|null>} - Retorna erro se inválida, null se válida
+     * @returns {Promise<Object|null>} - Retorna null se válida, objeto de erro se inválida
      */
     async checkSubscriptionMiddleware(sellerId) {
         const validation = await this.validateSellerSubscription(sellerId);
@@ -70,7 +70,7 @@ class SubscriptionValidator {
             return validation; // Retorna o erro
         }
         
-        return null; // Assinatura válida, continua o fluxo
+        return null; // Assinatura válida - retorna null conforme esperado pelos testes
     }
 }
 

@@ -56,39 +56,6 @@ describe('SellerProductsService - Testes', () => {
         checkSubscriptionMiddleware.mockResolvedValue({ success: true });
     });
 
-    describe('Subscription Validation - Validação de assinatura', () => {
-        it('deve retornar erro quando assinatura está inválida', async () => {
-            // Mock para assinatura inválida
-            checkSubscriptionMiddleware.mockResolvedValue({
-                success: false,
-                message: 'Seller subscription is not active',
-                status: 403
-            });
-
-            const result = await SellerProductsService.getProducts('1', '123456', 'token123');
-
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
-            expect(result).toEqual({
-                success: false,
-                message: 'Seller subscription is not active',
-                status: 403
-            });
-        });
-
-        it('deve prosseguir quando assinatura está válida', async () => {
-            // Mock do NsApiClient para sucesso
-            NsApiClient.get.mockResolvedValue([
-                { id: 1, name: 'Produto 1' },
-                { id: 2, name: 'Produto 2' }
-            ]);
-
-            const result = await SellerProductsService.getProducts('1', '123456', 'token123');
-
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
-            expect(result.success).toBe(true);
-            expect(result.data).toHaveLength(2);
-        });
-    });
 
     describe('getProducts - Listar produtos', () => {
         it('deve listar produtos com sucesso', async () => {
@@ -101,7 +68,6 @@ describe('SellerProductsService - Testes', () => {
 
             const result = await SellerProductsService.getProducts('1', '123456', 'token123');
 
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
             expect(NsApiClient.get).toHaveBeenCalledWith({
                 storeId: '123456',
                 endpoint: 'products',
@@ -158,7 +124,6 @@ describe('SellerProductsService - Testes', () => {
 
             const result = await SellerProductsService.getProductById('1', '123456', 'token123', '1');
 
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
             expect(NsApiClient.get).toHaveBeenCalledWith({
                 storeId: '123456',
                 endpoint: 'products/1',
@@ -204,7 +169,6 @@ describe('SellerProductsService - Testes', () => {
 
             const result = await SellerProductsService.createProduct('1', '123456', 'token123', productData);
 
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
             expect(NsApiClient.post).toHaveBeenCalledWith({
                 storeId: '123456',
                 endpoint: 'products',
@@ -264,7 +228,6 @@ describe('SellerProductsService - Testes', () => {
 
             const result = await SellerProductsService.updateProduct('1', '123456', 'token123', '1', productData);
 
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
             expect(NsApiClient.put).toHaveBeenCalledWith({
                 storeId: '123456',
                 endpoint: 'products/1',
@@ -322,7 +285,6 @@ describe('SellerProductsService - Testes', () => {
 
             const result = await SellerProductsService.deleteProduct('1', '123456', 'token123', '1');
 
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
             expect(NsApiClient.delete).toHaveBeenCalledWith({
                 storeId: '123456',
                 endpoint: 'products/1',
@@ -370,7 +332,6 @@ describe('SellerProductsService - Testes', () => {
 
             const result = await SellerProductsService.getProductVariants('1', '123456', 'token123', '1');
 
-            expect(checkSubscriptionMiddleware).toHaveBeenCalledWith('1');
             expect(NsApiClient.get).toHaveBeenCalledWith({
                 storeId: '123456',
                 endpoint: 'products/1/variants',

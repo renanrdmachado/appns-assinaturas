@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
+// Middleware de validação de assinatura para rotas do seller
+const { validateSellerSubscription } = require('../middleware/seller-subscription');
+
 // Rotas do sistema
 const productRoutes = require('./product.routes');
 const orderRoutes = require('./order.routes');
@@ -30,7 +33,8 @@ router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);
 
-router.use('/app/seller', sellerSpecificRoutes);
+// Rotas específicas do seller COM validação de assinatura
+router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
 
 // Rotas de integração
 router.use('/ns', nsRoutes);
