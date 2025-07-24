@@ -18,6 +18,9 @@ const paymentRoutes = require('./payment.routes');
 // Rotas específicas do seller (organizadas por recursos)
 const sellerSpecificRoutes = require('./seller');
 
+// Rota do seller/store SEM validação de assinatura (liberada)
+const sellerStoreRoutes = require('./seller/store.routes');
+
 // Rotas de integrações
 const nsRoutes = require('./ns.routes');
 const asaasRoutes = require('./asaas.routes');
@@ -32,6 +35,9 @@ router.use('/app/shopper-subscriptions', shopperSubscriptionRoutes);
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);
+
+// Rota do seller/store SEM validação de assinatura
+router.use('/app/seller/store', sellerStoreRoutes);
 
 // Rotas específicas do seller COM validação de assinatura
 router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
