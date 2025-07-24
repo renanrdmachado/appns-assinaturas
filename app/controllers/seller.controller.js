@@ -1,7 +1,8 @@
 require('dotenv').config();
 const SellerService = require('../services/seller.service');
+const SellerSubaccountService = require('../services/seller-subaccount.service');
 const PaymentMethodsValidator = require('../validators/payment-methods-validator');
-const { checkSubscriptionMiddleware } = require('../utils/subscription-validator');
+const subscriptionValidator = require('../utils/subscription-validator');
 const { formatError } = require('../utils/errorHandler');
 
 // Listar todos os vendedores
@@ -168,7 +169,7 @@ const updatePaymentMethods = async (req, res) => {
         const { payment_methods } = req.body;
         
         // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
         if (!subscriptionCheck.success) {
             return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
         }
@@ -199,7 +200,7 @@ const addPaymentMethod = async (req, res) => {
         const { payment_method } = req.body;
         
         // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
         if (!subscriptionCheck.success) {
             return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
         }
@@ -230,7 +231,7 @@ const removePaymentMethod = async (req, res) => {
         const { payment_method } = req.body;
         
         // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
         if (!subscriptionCheck.success) {
             return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
         }
@@ -260,7 +261,7 @@ const getPaymentMethods = async (req, res) => {
         const sellerId = req.params.id || req.params.seller_id;
         
         // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
         if (!subscriptionCheck.success) {
             return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
         }
@@ -306,7 +307,7 @@ const updateSinglePaymentMethod = async (req, res) => {
         const isActive = req.body.active !== false; // Se não for explicitamente false, consideramos como true
         
         // Validar assinatura do seller antes de prosseguir
-        const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+        const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
         if (!subscriptionCheck.success) {
             return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
         }

@@ -1,12 +1,12 @@
 const NsApiClient = require('../../helpers/NsApiClient');
 const { formatError, createError } = require('../../utils/errorHandler');
-const { checkSubscriptionMiddleware } = require('../../utils/subscription-validator');
+const subscriptionValidator = require('../../utils/subscription-validator');
 
 class SellerProductsService {
     async getProducts(sellerId, storeId, accessToken, params = {}) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -44,7 +44,7 @@ class SellerProductsService {
     async getProductById(sellerId, storeId, accessToken, productId) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -69,7 +69,7 @@ class SellerProductsService {
     async createProduct(sellerId, storeId, accessToken, productData) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -134,7 +134,7 @@ class SellerProductsService {
     async updateProduct(sellerId, storeId, accessToken, productId, productData) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -164,7 +164,7 @@ class SellerProductsService {
     async deleteProduct(sellerId, storeId, accessToken, productId) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -189,7 +189,7 @@ class SellerProductsService {
     async getProductVariants(sellerId, storeId, accessToken, productId) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -225,7 +225,7 @@ class SellerProductsService {
     async getProductImages(sellerId, storeId, accessToken, productId, params = {}) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -267,7 +267,7 @@ class SellerProductsService {
     async getProductImageById(sellerId, storeId, accessToken, productId, imageId, params = {}) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -308,7 +308,7 @@ class SellerProductsService {
     async addProductImage(sellerId, storeId, accessToken, productId, imageData) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -361,7 +361,7 @@ class SellerProductsService {
     async updateProductImage(sellerId, storeId, accessToken, productId, imageId, imageData) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -404,7 +404,7 @@ class SellerProductsService {
     async removeProductImage(sellerId, storeId, accessToken, productId, imageId) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }
@@ -467,7 +467,7 @@ class SellerProductsService {
     async syncProduct(sellerId, storeId, accessToken, product) {
         try {
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(sellerId);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
             if (!subscriptionCheck.success) {
                 return subscriptionCheck;
             }

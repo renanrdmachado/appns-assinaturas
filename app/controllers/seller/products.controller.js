@@ -1,7 +1,7 @@
 const ProductService = require('../../services/product.service');
 const SellerService = require('../../services/seller.service');
 const SellerProductsService = require('../../services/seller/products.service');
-const { checkSubscriptionMiddleware } = require('../../utils/subscription-validator');
+const subscriptionValidator = require('../../utils/subscription-validator');
 const { formatError, createError } = require('../../utils/errorHandler');
 
 // Função utilitária para validação DRY
@@ -18,7 +18,7 @@ class SellerProductsController {
             const { seller_id } = req.params;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -55,7 +55,7 @@ class SellerProductsController {
             const { seller_id, product_id } = req.params;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -98,7 +98,7 @@ class SellerProductsController {
             const productData = req.body;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -140,7 +140,7 @@ class SellerProductsController {
             const productData = req.body;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -193,7 +193,7 @@ class SellerProductsController {
             const { seller_id, product_id } = req.params;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -242,7 +242,7 @@ class SellerProductsController {
             const { seller_id, product_id } = req.params;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -299,7 +299,7 @@ class SellerProductsController {
             const { seller_id, product_id } = req.params;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -357,7 +357,7 @@ class SellerProductsController {
             const { since_id, src, position, page, per_page, fields } = req.query;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -405,7 +405,7 @@ class SellerProductsController {
             const { fields } = req.query;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -449,7 +449,7 @@ class SellerProductsController {
             const imageData = req.body;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -489,7 +489,7 @@ class SellerProductsController {
             const imageData = req.body;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
@@ -529,7 +529,7 @@ class SellerProductsController {
             const { seller_id, product_id, image_id } = req.params;
             
             // Validar assinatura do seller antes de prosseguir
-            const subscriptionCheck = await checkSubscriptionMiddleware(seller_id);
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(seller_id);
             if (!subscriptionCheck.success) {
                 return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
             }
