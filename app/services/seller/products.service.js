@@ -1,9 +1,21 @@
 const NsApiClient = require('../../helpers/NsApiClient');
 const { formatError, createError } = require('../../utils/errorHandler');
+<<<<<<< HEAD
+=======
+const subscriptionValidator = require('../../utils/subscription-validator');
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
 class SellerProductsService {
     async getProducts(sellerId, storeId, accessToken, params = {}) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             console.log(`SellerProductsService: Buscando produtos para seller ${sellerId}, storeId: ${storeId}`);
             
@@ -37,6 +49,14 @@ class SellerProductsService {
     
     async getProductById(sellerId, storeId, accessToken, productId) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -57,6 +77,14 @@ class SellerProductsService {
     
     async createProduct(sellerId, storeId, accessToken, productData) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productData || !productData.name) {
                 return createError('Dados do produto são obrigatórios', 400);
@@ -117,6 +145,14 @@ class SellerProductsService {
     
     async updateProduct(sellerId, storeId, accessToken, productId, productData) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -142,6 +178,14 @@ class SellerProductsService {
     
     async deleteProduct(sellerId, storeId, accessToken, productId) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -162,6 +206,14 @@ class SellerProductsService {
     
     async getProductVariants(sellerId, storeId, accessToken, productId) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -193,6 +245,14 @@ class SellerProductsService {
      */
     async getProductImages(sellerId, storeId, accessToken, productId, params = {}) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             console.log(`SellerProductsService: Buscando imagens do produto ${productId} para seller ${sellerId}`);
             
@@ -230,6 +290,14 @@ class SellerProductsService {
      */
     async getProductImageById(sellerId, storeId, accessToken, productId, imageId, params = {}) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -266,6 +334,14 @@ class SellerProductsService {
      */
     async addProductImage(sellerId, storeId, accessToken, productId, imageData) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             console.log(`SellerProductsService: Adicionando imagem ao produto ${productId} para seller ${sellerId}`);
             
@@ -314,6 +390,14 @@ class SellerProductsService {
      */
     async updateProductImage(sellerId, storeId, accessToken, productId, imageId, imageData) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -352,6 +436,14 @@ class SellerProductsService {
      */
     async removeProductImage(sellerId, storeId, accessToken, productId, imageId) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             if (!productId) {
                 return createError('ID do produto é obrigatório', 400);
@@ -410,6 +502,14 @@ class SellerProductsService {
      */
     async syncProduct(sellerId, storeId, accessToken, product) {
         try {
+<<<<<<< HEAD
+=======
+            // Validar assinatura do seller antes de prosseguir
+            const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
+            if (!subscriptionCheck.success) {
+                return subscriptionCheck;
+            }
+>>>>>>> 64112ff (refactor: substitui checkSubscriptionMiddleware por subscriptionValidator em diversos serviços e controladores)
 
             console.log(`Sincronizando produto ID ${product.id} com a Nuvemshop para seller ${sellerId}`);
             
