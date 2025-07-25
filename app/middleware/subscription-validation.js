@@ -8,6 +8,7 @@ const subscriptionValidator = require('../utils/subscription-validator');
  */
 async function validateSellerSubscription(req, res, next) {
     try {
+        console.log(`Iniciando validação de assinatura para rota: ${req.method} ${req.path}`);
         // Tentar capturar seller_id de diferentes formas
         let sellerId = req.params.seller_id;
         
