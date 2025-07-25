@@ -453,6 +453,8 @@ class SellerProductsService {
             // Tratar o campo images - corrigindo o formato para a API da Nuvemshop
             let images = [];
             if (product.images) {
+                console.log('SellerProductsService - Processando imagens do produto:', JSON.stringify(product.images, null, 2));
+                
                 // Se for uma string JSON, converter para objeto
                 if (typeof product.images === 'string') {
                     try {
@@ -465,18 +467,36 @@ class SellerProductsService {
                     images = product.images;
                 }
                 
+                console.log('SellerProductsService - Imagens após parse inicial:', JSON.stringify(images, null, 2));
+                
                 // Garantir o formato correto de cada imagem
                 images = images
                     .filter(img => img !== null && img !== undefined)
                     .map(img => {
                         if (typeof img === 'string') {
                             return { src: img };
-                        } else if (typeof img === 'object' && img.src) {
-                            return { src: img.src };
+                        } else if (typeof img === 'object') {
+                            // Priorizar src se existir
+                            if (img.src) {
+                                return { src: img.src, position: img.position || 1, alt: img.alt };
+                            }
+                            // Processar imagem com attachment (base64)
+                            else if (img.attachment && img.filename) {
+                                console.log(`SellerProductsService - Processando imagem com attachment: ${img.filename}`);
+                                return {
+                                    attachment: img.attachment,
+                                    filename: img.filename,
+                                    position: img.position || 1,
+                                    alt: img.alt || img.filename
+                                };
+                            }
                         }
+                        console.log('SellerProductsService - Imagem ignorada (formato inválido):', img);
                         return null;
                     })
                     .filter(img => img !== null);
+                    
+                console.log('SellerProductsService - Imagens finais processadas:', JSON.stringify(images, null, 2));
             }
             
             // Mapear produto local para o formato da Nuvemshop
@@ -618,6 +638,42 @@ class SellerProductsService {
                             );
                         } catch (externalIdError) {
                             console.warn(`Aviso: Não foi possível adicionar external_id: ${externalIdError.message}`);
+                        }
+                    }
+                    
+                    // Após criar o produto, adicionar as imagens separadamente se houver
+                    if (images && images.length > 0) {
+                        console.log(`SellerProductsService - Adicionando ${images.length} imagem(ns) ao produto criado`);
+                        const imageResults = [];
+                        
+                        for (let i = 0; i < images.length; i++) {
+                            const imageData = images[i];
+                            try {
+                                console.log(`SellerProductsService - Adicionando imagem ${i + 1}/${images.length}:`, JSON.stringify(imageData, null, 2));
+                                
+                                const imageResult = await this.addProductImage(
+                                    sellerId,
+                                    storeId,
+                                    accessToken,
+                                    result.data.id,
+                                    imageData
+                                );
+                                
+                                if (imageResult.success) {
+                                    imageResults.push(imageResult.data);
+                                    console.log(`SellerProductsService - Imagem ${i + 1} adicionada com sucesso:`, imageResult.data);
+                                } else {
+                                    console.error(`SellerProductsService - Erro ao adicionar imagem ${i + 1}:`, imageResult);
+                                }
+                            } catch (imageError) {
+                                console.error(`SellerProductsService - Erro ao adicionar imagem ${i + 1}:`, imageError.message);
+                            }
+                        }
+                        
+                        // Anexar as imagens ao resultado
+                        if (imageResults.length > 0) {
+                            result.data.images = imageResults;
+                            console.log(`SellerProductsService - ${imageResults.length} imagem(ns) adicionada(s) com sucesso`);
                         }
                     }
                 }

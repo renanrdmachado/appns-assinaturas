@@ -136,6 +136,49 @@ class NsProductsService {
     }
     
     /**
+     * Adiciona uma imagem a um produto na Nuvemshop
+     * @param {string} storeId - ID da loja na Nuvemshop
+     * @param {string} accessToken - Token de acesso à API da Nuvemshop
+     * @param {string} productId - ID do produto na Nuvemshop
+     * @param {Object} imageData - Dados da imagem (src, attachment, filename, position, alt)
+     * @returns {Object} - Resultado da operação
+     */
+    async addProductImage(storeId, accessToken, productId, imageData) {
+        try {
+            if (!productId) {
+                return createError('ID do produto é obrigatório', 400);
+            }
+            
+            if (!imageData) {
+                return createError('Dados da imagem são obrigatórios', 400);
+            }
+            
+            // Validar formato de arquivo se fornecido
+            if (imageData.filename) {
+                const allowedFormats = ['.gif', '.jpg', '.jpeg', '.png', '.webp'];
+                const fileExtension = imageData.filename.toLowerCase().substring(imageData.filename.lastIndexOf('.'));
+                
+                if (!allowedFormats.includes(fileExtension)) {
+                    return createError('Formato de arquivo não suportado. Use: .gif, .jpg, .png ou .webp', 400);
+                }
+            }
+            
+            const image = await NsApiClient.post({
+                storeId,
+                endpoint: `products/${productId}/images`,
+                accessToken,
+                data: imageData
+            });
+            
+            console.log(`Imagem adicionada com sucesso: ID ${image.id}, posição ${image.position}`);
+            return { success: true, data: image };
+        } catch (error) {
+            console.error(`Erro ao adicionar imagem ao produto ${productId} da Nuvemshop:`, error.message);
+            return formatError(error);
+        }
+    }
+    
+    /**
      * Sincroniza um produto local com a Nuvemshop (criar ou atualizar)
      * @param {string} storeId - ID da loja na Nuvemshop
      * @param {string} accessToken - Token de acesso à API da Nuvemshop
@@ -185,6 +228,8 @@ class NsProductsService {
             // Tratar o campo images - corrigindo o formato para a API da Nuvemshop
             let images = [];
             if (product.images) {
+                console.log('Processando imagens do produto:', JSON.stringify(product.images, null, 2));
+                
                 // Se for uma string JSON, converter para objeto
                 if (typeof product.images === 'string') {
                     try {
@@ -197,18 +242,36 @@ class NsProductsService {
                     images = product.images;
                 }
                 
+                console.log('Imagens após parse inicial:', JSON.stringify(images, null, 2));
+                
                 // Garantir o formato correto de cada imagem
                 images = images
                     .filter(img => img !== null && img !== undefined)
                     .map(img => {
                         if (typeof img === 'string') {
                             return { src: img };
-                        } else if (typeof img === 'object' && img.src) {
-                            return { src: img.src };
+                        } else if (typeof img === 'object') {
+                            // Priorizar src se existir
+                            if (img.src) {
+                                return { src: img.src, position: img.position || 1, alt: img.alt };
+                            }
+                            // Processar imagem com attachment (base64)
+                            else if (img.attachment && img.filename) {
+                                console.log(`Processando imagem com attachment: ${img.filename}`);
+                                return {
+                                    attachment: img.attachment,
+                                    filename: img.filename,
+                                    position: img.position || 1,
+                                    alt: img.alt || img.filename
+                                };
+                            }
                         }
+                        console.log('Imagem ignorada (formato inválido):', img);
                         return null;
                     })
                     .filter(img => img !== null);
+                    
+                console.log('Imagens finais processadas:', JSON.stringify(images, null, 2));
             }
             
             // Mapear produto local para o formato da Nuvemshop
@@ -347,6 +410,41 @@ class NsProductsService {
                             );
                         } catch (externalIdError) {
                             console.warn(`Aviso: Não foi possível adicionar external_id: ${externalIdError.message}`);
+                        }
+                    }
+                    
+                    // Após criar o produto, adicionar as imagens separadamente se houver
+                    if (images && images.length > 0) {
+                        console.log(`Adicionando ${images.length} imagem(ns) ao produto criado`);
+                        const imageResults = [];
+                        
+                        for (let i = 0; i < images.length; i++) {
+                            const imageData = images[i];
+                            try {
+                                console.log(`Adicionando imagem ${i + 1}/${images.length}:`, JSON.stringify(imageData, null, 2));
+                                
+                                const imageResult = await this.addProductImage(
+                                    storeId,
+                                    accessToken,
+                                    result.data.id,
+                                    imageData
+                                );
+                                
+                                if (imageResult.success) {
+                                    imageResults.push(imageResult.data);
+                                    console.log(`Imagem ${i + 1} adicionada com sucesso:`, imageResult.data);
+                                } else {
+                                    console.error(`Erro ao adicionar imagem ${i + 1}:`, imageResult);
+                                }
+                            } catch (imageError) {
+                                console.error(`Erro ao adicionar imagem ${i + 1}:`, imageError.message);
+                            }
+                        }
+                        
+                        // Anexar as imagens ao resultado
+                        if (imageResults.length > 0) {
+                            result.data.images = imageResults;
+                            console.log(`${imageResults.length} imagem(ns) adicionada(s) com sucesso`);
                         }
                     }
                 }
