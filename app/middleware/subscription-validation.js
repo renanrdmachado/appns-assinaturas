@@ -8,7 +8,17 @@ const subscriptionValidator = require('../../utils/subscription-validator');
  */
 async function validateSellerSubscription(req, res, next) {
     try {
-        const sellerId = req.params.seller_id;
+        // Tentar capturar seller_id de diferentes formas
+        let sellerId = req.params.seller_id;
+        
+        // Se não encontrou, tentar extrair da URL manualmente
+        if (!sellerId) {
+            const pathParts = req.path.split('/');
+            const sellerIndex = pathParts.indexOf('seller');
+            if (sellerIndex !== -1 && pathParts[sellerIndex + 1]) {
+                sellerId = pathParts[sellerIndex + 1];
+            }
+        }
         
         if (!sellerId) {
             return res.status(400).json({
@@ -20,12 +30,13 @@ async function validateSellerSubscription(req, res, next) {
 
         const subscriptionCheck = await subscriptionValidator.checkSubscriptionMiddleware(sellerId);
         
-        if (!subscriptionCheck.success) {
+        if (subscriptionCheck) {
             return res.status(subscriptionCheck.status || 403).json(subscriptionCheck);
         }
 
-        // Adicionar informações da assinatura ao request para uso nos controllers
-        req.sellerSubscription = subscriptionCheck.subscription;
+        // Buscar informações completas da assinatura para adicionar ao request
+        const validationResult = await subscriptionValidator.validateSellerSubscription(sellerId);
+        req.sellerSubscription = validationResult.subscription;
         
         next();
     } catch (error) {

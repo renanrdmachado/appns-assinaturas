@@ -6,7 +6,17 @@ const subscriptionValidator = require('../utils/subscription-validator');
  */
 const validateSellerSubscription = async (req, res, next) => {
     try {
-        const sellerId = req.params.seller_id;
+        // Tentar capturar seller_id de diferentes formas
+        let sellerId = req.params.seller_id;
+        
+        // Se não encontrou, tentar extrair da URL manualmente
+        if (!sellerId) {
+            const pathParts = req.path.split('/');
+            const sellerIndex = pathParts.indexOf('seller');
+            if (sellerIndex !== -1 && pathParts[sellerIndex + 1]) {
+                sellerId = pathParts[sellerIndex + 1];
+            }
+        }
         
         if (!sellerId) {
             return res.status(400).json({

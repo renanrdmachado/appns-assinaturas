@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Middleware de validação de assinatura para rotas do seller
-const { validateSellerSubscription } = require('../middleware/seller-subscription');
+const validateSellerSubscription = require('../middleware/subscription-validation');
 
 // Rotas do sistema
 const productRoutes = require('./product.routes');
