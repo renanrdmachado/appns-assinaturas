@@ -12,14 +12,16 @@ async function validateSellerSubscription(req, res, next) {
         // Tentar capturar seller_id de diferentes formas
         let sellerId = req.params.seller_id;
         
-        // Se não encontrou, tentar extrair da URL manualmente
+        // Se não encontrou, extrair o primeiro número do path (ex: /2/subscriptions -> 2)
         if (!sellerId) {
-            const pathParts = req.path.split('/');
-            const sellerIndex = pathParts.indexOf('seller');
-            if (sellerIndex !== -1 && pathParts[sellerIndex + 1]) {
-                sellerId = pathParts[sellerIndex + 1];
+            const match = req.path.match(/^\/(\d+)(\/|$)/);
+            if (match) {
+                sellerId = match[1];
+                console.log(`Seller ID extraído do path: ${sellerId}`);
             }
         }
+        
+        console.log(`Seller ID final: ${sellerId}`);
         
         if (!sellerId) {
             return res.status(400).json({
