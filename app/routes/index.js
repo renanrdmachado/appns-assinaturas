@@ -8,7 +8,7 @@ const { validateSellerSubscription } = require('../middleware/seller-subscriptio
 const productRoutes = require('./product.routes');
 const orderRoutes = require('./order.routes');
 const sellerRoutes = require('./seller.routes');
-const userRoutes = require('./user.routes');
+// const userRoutes = require('./user.routes'); // Removido, não utilizado
 const shopperRoutes = require('./shopper.routes');
 const shopperSubscriptionRoutes = require('./shopper-subscription.routes');
 const sellerSubscriptionRoutes = require('./seller-subscription.routes');
@@ -35,6 +35,9 @@ router.use('/app/shopper-subscriptions', shopperSubscriptionRoutes);
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);
+
+// Rota do seller/store SEM validação de assinatura (liberada) - DEVE VIR ANTES do middleware
+router.use('/app/seller/store', sellerStoreRoutes);
 
 // Rotas específicas do seller COM validação de assinatura
 router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
