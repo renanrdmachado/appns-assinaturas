@@ -1,4 +1,4 @@
-const subscriptionValidator = require('../../utils/subscription-validator');
+const subscriptionValidator = require('../utils/subscription-validator');
 
 /**
  * Middleware para validar assinatura do seller nas rotas
