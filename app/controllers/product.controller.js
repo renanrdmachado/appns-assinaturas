@@ -117,29 +117,44 @@ const getSellerByProductId = async (req, res) => {
         }
 
         // Validar status da assinatura do seller
-        const seller = result.data;
-        if (seller && seller.app_status !== 'active') {
+        const { seller, subscription } = result.data;
+        
+        // Verificar se existe assinatura ativa
+        if (!subscription) {
+            return res.status(403).json({
+                success: false,
+                message: 'O vendedor não possui assinatura ativa. Produto indisponível.',
+                seller_status: 'no_subscription'
+            });
+        }
+
+        // Validar status da assinatura
+        if (subscription.status !== 'active') {
             let message = 'Produto temporariamente indisponível.';
             
-            switch (seller.app_status) {
+            switch (subscription.status) {
                 case 'pending':
-                    message = 'O vendedor ainda está configurando sua conta. Produto temporariamente indisponível.';
+                    message = 'A assinatura do vendedor está pendente de ativação. Produto temporariamente indisponível.';
                     break;
-                case 'suspended':
-                    message = 'A conta do vendedor está suspensa. Produto indisponível.';
+                case 'overdue':
+                    message = 'A assinatura do vendedor está em atraso. Produto temporariamente indisponível.';
                     break;
                 case 'cancelled':
-                    message = 'A conta do vendedor não está mais ativa. Produto indisponível.';
+                    message = 'A assinatura do vendedor foi cancelada. Produto indisponível.';
                     break;
                 case 'expired':
                     message = 'A assinatura do vendedor expirou. Produto indisponível.';
+                    break;
+                case 'suspended':
+                    message = 'A assinatura do vendedor está suspensa. Produto indisponível.';
                     break;
             }
             
             return res.status(403).json({
                 success: false,
                 message: message,
-                seller_status: seller.app_status
+                seller_status: subscription.status,
+                subscription_id: subscription.id
             });
         }
         

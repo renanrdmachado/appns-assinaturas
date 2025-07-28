@@ -174,6 +174,17 @@ class ProductService {
                 return createError(`Seller ${product.seller_id} não encontrado para o produto ${productId}`, 404);
             }
 
+            // Buscar a assinatura ativa do seller
+            const SellerSubscription = require('../models/SellerSubscription');
+            const subscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: product.seller_id,
+                    status: ['active', 'overdue', 'pending'],
+                    deleted_at: null
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
             return {
                 success: true,
                 data: {
@@ -182,7 +193,8 @@ class ProductService {
                         name: product.name,
                         seller_id: product.seller_id
                     },
-                    seller: sellerResult.data
+                    seller: sellerResult.data,
+                    subscription: subscription
                 }
             };
 
