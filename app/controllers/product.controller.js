@@ -115,6 +115,33 @@ const getSellerByProductId = async (req, res) => {
         if (!result.success) {
             return res.status(result.status || 404).json(result);
         }
+
+        // Validar status da assinatura do seller
+        const seller = result.data;
+        if (seller && seller.app_status !== 'active') {
+            let message = 'Produto temporariamente indisponível.';
+            
+            switch (seller.app_status) {
+                case 'pending':
+                    message = 'O vendedor ainda está configurando sua conta. Produto temporariamente indisponível.';
+                    break;
+                case 'suspended':
+                    message = 'A conta do vendedor está suspensa. Produto indisponível.';
+                    break;
+                case 'cancelled':
+                    message = 'A conta do vendedor não está mais ativa. Produto indisponível.';
+                    break;
+                case 'expired':
+                    message = 'A assinatura do vendedor expirou. Produto indisponível.';
+                    break;
+            }
+            
+            return res.status(403).json({
+                success: false,
+                message: message,
+                seller_status: seller.app_status
+            });
+        }
         
         res.status(200).json(result);
     } catch (error) {
