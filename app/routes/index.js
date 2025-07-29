@@ -32,15 +32,19 @@ router.use('/app/sellers', sellerRoutes);
 // router.use('/app/users', userRoutes);
 router.use('/app/shoppers', shopperRoutes);
 router.use('/app/shopper-subscriptions', shopperSubscriptionRoutes);
+router.use('/app/payments', paymentRoutes);
+
+// IMPORTANTE: Rotas específicas do seller DEVEM vir ANTES das rotas genéricas
+// para evitar conflitos de matching de padrões
+
+// Rota do seller/store SEM validação de assinatura (liberada)
+router.use('/app/seller/store', sellerStoreRoutes);
+
 // Rotas de assinaturas de sellers SEM validação (são para gerenciar, não consumir)
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
-router.use('/app/payments', paymentRoutes);
 
-// Rota do seller/store SEM validação de assinatura (liberada) - DEVE VIR ANTES do middleware
-router.use('/app/seller/store', sellerStoreRoutes);
-
-// Rotas específicas do seller COM validação de assinatura
+// Rotas específicas do seller COM validação de assinatura - DEVE VIR POR ÚLTIMO
 router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
 
 // Rotas de integração

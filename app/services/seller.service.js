@@ -264,7 +264,37 @@ class SellerService {
                         app_start_date: new Date()
                     }, { transaction: t });
 
-                    // 4. Criar assinatura padrão
+                    // 4. Tentar criar customer temporário no Asaas usando dados da loja
+                    try {
+                        if (storeInfo.email) {
+                            const tempCustomerData = {
+                                name: storeInfo.name || `Loja ${nuvemshop_id}`,
+                                email: storeInfo.email,
+                                cpfCnpj: `temp_${nuvemshop_id}`,
+                                mobilePhone: storeInfo.phone || null,
+                                groupName: AsaasCustomerService.SELLER_GROUP
+                            };
+
+                            const asaasResult = await AsaasCustomerService.createOrUpdate(
+                                tempCustomerData,
+                                AsaasCustomerService.SELLER_GROUP
+                            );
+
+                            if (asaasResult.success) {
+                                // Atualizar seller com o ID do customer Asaas
+                                newSeller.payments_customer_id = asaasResult.data.id;
+                                await newSeller.save({ transaction: t });
+                                console.log(`Customer temporário criado no Asaas: ${asaasResult.data.id}`);
+                            } else {
+                                console.warn(`Falha ao criar customer temporário no Asaas: ${asaasResult.message}`);
+                            }
+                        }
+                    } catch (asaasError) {
+                        console.warn(`Erro ao criar customer temporário no Asaas: ${asaasError.message}`);
+                        // Não falha a criação do seller por conta do Asaas
+                    }
+
+                    // 5. Criar assinatura padrão (local primeiro, Asaas quando dados completos)
                     await this.createDefaultSubscription(newSeller.id, t);
 
                     return await Seller.findByPk(newSeller.id, {
@@ -934,7 +964,7 @@ class SellerService {
      */
 
     /**
-     * Cria uma assinatura padrão para o seller
+     * Cria uma assinatura padrão para o seller com integração Asaas
      * Seguindo princípios SOLID: Single Responsibility - apenas cria assinatura
      */
     async createDefaultSubscription(sellerId, transaction = null) {
@@ -949,11 +979,71 @@ class SellerService {
                 return { success: true, message: 'Assinatura já existe', data: existingSubscription };
             }
 
-            // Configuração padrão da assinatura (centralizada para facilitar manutenção)
+            // Buscar o seller com dados do usuário para criar no Asaas
+            const seller = await Seller.findByPk(sellerId, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ],
+                transaction
+            });
+
+            if (!seller) {
+                throw new Error(`Seller com ID ${sellerId} não encontrado`);
+            }
+
+            // Configuração padrão da assinatura
             const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId);
 
-            // Criar a assinatura
-            const subscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
+            let subscriptionWithAsaas = null;
+
+            // Se o seller tem dados completos de usuário, criar também no Asaas
+            if (seller.user && seller.user.userData && seller.user.userData.cpfCnpj && 
+                !seller.user.userData.cpfCnpj.startsWith('temp_')) {
+                
+                console.log(`Criando assinatura no Asaas para seller ${sellerId}...`);
+                
+                try {
+                    // Importar o SellerSubscriptionService para usar a integração Asaas
+                    const SellerSubscriptionService = require('./seller-subscription.service');
+                    
+                    // Usar o serviço que tem integração completa com Asaas
+                    const asaasResult = await SellerSubscriptionService.createSubscription({
+                        seller_id: sellerId,
+                        plan_name: defaultSubscriptionData.plan_name,
+                        value: defaultSubscriptionData.value,
+                        cycle: defaultSubscriptionData.cycle,
+                        billing_type: 'CREDIT_CARD',
+                        start_date: defaultSubscriptionData.start_date,
+                        features: defaultSubscriptionData.features,
+                        metadata: defaultSubscriptionData.metadata
+                    });
+
+                    if (asaasResult.success) {
+                        console.log(`Assinatura criada no Asaas com sucesso: ${asaasResult.data.external_id}`);
+                        subscriptionWithAsaas = asaasResult.data;
+                    } else {
+                        console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
+                        // Continua com criação local mesmo se falhar no Asaas
+                    }
+                } catch (asaasError) {
+                    console.warn(`Erro ao criar assinatura no Asaas: ${asaasError.message}`);
+                    // Continua com criação local mesmo se falhar no Asaas
+                }
+            }
+
+            // Se foi criada no Asaas, usar os dados de lá, senão criar localmente
+            let subscription;
+            if (subscriptionWithAsaas) {
+                subscription = subscriptionWithAsaas;
+            } else {
+                // Criar apenas localmente (dados de usuário incompletos)
+                console.log(`Criando assinatura apenas local para seller ${sellerId} (dados de usuário incompletos)`);
+                subscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
+            }
             
             return { 
                 success: true, 
