@@ -332,7 +332,19 @@ class SellerService {
                 });
 
                 if (!hasSubscription) {
+                    console.log(`Seller ${seller.id} não possui assinatura, criando uma padrão...`);
                     await this.createDefaultSubscription(seller.id, t);
+                } else {
+                    // Verificar se assinatura existente tem external_id (foi criada no Asaas)
+                    if (!hasSubscription.external_id) {
+                        console.log(`Seller ${seller.id} possui assinatura local, tentando migrar para Asaas...`);
+                        try {
+                            // Tentar criar no Asaas usando dados existentes
+                            await this.createDefaultSubscription(seller.id, t);
+                        } catch (migrationError) {
+                            console.warn(`Falha na migração da assinatura para Asaas: ${migrationError.message}`);
+                        }
+                    }
                 }
 
                 return await Seller.findByPk(seller.id, {
@@ -998,58 +1010,87 @@ class SellerService {
             // Configuração padrão da assinatura
             const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId);
 
-            let subscriptionWithAsaas = null;
-
-            // Se o seller tem dados completos de usuário, criar também no Asaas
-            if (seller.user && seller.user.userData && seller.user.userData.cpfCnpj && 
-                !seller.user.userData.cpfCnpj.startsWith('temp_')) {
-                
-                console.log(`Criando assinatura no Asaas para seller ${sellerId}...`);
-                
-                try {
-                    // Importar o SellerSubscriptionService para usar a integração Asaas
-                    const SellerSubscriptionService = require('./seller-subscription.service');
-                    
-                    // Usar o serviço que tem integração completa com Asaas
-                    const asaasResult = await SellerSubscriptionService.createSubscription({
-                        seller_id: sellerId,
-                        plan_name: defaultSubscriptionData.plan_name,
-                        value: defaultSubscriptionData.value,
-                        cycle: defaultSubscriptionData.cycle,
-                        billing_type: 'CREDIT_CARD',
-                        start_date: defaultSubscriptionData.start_date,
-                        features: defaultSubscriptionData.features,
-                        metadata: defaultSubscriptionData.metadata
-                    });
-
-                    if (asaasResult.success) {
-                        console.log(`Assinatura criada no Asaas com sucesso: ${asaasResult.data.external_id}`);
-                        subscriptionWithAsaas = asaasResult.data;
-                    } else {
-                        console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
-                        // Continua com criação local mesmo se falhar no Asaas
-                    }
-                } catch (asaasError) {
-                    console.warn(`Erro ao criar assinatura no Asaas: ${asaasError.message}`);
-                    // Continua com criação local mesmo se falhar no Asaas
-                }
-            }
-
-            // Se foi criada no Asaas, usar os dados de lá, senão criar localmente
-            let subscription;
-            if (subscriptionWithAsaas) {
-                subscription = subscriptionWithAsaas;
-            } else {
-                // Criar apenas localmente (dados de usuário incompletos)
-                console.log(`Criando assinatura apenas local para seller ${sellerId} (dados de usuário incompletos)`);
-                subscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
-            }
+            console.log(`Criando assinatura no Asaas para seller ${sellerId}...`);
             
-            return { 
-                success: true, 
-                message: 'Assinatura padrão criada com sucesso',
-                data: subscription 
-            };
+            try {
+                // Se seller não tem customer_id, criar primeiro
+                if (!seller.payments_customer_id) {
+                    const storeInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
+                    const userData = seller.user?.userData;
+                    
+                    // Preparar dados do customer usando informações disponíveis
+                    const customerData = {
+                        name: storeInfo.name?.pt || storeInfo.business_name || `Loja ${seller.nuvemshop_id}`,
+                        email: storeInfo.email || seller.user?.email || `seller_${seller.nuvemshop_id}@temp.com`,
+                        cpfCnpj: userData?.cpfCnpj || `temp_${seller.nuvemshop_id}`,
+                        mobilePhone: storeInfo.phone || userData?.mobilePhone || null,
+                        groupName: AsaasCustomerService.SELLER_GROUP
+                    };
+
+                    console.log(`Criando customer no Asaas para seller ${sellerId}...`);
+                    const customerResult = await AsaasCustomerService.createOrUpdate(
+                        customerData,
+                        AsaasCustomerService.SELLER_GROUP
+                    );
+
+                    if (customerResult.success) {
+                        // Atualizar seller com o ID do customer
+                        seller.payments_customer_id = customerResult.data.id;
+                        await seller.save({ transaction });
+                        console.log(`Customer criado no Asaas: ${customerResult.data.id}`);
+                    } else {
+                        throw new Error(`Falha ao criar customer no Asaas: ${customerResult.message}`);
+                    }
+                }
+
+                // Agora criar a assinatura no Asaas usando o SellerSubscriptionService
+                const SellerSubscriptionService = require('./seller-subscription.service');
+                
+                const subscriptionData = {
+                    seller_id: sellerId,
+                    plan_name: defaultSubscriptionData.plan_name,
+                    value: defaultSubscriptionData.value,
+                    cycle: defaultSubscriptionData.cycle,
+                    billing_type: 'CREDIT_CARD', // Tipo padrão
+                    start_date: defaultSubscriptionData.start_date,
+                    features: defaultSubscriptionData.features,
+                    metadata: {
+                        ...defaultSubscriptionData.metadata,
+                        auto_created: true,
+                        source: 'seller_onboarding'
+                    }
+                };
+
+                const asaasResult = await SellerSubscriptionService.createSubscription(subscriptionData);
+
+                if (asaasResult.success) {
+                    console.log(`Assinatura criada no Asaas com sucesso: ${asaasResult.data.external_id}`);
+                    return { 
+                        success: true, 
+                        message: 'Assinatura padrão criada com sucesso no Asaas',
+                        data: asaasResult.data 
+                    };
+                } else {
+                    console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
+                    // Fallback para criação local
+                    const localSubscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
+                    return { 
+                        success: true, 
+                        message: 'Assinatura criada localmente (falha no Asaas)',
+                        data: localSubscription 
+                    };
+                }
+
+            } catch (asaasError) {
+                console.warn(`Erro ao criar assinatura no Asaas: ${asaasError.message}`);
+                // Fallback para criação local
+                const localSubscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
+                return { 
+                    success: true, 
+                    message: 'Assinatura criada localmente (erro no Asaas)',
+                    data: localSubscription 
+                };
+            }
 
         } catch (error) {
             console.error(`Erro ao criar assinatura padrão para seller ${sellerId}:`, error.message);
