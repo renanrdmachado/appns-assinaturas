@@ -32,6 +32,7 @@ router.use('/app/sellers', sellerRoutes);
 // router.use('/app/users', userRoutes);
 router.use('/app/shoppers', shopperRoutes);
 router.use('/app/shopper-subscriptions', shopperSubscriptionRoutes);
+// Rotas de assinaturas de sellers SEM validação (são para gerenciar, não consumir)
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
 router.use('/app/payments', paymentRoutes);

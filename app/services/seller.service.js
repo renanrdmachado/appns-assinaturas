@@ -235,8 +235,28 @@ class SellerService {
                 
                 // Usar transação para garantir consistência
                 const result = await sequelize.transaction(async (t) => {
-                    // Criar seller básico sem dados de usuário por enquanto
+                    // 1. Criar UserData básico (será completado depois pelo seller)
+                    const userData = await UserData.create({
+                        cpfCnpj: `temp_${nuvemshop_id}`, // CPF temporário será atualizado depois
+                        mobilePhone: null,
+                        address: null,
+                        addressNumber: null,
+                        province: null,
+                        postalCode: null,
+                        birthDate: null
+                    }, { transaction: t });
+
+                    // 2. Criar User básico
+                    const user = await User.create({
+                        username: `seller_${nuvemshop_id}`,
+                        email: storeInfo.email || `seller_${nuvemshop_id}@temp.com`,
+                        password: null, // Será definido pelo seller posteriormente
+                        user_data_id: userData.id
+                    }, { transaction: t });
+
+                    // 3. Criar seller básico
                     const newSeller = await Seller.create({
+                        user_id: user.id,
                         nuvemshop_id,
                         nuvemshop_api_token,
                         nuvemshop_info: JSON.stringify(storeInfo),
@@ -244,7 +264,7 @@ class SellerService {
                         app_start_date: new Date()
                     }, { transaction: t });
 
-                    // Criar assinatura padrão
+                    // 4. Criar assinatura padrão
                     await this.createDefaultSubscription(newSeller.id, t);
 
                     return await Seller.findByPk(newSeller.id, {
@@ -259,6 +279,7 @@ class SellerService {
                     });
                 });
 
+                console.log(`Seller criado automaticamente com ID: ${result.id}`);
                 return {
                     success: true,
                     message: 'Seller criado e informações da loja salvas com sucesso',
