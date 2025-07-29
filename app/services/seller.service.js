@@ -216,9 +216,9 @@ class SellerService {
         }
     }
 
-    async updateStoreInfo(nuvemshop_id, storeInfo) {
+    async updateStoreInfo(nuvemshop_id, nuvemshop_api_token, storeInfo) {
         try {
-            const seller = await Seller.findOne({
+            let seller = await Seller.findOne({
                 where: { nuvemshop_id },
                 include: [
                     { 
@@ -229,15 +229,49 @@ class SellerService {
                 ]
             });
 
+            // Se o seller não existir, criar um automaticamente
             if (!seller) {
-                return createError(`Vendedor com nuvemshop_id ${nuvemshop_id} não encontrado`, 404);
+                console.log(`Seller com nuvemshop_id ${nuvemshop_id} não encontrado, criando automaticamente...`);
+                
+                // Usar transação para garantir consistência
+                const result = await sequelize.transaction(async (t) => {
+                    // Criar seller básico sem dados de usuário por enquanto
+                    const newSeller = await Seller.create({
+                        nuvemshop_id,
+                        nuvemshop_api_token,
+                        nuvemshop_info: JSON.stringify(storeInfo),
+                        app_status: 'trial', // Status inicial
+                        app_start_date: new Date()
+                    }, { transaction: t });
+
+                    // Criar assinatura padrão
+                    await this.createDefaultSubscription(newSeller.id, t);
+
+                    return await Seller.findByPk(newSeller.id, {
+                        include: [
+                            { 
+                                model: User, 
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }] 
+                            }
+                        ],
+                        transaction: t
+                    });
+                });
+
+                return {
+                    success: true,
+                    message: 'Seller criado e informações da loja salvas com sucesso',
+                    data: result
+                };
             }
 
-            // Usar transação para garantir consistência
+            // Se o seller existir, atualizar suas informações
             const result = await sequelize.transaction(async (t) => {
                 // Atualizar informações do vendedor
+                seller.nuvemshop_api_token = nuvemshop_api_token;
                 seller.nuvemshop_info = JSON.stringify(storeInfo);
-                seller.app_status = storeInfo.plan_name || null;
+                seller.app_status = storeInfo.plan_name || seller.app_status || 'trial';
                 await seller.save({ transaction: t });
 
                 // Verificar se possui assinatura, se não criar uma padrão
