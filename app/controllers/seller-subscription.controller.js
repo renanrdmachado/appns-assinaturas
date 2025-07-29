@@ -50,8 +50,8 @@ class SellerSubscriptionController {
       const { seller_id } = req.params;
       const subscriptionData = req.body;
       
-      // Passar seller_id e dados da assinatura separadamente para o service
-      const result = await SellerSubscriptionService.create(seller_id, subscriptionData);
+      // Usar o novo método createSubscription que integra com Asaas
+      const result = await SellerSubscriptionService.createSubscription(seller_id, subscriptionData);
       
       // Verificar se a operação foi bem-sucedida
       if (!result.success) {
@@ -60,7 +60,7 @@ class SellerSubscriptionController {
 
       return res.status(201).json({
         success: true,
-        message: 'Assinatura criada com sucesso',
+        message: 'Assinatura criada com sucesso e integrada ao Asaas',
         data: result.data
       });
     } catch (error) {

@@ -1,12 +1,319 @@
+require('dotenv').config();
 const SellerSubscription = require('../models/SellerSubscription');
 const Seller = require('../models/Seller');
+const AsaasApiClient = require('../helpers/AsaasApiClient');
 const { formatError, createError } = require('../utils/errorHandler');
 const SellerValidator = require('../validators/seller-validator');
-const subscriptionService = require('./asaas/subscription.service');
 const AsaasCustomerService = require('./asaas/customer.service');
 const sequelize = require('../config/database');
 
 class SellerSubscriptionService {
+    /**
+     * Cria uma assinatura para um seller no Asaas
+     * @param {number} sellerId - ID do seller
+     * @param {Object} planData - Dados do plano (plan_name, value, cycle)
+     * @param {Object} billingInfo - Informações de cobrança
+     * @returns {Object} - Resultado da operação
+     */
+    async createSubscription(sellerId, planData, billingInfo = {}) {
+        try {
+            console.log(`Criando assinatura para seller ${sellerId}`);
+            
+            // Buscar seller
+            const seller = await Seller.findByPk(sellerId);
+            if (!seller) {
+                return createError(`Seller com ID ${sellerId} não encontrado`, 404);
+            }
+
+            // Verificar se seller já tem customer_id no Asaas
+            let customerId = seller.payments_customer_id;
+            
+            if (!customerId) {
+                // Criar customer no Asaas para o seller
+                const nuvemshopInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
+                const customerData = {
+                    name: billingInfo.name || nuvemshopInfo.name?.pt || `Seller ${sellerId}`,
+                    email: billingInfo.email || nuvemshopInfo.email || `seller${sellerId}@example.com`,
+                    cpfCnpj: billingInfo.cpfCnpj || '00000000000',
+                    phone: billingInfo.phone || nuvemshopInfo.phone || '00000000000'
+                };
+
+                const customerResult = await AsaasCustomerService.createCustomer(customerData);
+                if (!customerResult.success) {
+                    return customerResult;
+                }
+
+                customerId = customerResult.data.id;
+                
+                // Salvar customer_id no seller
+                await seller.update({ payments_customer_id: customerId });
+                console.log(`Customer criado para seller ${sellerId}: ${customerId}`);
+            }
+
+            // Dados da assinatura no Asaas
+            const subscriptionData = {
+                customer: customerId,
+                billingType: billingInfo.billingType || 'PIX',
+                cycle: planData.cycle || 'MONTHLY',
+                value: planData.value,
+                nextDueDate: this.calculateNextDueDate(planData.cycle),
+                description: `Assinatura ${planData.plan_name} - Seller ${sellerId}`,
+                externalReference: `seller_${sellerId}`,
+                // Configurações específicas
+                split: null,
+                discount: billingInfo.discount || null,
+                interest: billingInfo.interest || null,
+                fine: billingInfo.fine || null
+            };
+
+            // Criar assinatura no Asaas
+            const asaasSubscription = await AsaasApiClient.request({
+                method: 'POST',
+                endpoint: 'subscriptions',
+                data: subscriptionData
+            });
+
+            console.log('Assinatura criada no Asaas:', asaasSubscription.id);
+
+            // Salvar assinatura no banco local
+            const localSubscription = await SellerSubscription.create({
+                seller_id: sellerId,
+                external_id: asaasSubscription.id,
+                plan_name: planData.plan_name,
+                value: planData.value,
+                status: 'pending', // Inicia como pending até receber confirmação via webhook
+                cycle: planData.cycle,
+                next_due_date: asaasSubscription.nextDueDate,
+                start_date: new Date(),
+                payment_method: billingInfo.billingType || 'PIX',
+                billing_type: billingInfo.billingType || 'PIX',
+                features: planData.features || {},
+                metadata: {
+                    asaas_customer_id: customerId,
+                    asaas_subscription_id: asaasSubscription.id,
+                    created_via: 'api'
+                }
+            });
+
+            return {
+                success: true,
+                message: 'Assinatura criada com sucesso',
+                data: {
+                    local_subscription: localSubscription,
+                    asaas_subscription: asaasSubscription
+                }
+            };
+
+        } catch (error) {
+            console.error('Erro ao criar assinatura do seller:', error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Atualiza status da assinatura via webhook
+     * @param {string} externalId - ID da assinatura no Asaas
+     * @param {string} newStatus - Novo status
+     * @param {Object} eventData - Dados do evento webhook
+     * @returns {Object} - Resultado da operação
+     */
+    async updateSubscriptionStatus(externalId, newStatus, eventData = {}) {
+        try {
+            const subscription = await SellerSubscription.findOne({
+                where: { 
+                    external_id: externalId,
+                    deleted_at: null 
+                }
+            });
+
+            if (!subscription) {
+                return createError(`Assinatura com external_id ${externalId} não encontrada`, 404);
+            }
+
+            // Mapear status do Asaas para status local
+            const statusMap = {
+                'ACTIVE': 'active',
+                'EXPIRED': 'expired',
+                'OVERDUE': 'overdue',
+                'CANCELLED': 'canceled'
+            };
+
+            const localStatus = statusMap[newStatus] || newStatus.toLowerCase();
+
+            // Atualizar assinatura
+            const updateData = {
+                status: localStatus,
+                metadata: {
+                    ...subscription.metadata,
+                    last_webhook_event: eventData.event,
+                    last_updated_via_webhook: new Date(),
+                    asaas_status: newStatus
+                }
+            };
+
+            // Se foi cancelada/expirada, definir end_date
+            if (['canceled', 'expired'].includes(localStatus)) {
+                updateData.end_date = new Date();
+            }
+
+            await subscription.update(updateData);
+
+            console.log(`Assinatura ${externalId} atualizada para status ${localStatus}`);
+
+            return {
+                success: true,
+                message: `Status da assinatura atualizado para ${localStatus}`,
+                data: subscription
+            };
+
+        } catch (error) {
+            console.error('Erro ao atualizar status da assinatura:', error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Calcula próxima data de vencimento baseada no ciclo
+     * @param {string} cycle - Ciclo da assinatura (MONTHLY, YEARLY)
+     * @returns {string} - Data formatada
+     */
+    calculateNextDueDate(cycle = 'MONTHLY') {
+        const now = new Date();
+        
+        switch (cycle.toUpperCase()) {
+            case 'MONTHLY':
+                now.setMonth(now.getMonth() + 1);
+                break;
+            case 'YEARLY':
+                now.setFullYear(now.getFullYear() + 1);
+                break;
+            case 'WEEKLY':
+                now.setDate(now.getDate() + 7);
+                break;
+            default:
+                // Default para mensal
+                now.setMonth(now.getMonth() + 1);
+        }
+
+        return now.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    }
+    /**
+     * Busca assinatura ativa de um seller
+     * @param {number} sellerId - ID do seller
+     * @returns {Object} - Resultado da operação
+     */
+    async getActiveSubscription(sellerId) {
+        try {
+            const subscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: sellerId,
+                    status: ['active', 'overdue'], // Incluir overdue como "ativa"
+                    deleted_at: null
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            if (!subscription) {
+                return createError('Assinatura ativa não encontrada', 404);
+            }
+
+            return {
+                success: true,
+                data: subscription
+            };
+
+        } catch (error) {
+            console.error('Erro ao buscar assinatura ativa:', error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Lista todas as assinaturas de um seller
+     * @param {number} sellerId - ID do seller
+     * @returns {Object} - Resultado da operação
+     */
+    async getSellerSubscriptions(sellerId) {
+        try {
+            const subscriptions = await SellerSubscription.findAll({
+                where: {
+                    seller_id: sellerId,
+                    deleted_at: null
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            return {
+                success: true,
+                data: subscriptions
+            };
+
+        } catch (error) {
+            console.error('Erro ao buscar assinaturas do seller:', error);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Cancela uma assinatura de seller
+     * @param {number} sellerId - ID do seller
+     * @param {string} reason - Motivo do cancelamento
+     * @returns {Object} - Resultado da operação
+     */
+    async cancelSubscription(sellerId, reason = 'Cancelado pelo usuário') {
+        try {
+            // Buscar assinatura ativa
+            const subscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: sellerId,
+                    status: ['active', 'pending', 'overdue'],
+                    deleted_at: null
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            if (!subscription) {
+                return createError('Assinatura ativa não encontrada', 404);
+            }
+
+            // Cancelar no Asaas se tiver external_id
+            if (subscription.external_id) {
+                try {
+                    await AsaasApiClient.request({
+                        method: 'DELETE',
+                        endpoint: `subscriptions/${subscription.external_id}`
+                    });
+                    console.log(`Assinatura ${subscription.external_id} cancelada no Asaas`);
+                } catch (asaasError) {
+                    console.warn('Erro ao cancelar no Asaas:', asaasError.message);
+                    // Continuar com cancelamento local mesmo se falhar no Asaas
+                }
+            }
+
+            // Atualizar status local
+            await subscription.update({
+                status: 'canceled',
+                end_date: new Date(),
+                metadata: {
+                    ...subscription.metadata,
+                    cancelled_at: new Date(),
+                    cancel_reason: reason
+                }
+            });
+
+            return {
+                success: true,
+                message: 'Assinatura cancelada com sucesso',
+                data: subscription
+            };
+
+        } catch (error) {
+            console.error('Erro ao cancelar assinatura:', error);
+            return formatError(error);
+        }
+    }
+
+    // Métodos antigos mantidos para compatibilidade
     async get(id) {
         try {
             if (!id) {
@@ -38,15 +345,10 @@ class SellerSubscriptionService {
             return formatError(error);
         }
     }
-    
+
     async getBySellerId(sellerId) {
         try {
-            // Verificar se o vendedor existe
-            try {
-                SellerValidator.validateId(sellerId);
-            } catch (validationError) {
-                return formatError(validationError);
-            }
+            SellerValidator.validateId(sellerId);
             
             const seller = await Seller.findByPk(sellerId);
             if (!seller) {
