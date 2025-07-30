@@ -268,12 +268,14 @@ class SellerService {
                     try {
                         if (storeInfo.email) {
                             const tempCustomerData = {
-                                name: storeInfo.name || `Loja ${nuvemshop_id}`,
+                                name: (storeInfo.name?.pt || storeInfo.name || `Loja ${nuvemshop_id}`),
                                 email: storeInfo.email,
                                 cpfCnpj: `temp_${nuvemshop_id}`,
                                 mobilePhone: storeInfo.phone || null,
                                 groupName: AsaasCustomerService.SELLER_GROUP
                             };
+
+                            console.log('DEBUG - Dados do customer temporário:', JSON.stringify(tempCustomerData, null, 2));
 
                             const asaasResult = await AsaasCustomerService.createOrUpdate(
                                 tempCustomerData,
@@ -1015,7 +1017,16 @@ class SellerService {
             try {
                 // Se seller não tem customer_id, criar primeiro
                 if (!seller.payments_customer_id) {
-                    const storeInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
+                    let storeInfo;
+                    try {
+                        storeInfo = seller.nuvemshop_info ? 
+                            (typeof seller.nuvemshop_info === 'string' ? 
+                                JSON.parse(seller.nuvemshop_info) : 
+                                seller.nuvemshop_info) : {};
+                    } catch (error) {
+                        console.error('Erro ao fazer parse do nuvemshop_info:', error);
+                        storeInfo = {};
+                    }
                     const userData = seller.user?.userData;
                     
                     console.log(`DEBUG - Dados disponíveis para customer:`, {
@@ -1076,7 +1087,16 @@ class SellerService {
                 const billingInfo = {
                     billingType: 'CREDIT_CARD', // Tipo padrão
                     name: seller.user?.username || `Seller ${seller.nuvemshop_id}`,
-                    email: seller.user?.email || (seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info).email : null),
+                    email: seller.user?.email || (function() {
+                        try {
+                            return seller.nuvemshop_info ? 
+                                (typeof seller.nuvemshop_info === 'string' ? 
+                                    JSON.parse(seller.nuvemshop_info).email : 
+                                    seller.nuvemshop_info.email) : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    })(),
                     cpfCnpj: seller.user?.userData?.cpfCnpj || `temp_${seller.nuvemshop_id}`,
                     phone: seller.user?.userData?.mobilePhone || null
                 };

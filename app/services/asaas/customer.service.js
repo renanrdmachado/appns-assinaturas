@@ -58,6 +58,30 @@ class CustomerService {
             if (!customerData.name) {
                 return createError('Nome do cliente é obrigatório', 400);
             }
+
+            // Limpar e validar o nome
+            let cleanName = String(customerData.name).trim();
+            
+            // Se o nome for um objeto, tentar extrair o valor
+            if (typeof customerData.name === 'object') {
+                cleanName = customerData.name.pt || customerData.name.name || 'Cliente';
+            }
+            
+            // Remover caracteres especiais que podem causar problemas
+            cleanName = cleanName.replace(/[^\w\s\-\.]/g, '').trim();
+            
+            // Garantir que o nome tenha pelo menos 2 caracteres
+            if (cleanName.length < 2) {
+                cleanName = 'Cliente Sem Nome';
+            }
+            
+            // Atualizar o customerData com o nome limpo
+            customerData = {
+                ...customerData,
+                name: cleanName
+            };
+
+            console.log('DEBUG - Customer data após limpeza:', JSON.stringify(customerData, null, 2));
             
             if (!customerData.cpfCnpj) {
                 return createError('CPF/CNPJ do cliente é obrigatório', 400);

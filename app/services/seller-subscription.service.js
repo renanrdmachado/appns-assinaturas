@@ -44,7 +44,7 @@ class SellerSubscriptionService {
                 // Criar customer no Asaas para o seller
                 const nuvemshopInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
                 const customerData = {
-                    name: billingInfo.name || nuvemshopInfo.name?.pt || `Seller ${sellerId}`,
+                    name: billingInfo.name || nuvemshopInfo.name?.pt || nuvemshopInfo.name || `Seller ${sellerId}`,
                     email: billingInfo.email || nuvemshopInfo.email || `seller${sellerId}@example.com`,
                     cpfCnpj: billingInfo.cpfCnpj || '00000000000',
                     phone: billingInfo.phone || nuvemshopInfo.phone || '00000000000'
