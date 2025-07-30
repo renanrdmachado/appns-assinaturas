@@ -1018,6 +1018,18 @@ class SellerService {
                     const storeInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
                     const userData = seller.user?.userData;
                     
+                    console.log(`DEBUG - Dados disponíveis para customer:`, {
+                        storeInfo: {
+                            name: storeInfo.name?.pt,
+                            email: storeInfo.email,
+                            phone: storeInfo.phone
+                        },
+                        userData: {
+                            cpfCnpj: userData?.cpfCnpj,
+                            phone: userData?.mobilePhone
+                        }
+                    });
+                    
                     // Preparar dados do customer usando informações disponíveis
                     const customerData = {
                         name: storeInfo.name?.pt || storeInfo.business_name || `Loja ${seller.nuvemshop_id}`,
@@ -1027,11 +1039,19 @@ class SellerService {
                         groupName: AsaasCustomerService.SELLER_GROUP
                     };
 
+                    console.log(`DEBUG - Customer data para Asaas:`, customerData);
+
                     console.log(`Criando customer no Asaas para seller ${sellerId}...`);
                     const customerResult = await AsaasCustomerService.createOrUpdate(
                         customerData,
                         AsaasCustomerService.SELLER_GROUP
                     );
+
+                    console.log(`DEBUG - Resultado da criação do customer:`, {
+                        success: customerResult.success,
+                        message: customerResult.message,
+                        customerId: customerResult.success ? customerResult.data?.id : null
+                    });
 
                     if (customerResult.success) {
                         // Atualizar seller com o ID do customer
@@ -1046,22 +1066,31 @@ class SellerService {
                 // Agora criar a assinatura no Asaas usando o SellerSubscriptionService
                 const SellerSubscriptionService = require('./seller-subscription.service');
                 
-                const subscriptionData = {
-                    seller_id: sellerId,
+                const planData = {
                     plan_name: defaultSubscriptionData.plan_name,
                     value: defaultSubscriptionData.value,
                     cycle: defaultSubscriptionData.cycle,
-                    billing_type: 'CREDIT_CARD', // Tipo padrão
-                    start_date: defaultSubscriptionData.start_date,
-                    features: defaultSubscriptionData.features,
-                    metadata: {
-                        ...defaultSubscriptionData.metadata,
-                        auto_created: true,
-                        source: 'seller_onboarding'
-                    }
+                    features: defaultSubscriptionData.features
                 };
 
-                const asaasResult = await SellerSubscriptionService.createSubscription(subscriptionData);
+                const billingInfo = {
+                    billingType: 'CREDIT_CARD', // Tipo padrão
+                    name: seller.user?.username || `Seller ${seller.nuvemshop_id}`,
+                    email: seller.user?.email || (seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info).email : null),
+                    cpfCnpj: seller.user?.userData?.cpfCnpj || `temp_${seller.nuvemshop_id}`,
+                    phone: seller.user?.userData?.mobilePhone || null
+                };
+
+                console.log(`DEBUG - Plan data:`, planData);
+                console.log(`DEBUG - Billing info:`, billingInfo);
+
+                const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
+
+                console.log(`DEBUG - Resultado da criação da assinatura:`, {
+                    success: asaasResult.success,
+                    message: asaasResult.message,
+                    external_id: asaasResult.success ? asaasResult.data?.external_id : null
+                });
 
                 if (asaasResult.success) {
                     console.log(`Assinatura criada no Asaas com sucesso: ${asaasResult.data.external_id}`);
@@ -1083,6 +1112,7 @@ class SellerService {
 
             } catch (asaasError) {
                 console.warn(`Erro ao criar assinatura no Asaas: ${asaasError.message}`);
+                console.error(`DEBUG - Stack trace:`, asaasError.stack);
                 // Fallback para criação local
                 const localSubscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
                 return { 

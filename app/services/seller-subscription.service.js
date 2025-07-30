@@ -17,6 +17,12 @@ class SellerSubscriptionService {
      */
     async createSubscription(sellerId, planData, billingInfo = {}) {
         try {
+            console.log(`DEBUG - SellerSubscriptionService.createSubscription chamado com:`, {
+                sellerId,
+                planData,
+                billingInfo
+            });
+            
             console.log(`Criando assinatura para seller ${sellerId}`);
             
             // Buscar seller
@@ -28,6 +34,12 @@ class SellerSubscriptionService {
             // Verificar se seller já tem customer_id no Asaas
             let customerId = seller.payments_customer_id;
             
+            console.log('DEBUG - Status do customer:', {
+                sellerId: sellerId,
+                hasCustomerId: !!customerId,
+                customerId: customerId
+            });
+            
             if (!customerId) {
                 // Criar customer no Asaas para o seller
                 const nuvemshopInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
@@ -38,8 +50,18 @@ class SellerSubscriptionService {
                     phone: billingInfo.phone || nuvemshopInfo.phone || '00000000000'
                 };
 
+                console.log('DEBUG - Criando customer no Asaas com dados:', JSON.stringify(customerData, null, 2));
+
                 const customerResult = await AsaasCustomerService.createCustomer(customerData);
+                
+                console.log('DEBUG - Resultado da criação do customer:', {
+                    success: customerResult.success,
+                    customerId: customerResult.data?.id,
+                    error: customerResult.success ? null : customerResult.message
+                });
+                
                 if (!customerResult.success) {
+                    console.error('DEBUG - Falha ao criar customer:', customerResult);
                     return customerResult;
                 }
 
@@ -66,12 +88,71 @@ class SellerSubscriptionService {
                 fine: billingInfo.fine || null
             };
 
+            // Validar dados obrigatórios antes de enviar para Asaas
+            console.log('DEBUG - Validando dados obrigatórios para Asaas...');
+            const requiredFields = ['customer', 'billingType', 'cycle', 'value', 'nextDueDate'];
+            const missingFields = requiredFields.filter(field => !subscriptionData[field]);
+            
+            if (missingFields.length > 0) {
+                console.error('DEBUG - Campos obrigatórios ausentes:', missingFields);
+                return {
+                    success: false,
+                    message: `Campos obrigatórios ausentes: ${missingFields.join(', ')}`,
+                    data: { missingFields, subscriptionData }
+                };
+            }
+
+            // Validar valor numérico
+            if (isNaN(parseFloat(subscriptionData.value)) || parseFloat(subscriptionData.value) <= 0) {
+                console.error('DEBUG - Valor inválido:', subscriptionData.value);
+                return {
+                    success: false,
+                    message: `Valor da assinatura inválido: ${subscriptionData.value}`,
+                    data: { value: subscriptionData.value }
+                };
+            }
+
+            console.log('DEBUG - Dados validados com sucesso');
+
             // Criar assinatura no Asaas
-            const asaasSubscription = await AsaasApiClient.request({
-                method: 'POST',
-                endpoint: 'subscriptions',
-                data: subscriptionData
-            });
+            console.log('DEBUG - Enviando dados para Asaas:', JSON.stringify(subscriptionData, null, 2));
+            
+            let asaasSubscription;
+            try {
+                asaasSubscription = await AsaasApiClient.request({
+                    method: 'POST',
+                    endpoint: 'subscriptions',
+                    data: subscriptionData
+                });
+
+                console.log('DEBUG - Resposta do Asaas (sucesso):', JSON.stringify(asaasSubscription, null, 2));
+            } catch (asaasError) {
+                console.error('DEBUG - Erro na requisição para Asaas:', {
+                    message: asaasError.message,
+                    status: asaasError.status,
+                    asaasError: asaasError.asaasError,
+                    subscriptionData: subscriptionData,
+                    customerId: customerId,
+                    planData: planData,
+                    billingInfo: billingInfo
+                });
+                
+                // Se tem erros específicos do Asaas, incluir nos logs
+                if (asaasError.asaasError && asaasError.asaasError.errors) {
+                    console.error('DEBUG - Erros específicos do Asaas:', asaasError.asaasError.errors);
+                }
+                
+                return {
+                    success: false,
+                    message: `Erro ao criar assinatura no Asaas: ${asaasError.message}`,
+                    error: {
+                        message: asaasError.message,
+                        status: asaasError.status,
+                        asaasErrors: asaasError.asaasError?.errors || [],
+                        sentData: subscriptionData
+                    }
+                };
+            }
 
             console.log('Assinatura criada no Asaas:', asaasSubscription.id);
 
