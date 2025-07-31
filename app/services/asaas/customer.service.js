@@ -86,6 +86,18 @@ class CustomerService {
             if (!customerData.cpfCnpj) {
                 return createError('CPF/CNPJ do cliente é obrigatório', 400);
             }
+
+            // Validar se o CPF/CNPJ tem formato válido
+            const cleanCpfCnpj = customerData.cpfCnpj.replace(/\D/g, '');
+            if (cleanCpfCnpj.length !== 11 && cleanCpfCnpj.length !== 14) {
+                return createError('CPF/CNPJ deve ter 11 ou 14 dígitos', 400);
+            }
+
+            // Atualizar customerData com CPF/CNPJ limpo
+            customerData = {
+                ...customerData,
+                cpfCnpj: cleanCpfCnpj
+            };
             
             // Criar cliente no Asaas
             const customer = await AsaasApiClient.request({

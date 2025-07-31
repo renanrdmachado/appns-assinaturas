@@ -235,11 +235,11 @@ class SellerService {
                 
                 // Usar transação para garantir consistência
                 const result = await sequelize.transaction(async (t) => {
-                    // 1. Criar UserData básico (será completado depois pelo seller)
+                    // 1. Criar UserData básico usando informações do business se disponível
                     const userData = await UserData.create({
-                        cpfCnpj: `temp_${nuvemshop_id}`, // CPF temporário será atualizado depois
-                        mobilePhone: null,
-                        address: null,
+                        cpfCnpj: storeInfo.business_id || null, // Usar business_id se disponível
+                        mobilePhone: storeInfo.phone || null,
+                        address: storeInfo.business_address || storeInfo.address || null,
                         addressNumber: null,
                         province: null,
                         postalCode: null,
@@ -260,17 +260,16 @@ class SellerService {
                         nuvemshop_id,
                         nuvemshop_api_token,
                         nuvemshop_info: JSON.stringify(storeInfo),
-                        app_status: 'trial', // Status inicial
+                        app_status: storeInfo.business_id ? 'trial' : 'pending_documents', // Status baseado na disponibilidade de business_id
                         app_start_date: new Date()
                     }, { transaction: t });
 
-                    // 4. Tentar criar customer temporário no Asaas usando dados da loja
-                    try {
-                        if (storeInfo.email) {
+                                            // 4. Criar customer temporário no Asaas apenas se tiver informações válidas
+                        if (storeInfo.email && storeInfo.business_id) {
                             const tempCustomerData = {
-                                name: (storeInfo.name?.pt || storeInfo.name || `Loja ${nuvemshop_id}`),
+                                name: (storeInfo.name?.pt || storeInfo.name || storeInfo.business_name || `Loja ${nuvemshop_id}`),
                                 email: storeInfo.email,
-                                cpfCnpj: `temp_${nuvemshop_id}`,
+                                cpfCnpj: storeInfo.business_id, // Usar business_id se disponível
                                 mobilePhone: storeInfo.phone || null,
                                 groupName: AsaasCustomerService.SELLER_GROUP
                             };
@@ -288,13 +287,13 @@ class SellerService {
                                 await newSeller.save({ transaction: t });
                                 console.log(`Customer temporário criado no Asaas: ${asaasResult.data.id}`);
                             } else {
-                                console.warn(`Falha ao criar customer temporário no Asaas: ${asaasResult.message}`);
+                                console.error(`Falha ao criar customer temporário no Asaas: ${asaasResult.message}`);
+                                // Não falha a criação do seller se não tiver dados completos do business
+                                console.warn('Seller será criado sem integração inicial com Asaas devido à falta de business_id');
                             }
+                        } else {
+                            console.log('Seller criado sem integração inicial com Asaas - business_id ou email não disponível');
                         }
-                    } catch (asaasError) {
-                        console.warn(`Erro ao criar customer temporário no Asaas: ${asaasError.message}`);
-                        // Não falha a criação do seller por conta do Asaas
-                    }
 
                     // 5. Criar assinatura padrão (local primeiro, Asaas quando dados completos)
                     await this.createDefaultSubscription(newSeller.id, t);
@@ -1010,12 +1009,16 @@ class SellerService {
             }
 
             // Configuração padrão da assinatura
-            const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId);
+            const validCpfCnpj = storeInfo.business_id || seller.user?.userData?.cpfCnpj;
+            const subscriptionStatus = validCpfCnpj ? 'active' : 'pending_documents';
+            const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId, subscriptionStatus);
 
-            console.log(`Criando assinatura no Asaas para seller ${sellerId}...`);
+            console.log(`Verificando possibilidade de integração com Asaas para seller ${sellerId}...`);
+            console.log(`Business ID disponível: ${!!storeInfo.business_id}`);
+            console.log(`Status da assinatura: ${subscriptionStatus}`);
             
             try {
-                // Se seller não tem customer_id, criar primeiro
+                // Se seller não tem customer_id, tentar criar se tiver dados válidos
                 if (!seller.payments_customer_id) {
                     let storeInfo;
                     try {
@@ -1033,7 +1036,8 @@ class SellerService {
                         storeInfo: {
                             name: storeInfo.name?.pt,
                             email: storeInfo.email,
-                            phone: storeInfo.phone
+                            phone: storeInfo.phone,
+                            business_id: storeInfo.business_id
                         },
                         userData: {
                             cpfCnpj: userData?.cpfCnpj,
@@ -1041,94 +1045,116 @@ class SellerService {
                         }
                     });
                     
-                    // Preparar dados do customer usando informações disponíveis
-                    const customerData = {
-                        name: storeInfo.name?.pt || storeInfo.business_name || `Loja ${seller.nuvemshop_id}`,
-                        email: storeInfo.email || seller.user?.email || `seller_${seller.nuvemshop_id}@temp.com`,
-                        cpfCnpj: userData?.cpfCnpj || `temp_${seller.nuvemshop_id}`,
-                        mobilePhone: storeInfo.phone || userData?.mobilePhone || null,
-                        groupName: AsaasCustomerService.SELLER_GROUP
-                    };
+                    // Só tentar criar no Asaas se tiver CPF/CNPJ válido
+                    const validCpfCnpj = storeInfo.business_id || userData?.cpfCnpj;
+                    
+                    if (validCpfCnpj && storeInfo.email) {
+                        console.log('Dados suficientes para integração com Asaas - criando customer e assinatura');
+                        // Preparar dados do customer usando informações disponíveis
+                        const customerData = {
+                            name: storeInfo.name?.pt || storeInfo.business_name || `Loja ${seller.nuvemshop_id}`,
+                            email: storeInfo.email || seller.user?.email || `seller_${seller.nuvemshop_id}@temp.com`,
+                            cpfCnpj: validCpfCnpj,
+                            mobilePhone: storeInfo.phone || userData?.mobilePhone || null,
+                            groupName: AsaasCustomerService.SELLER_GROUP
+                        };
 
-                    console.log(`DEBUG - Customer data para Asaas:`, customerData);
+                        console.log(`DEBUG - Customer data para Asaas:`, customerData);
 
-                    console.log(`Criando customer no Asaas para seller ${sellerId}...`);
-                    const customerResult = await AsaasCustomerService.createOrUpdate(
-                        customerData,
-                        AsaasCustomerService.SELLER_GROUP
-                    );
+                        console.log(`Criando customer no Asaas para seller ${sellerId}...`);
+                        const customerResult = await AsaasCustomerService.createOrUpdate(
+                            customerData,
+                            AsaasCustomerService.SELLER_GROUP
+                        );
 
-                    console.log(`DEBUG - Resultado da criação do customer:`, {
-                        success: customerResult.success,
-                        message: customerResult.message,
-                        customerId: customerResult.success ? customerResult.data?.id : null
-                    });
+                        console.log(`DEBUG - Resultado da criação do customer:`, {
+                            success: customerResult.success,
+                            message: customerResult.message,
+                            customerId: customerResult.success ? customerResult.data?.id : null
+                        });
 
-                    if (customerResult.success) {
-                        // Atualizar seller com o ID do customer
-                        seller.payments_customer_id = customerResult.data.id;
-                        await seller.save({ transaction });
-                        console.log(`Customer criado no Asaas: ${customerResult.data.id}`);
+                        if (customerResult.success) {
+                            // Atualizar seller com o ID do customer
+                            seller.payments_customer_id = customerResult.data.id;
+                            await seller.save({ transaction });
+                            console.log(`Customer criado no Asaas: ${customerResult.data.id}`);
+                        } else {
+                            console.error(`Falha ao criar customer no Asaas: ${customerResult.message}`);
+                            console.warn('Criando assinatura pendente devido à falha no Asaas');
+                        }
                     } else {
-                        throw new Error(`Falha ao criar customer no Asaas: ${customerResult.message}`);
+                        console.log('Dados insuficientes para integração com Asaas - assinatura será criada como pending_documents');
+                        console.log(`Dados faltantes: ${!validCpfCnpj ? 'CPF/CNPJ' : ''} ${!storeInfo.email ? 'Email' : ''}`);
                     }
                 }
 
-                // Agora criar a assinatura no Asaas usando o SellerSubscriptionService
-                const SellerSubscriptionService = require('./seller-subscription.service');
-                
-                const planData = {
-                    plan_name: defaultSubscriptionData.plan_name,
-                    value: defaultSubscriptionData.value,
-                    cycle: defaultSubscriptionData.cycle,
-                    features: defaultSubscriptionData.features
-                };
-
-                const billingInfo = {
-                    billingType: 'CREDIT_CARD', // Tipo padrão
-                    name: seller.user?.username || `Seller ${seller.nuvemshop_id}`,
-                    email: seller.user?.email || (function() {
-                        try {
-                            return seller.nuvemshop_info ? 
-                                (typeof seller.nuvemshop_info === 'string' ? 
-                                    JSON.parse(seller.nuvemshop_info).email : 
-                                    seller.nuvemshop_info.email) : null;
-                        } catch (e) {
-                            return null;
-                        }
-                    })(),
-                    cpfCnpj: seller.user?.userData?.cpfCnpj || `temp_${seller.nuvemshop_id}`,
-                    phone: seller.user?.userData?.mobilePhone || null
-                };
-
-                console.log(`DEBUG - Plan data:`, planData);
-                console.log(`DEBUG - Billing info:`, billingInfo);
-
-                const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
-
-                console.log(`DEBUG - Resultado da criação da assinatura:`, {
-                    success: asaasResult.success,
-                    message: asaasResult.message,
-                    external_id: asaasResult.success ? asaasResult.data?.external_id : null
-                });
-
-                if (asaasResult.success) {
-                    console.log(`Assinatura criada no Asaas com sucesso: ${asaasResult.data.external_id}`);
-                    return { 
-                        success: true, 
-                        message: 'Assinatura padrão criada com sucesso no Asaas',
-                        data: asaasResult.data 
+                // Se tiver customer no Asaas, tentar criar assinatura no Asaas
+                if (seller.payments_customer_id) {
+                    // Agora criar a assinatura no Asaas usando o SellerSubscriptionService
+                    const SellerSubscriptionService = require('./seller-subscription.service');
+                    
+                    const planData = {
+                        plan_name: defaultSubscriptionData.plan_name,
+                        value: defaultSubscriptionData.value,
+                        cycle: defaultSubscriptionData.cycle,
+                        features: defaultSubscriptionData.features
                     };
-                } else {
-                    console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
-                    // Fallback para criação local
-                    const localSubscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
-                    return { 
-                        success: true, 
-                        message: 'Assinatura criada localmente (falha no Asaas)',
-                        data: localSubscription 
+
+                    const billingInfo = {
+                        billingType: 'CREDIT_CARD', // Tipo padrão
+                        name: seller.user?.username || `Seller ${seller.nuvemshop_id}`,
+                        email: seller.user?.email || (function() {
+                            try {
+                                return seller.nuvemshop_info ? 
+                                    (typeof seller.nuvemshop_info === 'string' ? 
+                                        JSON.parse(seller.nuvemshop_info).email : 
+                                        seller.nuvemshop_info.email) : null;
+                            } catch (e) {
+                                return null;
+                            }
+                        })(),
+                        cpfCnpj: seller.user?.userData?.cpfCnpj || null, // Usar dados reais quando disponíveis
+                        phone: seller.user?.userData?.mobilePhone || null
                     };
+
+                    console.log(`DEBUG - Plan data:`, planData);
+                    console.log(`DEBUG - Billing info:`, billingInfo);
+
+                    const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
+
+                    console.log(`DEBUG - Resultado da criação da assinatura:`, {
+                        success: asaasResult.success,
+                        message: asaasResult.message,
+                        external_id: asaasResult.success ? asaasResult.data?.external_id : null
+                    });
+
+                    if (asaasResult.success) {
+                        console.log(`Assinatura criada no Asaas com sucesso: ${asaasResult.data.external_id}`);
+                        return { 
+                            success: true, 
+                            message: 'Assinatura padrão criada com sucesso no Asaas',
+                            data: asaasResult.data 
+                        };
+                    } else {
+                        console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
+                        // Fallback para criação local
+                    }
                 }
+
+                // Fallback: criar assinatura apenas localmente
+                console.log(`Criando assinatura localmente com status: ${subscriptionStatus}`);
+                const localSubscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
+                
+                const message = subscriptionStatus === 'pending_documents' ? 
+                    'Assinatura criada - aguardando complemento de dados para integração com Asaas' :
+                    'Assinatura criada localmente (integração com Asaas pendente)';
+                
+                return { 
+                    success: true, 
+                    message: message,
+                    data: localSubscription,
+                    needsDocuments: subscriptionStatus === 'pending_documents'
+                };
 
             } catch (asaasError) {
                 console.warn(`Erro ao criar assinatura no Asaas: ${asaasError.message}`);
@@ -1157,12 +1183,12 @@ class SellerService {
      * Configuração padrão da assinatura (DRY - centraliza configuração)
      * Seguindo princípios SOLID: Open/Closed - fácil de estender sem modificar
      */
-    getDefaultSubscriptionConfig(sellerId) {
+    getDefaultSubscriptionConfig(sellerId, status = 'active') {
         return {
             seller_id: sellerId,
             plan_name: 'Plano Básico',
             value: 29.90,
-            status: 'active',
+            status: status,
             cycle: 'MONTHLY',
             start_date: new Date(),
             next_due_date: this.calculateNextDueDate(new Date(), 'MONTHLY'),
@@ -1198,6 +1224,171 @@ class SellerService {
         cycleFunction();
         
         return date;
+    }
+
+    /**
+     * Completa os dados do seller e ativa integração com Asaas
+     * @param {number} sellerId - ID do seller
+     * @param {Object} documentData - Dados do documento (cpfCnpj, name, phone, address)
+     * @returns {Object} - Resultado da operação
+     */
+    async updateSellerDocuments(sellerId, documentData) {
+        const transaction = await sequelize.transaction();
+        
+        try {
+            const { cpfCnpj, name, phone, address } = documentData;
+
+            // Validar dados obrigatórios
+            if (!cpfCnpj) {
+                await transaction.rollback();
+                return createError('CPF/CNPJ é obrigatório', 400);
+            }
+
+            // Buscar seller com relações
+            const seller = await Seller.findByPk(sellerId, {
+                include: [
+                    { 
+                        model: User, 
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }] 
+                    }
+                ],
+                transaction
+            });
+
+            if (!seller) {
+                await transaction.rollback();
+                return createError(`Seller com ID ${sellerId} não encontrado`, 404);
+            }
+
+            // Verificar se seller está pendente de documentos
+            if (seller.app_status !== 'pending_documents') {
+                await transaction.rollback();
+                return createError('Seller não está pendente de documentos', 400);
+            }
+
+            // Atualizar UserData com os novos dados
+            const userData = seller.user.userData;
+            await userData.update({
+                cpfCnpj: cpfCnpj,
+                mobilePhone: phone || userData.mobilePhone,
+                address: address || userData.address
+            }, { transaction });
+
+            // Atualizar User com nome se fornecido
+            if (name) {
+                await seller.user.update({
+                    username: name
+                }, { transaction });
+            }
+
+            // Preparar dados para criar customer no Asaas
+            const storeInfo = seller.nuvemshop_info;
+            const customerData = {
+                name: name || storeInfo?.name?.pt || storeInfo?.business_name || `Loja ${seller.nuvemshop_id}`,
+                email: storeInfo?.email || seller.user.email,
+                cpfCnpj: cpfCnpj,
+                mobilePhone: phone || storeInfo?.phone,
+                groupName: AsaasCustomerService.SELLER_GROUP
+            };
+
+            console.log(`Criando customer no Asaas para seller ${sellerId} com dados completos:`, customerData);
+
+            // Criar customer no Asaas
+            const customerResult = await AsaasCustomerService.createOrUpdate(
+                customerData,
+                AsaasCustomerService.SELLER_GROUP
+            );
+
+            if (!customerResult.success) {
+                console.error(`Falha ao criar customer no Asaas: ${customerResult.message}`);
+                await transaction.rollback();
+                return customerResult;
+            }
+
+            // Atualizar seller com customer_id e status
+            await seller.update({
+                payments_customer_id: customerResult.data.id,
+                app_status: 'trial' // Ativar seller
+            }, { transaction });
+
+            // Buscar assinatura pendente e tentar criar no Asaas
+            const SellerSubscription = require('../models/SellerSubscription');
+            const pendingSubscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: sellerId,
+                    status: 'pending_documents'
+                },
+                transaction
+            });
+
+            if (pendingSubscription) {
+                console.log(`Ativando assinatura pendente para seller ${sellerId}`);
+
+                // Criar assinatura no Asaas
+                const planData = {
+                    plan_name: pendingSubscription.plan_name,
+                    value: pendingSubscription.value,
+                    cycle: pendingSubscription.cycle,
+                    features: pendingSubscription.features
+                };
+
+                const billingInfo = {
+                    billingType: 'CREDIT_CARD',
+                    name: customerData.name,
+                    email: customerData.email,
+                    cpfCnpj: customerData.cpfCnpj,
+                    phone: customerData.mobilePhone
+                };
+
+                const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
+
+                if (asaasResult.success) {
+                    // Atualizar assinatura local para ativa
+                    await pendingSubscription.update({
+                        status: 'active',
+                        external_id: asaasResult.data.local_subscription.external_id,
+                        metadata: {
+                            ...pendingSubscription.metadata,
+                            activated_at: new Date(),
+                            asaas_subscription_id: asaasResult.data.asaas_subscription.id
+                        }
+                    }, { transaction });
+
+                    console.log(`Assinatura ativada com sucesso no Asaas: ${asaasResult.data.asaas_subscription.id}`);
+                } else {
+                    console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
+                    // Mesmo assim, ativar localmente
+                    await pendingSubscription.update({
+                        status: 'active',
+                        metadata: {
+                            ...pendingSubscription.metadata,
+                            activated_at: new Date(),
+                            asaas_error: asaasResult.message
+                        }
+                    }, { transaction });
+                }
+            }
+
+            await transaction.commit();
+
+            console.log(`Dados do seller ${sellerId} completados com sucesso`);
+
+            return {
+                success: true,
+                message: 'Dados completados e integração ativada com sucesso',
+                data: {
+                    seller: seller,
+                    asaas_customer_id: customerResult.data.id,
+                    subscription_activated: !!pendingSubscription
+                }
+            };
+
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Erro ao completar dados do seller:', error);
+            return formatError(error);
+        }
     }
 }
 

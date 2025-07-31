@@ -23,7 +23,7 @@ class SubscriptionValidator {
                 where: {
                     seller_id: sellerId,
                     status: {
-                        [Op.in]: ['active', 'overdue', 'pending']
+                        [Op.in]: ['active', 'overdue', 'pending', 'pending_documents']
                     }
                 },
                 order: [['createdAt', 'DESC']] // Pegar a mais recente
@@ -31,6 +31,11 @@ class SubscriptionValidator {
 
             if (!subscription) {
                 return createError('O vendedor não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.', 403);
+            }
+
+            // Verificar se precisa completar documentos
+            if (subscription.status === 'pending_documents') {
+                return createError('Para utilizar este serviço, é necessário completar o cadastro com CPF/CNPJ. Acesse a área de configurações para completar seus dados.', 403);
             }
 
             // Verificar se a assinatura está vencida

@@ -46,7 +46,7 @@ class SellerSubscriptionService {
                 const customerData = {
                     name: billingInfo.name || nuvemshopInfo.name?.pt || nuvemshopInfo.name || `Seller ${sellerId}`,
                     email: billingInfo.email || nuvemshopInfo.email || `seller${sellerId}@example.com`,
-                    cpfCnpj: billingInfo.cpfCnpj || '00000000000',
+                    cpfCnpj: billingInfo.cpfCnpj || nuvemshopInfo.business_id || null, // Usar business_id se disponível
                     phone: billingInfo.phone || nuvemshopInfo.phone || '00000000000'
                 };
 
