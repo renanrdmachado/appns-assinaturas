@@ -1009,6 +1009,17 @@ class SellerService {
             }
 
             // Configuração padrão da assinatura
+            let storeInfo;
+            try {
+                storeInfo = seller.nuvemshop_info ? 
+                    (typeof seller.nuvemshop_info === 'string' ? 
+                        JSON.parse(seller.nuvemshop_info) : 
+                        seller.nuvemshop_info) : {};
+            } catch (error) {
+                console.error('Erro ao fazer parse do nuvemshop_info:', error);
+                storeInfo = {};
+            }
+            
             const validCpfCnpj = storeInfo.business_id || seller.user?.userData?.cpfCnpj;
             const subscriptionStatus = validCpfCnpj ? 'active' : 'pending_documents';
             const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId, subscriptionStatus);
