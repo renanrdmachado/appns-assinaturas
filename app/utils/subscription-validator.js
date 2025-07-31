@@ -30,7 +30,7 @@ class SubscriptionValidator {
             });
 
             if (!subscription) {
-                return createError('O vendedor não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.', 403);
+                return createError('O vendedor não possui assinatura ativa. Complete o processo de documentação para criar sua assinatura.', 403);
             }
 
             // Verificar se precisa completar documentos

@@ -195,8 +195,8 @@ class SellerService {
                         transaction: t
                     });
 
-                    // Criar assinatura padrão para o seller
-                    await this.createDefaultSubscription(seller.id, t);
+                    // Assinatura será criada apenas quando completar documentos
+                    // await this.createDefaultSubscription(seller.id, t);
 
                     return sellerWithRelations;
                 });
@@ -260,7 +260,7 @@ class SellerService {
                         nuvemshop_id,
                         nuvemshop_api_token,
                         nuvemshop_info: JSON.stringify(storeInfo),
-                        app_status: storeInfo.business_id ? 'trial' : 'pending', // Status baseado na disponibilidade de business_id
+                        app_status: storeInfo.business_id ? 'active' : 'pending', // Status baseado na disponibilidade de business_id
                         app_start_date: new Date()
                     }, { transaction: t });
 
@@ -295,8 +295,8 @@ class SellerService {
                             console.log('Seller criado sem integração inicial com Asaas - business_id ou email não disponível');
                         }
 
-                    // 5. Criar assinatura padrão (local primeiro, Asaas quando dados completos)
-                    await this.createDefaultSubscription(newSeller.id, t);
+                    // Assinatura será criada apenas quando completar documentos
+                    // await this.createDefaultSubscription(newSeller.id, t);
 
                     return await Seller.findByPk(newSeller.id, {
                         include: [
@@ -323,7 +323,7 @@ class SellerService {
                 // Atualizar informações do vendedor
                 seller.nuvemshop_api_token = nuvemshop_api_token;
                 seller.nuvemshop_info = JSON.stringify(storeInfo);
-                seller.app_status = storeInfo.plan_name || seller.app_status || 'trial';
+                seller.app_status = storeInfo.plan_name || seller.app_status || 'active';
                 await seller.save({ transaction: t });
 
                 // Verificar se possui assinatura, se não criar uma padrão
@@ -333,18 +333,13 @@ class SellerService {
                 });
 
                 if (!hasSubscription) {
-                    console.log(`Seller ${seller.id} não possui assinatura, criando uma padrão...`);
-                    await this.createDefaultSubscription(seller.id, t);
+                    console.log(`Seller ${seller.id} não possui assinatura - aguardando completar documentos para criar`);
+                    // Não criar assinatura automaticamente
                 } else {
                     // Verificar se assinatura existente tem external_id (foi criada no Asaas)
                     if (!hasSubscription.external_id) {
-                        console.log(`Seller ${seller.id} possui assinatura local, tentando migrar para Asaas...`);
-                        try {
-                            // Tentar criar no Asaas usando dados existentes
-                            await this.createDefaultSubscription(seller.id, t);
-                        } catch (migrationError) {
-                            console.warn(`Falha na migração da assinatura para Asaas: ${migrationError.message}`);
-                        }
+                        console.log(`Seller ${seller.id} possui assinatura local sem integração Asaas`);
+                        // Não tentar migrar automaticamente
                     }
                 }
 
@@ -1317,69 +1312,49 @@ class SellerService {
                 return customerResult;
             }
 
-            // Atualizar seller com customer_id e status
+            // Atualizar seller apenas com customer_id (manter status pending)
             await seller.update({
-                payments_customer_id: customerResult.data.id,
-                app_status: 'trial' // Ativar seller
+                payments_customer_id: customerResult.data.id
+                // Não mudar app_status ainda - só após criar assinatura
             }, { transaction });
 
-            // Buscar assinatura pendente e tentar criar no Asaas
-            const SellerSubscription = require('../models/SellerSubscription');
-            const pendingSubscription = await SellerSubscription.findOne({
-                where: {
-                    seller_id: sellerId,
-                    status: 'pending'
-                },
-                transaction
-            });
+            // Criar assinatura diretamente no Asaas (não usar assinatura pendente)
+            console.log(`Criando assinatura no Asaas para seller ${sellerId}`);
 
-            if (pendingSubscription) {
-                console.log(`Ativando assinatura pendente para seller ${sellerId}`);
-
-                // Criar assinatura no Asaas
-                const planData = {
-                    plan_name: pendingSubscription.plan_name,
-                    value: pendingSubscription.value,
-                    cycle: pendingSubscription.cycle,
-                    features: pendingSubscription.features
-                };
-
-                const billingInfo = {
-                    billingType: 'CREDIT_CARD',
-                    name: customerData.name,
-                    email: customerData.email,
-                    cpfCnpj: customerData.cpfCnpj,
-                    phone: customerData.mobilePhone
-                };
-
-                const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
-
-                if (asaasResult.success) {
-                    // Atualizar assinatura local para ativa
-                    await pendingSubscription.update({
-                        status: 'active',
-                        external_id: asaasResult.data.local_subscription.external_id,
-                        metadata: {
-                            ...pendingSubscription.metadata,
-                            activated_at: new Date(),
-                            asaas_subscription_id: asaasResult.data.asaas_subscription.id
-                        }
-                    }, { transaction });
-
-                    console.log(`Assinatura ativada com sucesso no Asaas: ${asaasResult.data.asaas_subscription.id}`);
-                } else {
-                    console.warn(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
-                    // Mesmo assim, ativar localmente
-                    await pendingSubscription.update({
-                        status: 'active',
-                        metadata: {
-                            ...pendingSubscription.metadata,
-                            activated_at: new Date(),
-                            asaas_error: asaasResult.message
-                        }
-                    }, { transaction });
+            const planData = {
+                plan_name: 'Plano Básico',
+                value: 29.90,
+                cycle: 'MONTHLY',
+                features: {
+                    max_products: 100,
+                    max_orders_per_month: 500,
+                    support_level: 'basic'
                 }
+            };
+
+            const billingInfo = {
+                billingType: 'CREDIT_CARD',
+                name: customerData.name,
+                email: customerData.email,
+                cpfCnpj: customerData.cpfCnpj,
+                phone: customerData.mobilePhone
+            };
+
+            const SellerSubscriptionService = require('./seller-subscription.service');
+            const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
+
+            if (!asaasResult.success) {
+                console.error(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);
+                await transaction.rollback();
+                return createError(`Falha ao criar assinatura: ${asaasResult.message}`, 400);
             }
+
+            // Só agora atualizar o status do seller para active (assinatura já está ativa no Asaas)
+            await seller.update({
+                app_status: 'active'
+            }, { transaction });
+
+            console.log(`Assinatura criada com sucesso no Asaas: ${asaasResult.data.asaas_subscription.id}`);
 
             await transaction.commit();
 
@@ -1387,11 +1362,12 @@ class SellerService {
 
             return {
                 success: true,
-                message: 'Dados completados e integração ativada com sucesso',
+                message: 'Dados completados e assinatura criada com sucesso',
                 data: {
                     seller: seller,
                     asaas_customer_id: customerResult.data.id,
-                    subscription_activated: !!pendingSubscription
+                    asaas_subscription_id: asaasResult.data.asaas_subscription.id,
+                    subscription_created: true
                 }
             };
 
