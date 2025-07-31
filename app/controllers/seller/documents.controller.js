@@ -27,7 +27,7 @@ async function completeSellerData(req, res) {
         const seller = sellerResult.data;
 
         // Verificar se seller precisa de documentos
-        if (seller.app_status !== 'pending_documents') {
+        if (seller.app_status !== 'pending') {
             return res.status(400).json({
                 success: false,
                 message: 'Seller não está pendente de documentos'
@@ -80,7 +80,7 @@ async function checkSellerStatus(req, res) {
             data: {
                 seller_id: seller.id,
                 app_status: seller.app_status,
-                needsDocuments: seller.app_status === 'pending_documents',
+                needsDocuments: seller.app_status === 'pending',
                 has_asaas_integration: !!seller.payments_customer_id,
                 store_name: seller.nuvemshop_info?.name?.pt || seller.nuvemshop_info?.name,
                 store_email: seller.nuvemshop_info?.email

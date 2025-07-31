@@ -23,7 +23,7 @@ class SubscriptionValidator {
                 where: {
                     seller_id: sellerId,
                     status: {
-                        [Op.in]: ['active', 'overdue', 'pending', 'pending_documents']
+                        [Op.in]: ['active', 'overdue', 'pending']
                     }
                 },
                 order: [['createdAt', 'DESC']] // Pegar a mais recente
@@ -34,7 +34,7 @@ class SubscriptionValidator {
             }
 
             // Verificar se precisa completar documentos
-            if (subscription.status === 'pending_documents') {
+            if (subscription.status === 'pending') {
                 return createError('Para utilizar este serviço, é necessário completar o cadastro com CPF/CNPJ. Acesse a área de configurações para completar seus dados.', 403);
             }
 

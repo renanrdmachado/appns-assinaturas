@@ -260,7 +260,7 @@ class SellerService {
                         nuvemshop_id,
                         nuvemshop_api_token,
                         nuvemshop_info: JSON.stringify(storeInfo),
-                        app_status: storeInfo.business_id ? 'trial' : 'pending_documents', // Status baseado na disponibilidade de business_id
+                        app_status: storeInfo.business_id ? 'trial' : 'pending', // Status baseado na disponibilidade de business_id
                         app_start_date: new Date()
                     }, { transaction: t });
 
@@ -1021,7 +1021,7 @@ class SellerService {
             }
             
             const validCpfCnpj = storeInfo.business_id || seller.user?.userData?.cpfCnpj;
-            const subscriptionStatus = validCpfCnpj ? 'active' : 'pending_documents';
+            const subscriptionStatus = validCpfCnpj ? 'active' : 'pending';
             const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId, subscriptionStatus);
 
             console.log(`Verificando possibilidade de integração com Asaas para seller ${sellerId}...`);
@@ -1094,7 +1094,7 @@ class SellerService {
                             console.warn('Criando assinatura pendente devido à falha no Asaas');
                         }
                     } else {
-                        console.log('Dados insuficientes para integração com Asaas - assinatura será criada como pending_documents');
+                        console.log('Dados insuficientes para integração com Asaas - assinatura será criada como pending');
                         console.log(`Dados faltantes: ${!validCpfCnpj ? 'CPF/CNPJ' : ''} ${!storeInfo.email ? 'Email' : ''}`);
                     }
                 }
@@ -1156,7 +1156,7 @@ class SellerService {
                 console.log(`Criando assinatura localmente com status: ${subscriptionStatus}`);
                 const localSubscription = await SellerSubscription.create(defaultSubscriptionData, { transaction });
                 
-                const message = subscriptionStatus === 'pending_documents' ? 
+                const message = subscriptionStatus === 'pending' ? 
                     'Assinatura criada - aguardando complemento de dados para integração com Asaas' :
                     'Assinatura criada localmente (integração com Asaas pendente)';
                 
@@ -1164,7 +1164,7 @@ class SellerService {
                     success: true, 
                     message: message,
                     data: localSubscription,
-                    needsDocuments: subscriptionStatus === 'pending_documents'
+                    needsDocuments: subscriptionStatus === 'pending'
                 };
 
             } catch (asaasError) {
@@ -1273,7 +1273,7 @@ class SellerService {
             }
 
             // Verificar se seller está pendente de documentos
-            if (seller.app_status !== 'pending_documents') {
+            if (seller.app_status !== 'pending') {
                 await transaction.rollback();
                 return createError('Seller não está pendente de documentos', 400);
             }
@@ -1328,7 +1328,7 @@ class SellerService {
             const pendingSubscription = await SellerSubscription.findOne({
                 where: {
                     seller_id: sellerId,
-                    status: 'pending_documents'
+                    status: 'pending'
                 },
                 transaction
             });
