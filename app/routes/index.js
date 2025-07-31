@@ -43,12 +43,13 @@ router.use('/app/payments', paymentRoutes);
 // Rota do seller/store SEM validação de assinatura (liberada)
 router.use('/app/seller/store', sellerStoreRoutes);
 
-// Rota para documentos do seller SEM validação de assinatura (para completar cadastro)
-router.use('/app/seller/documents', sellerDocumentsRoutes);
-
 // Rotas de assinaturas de sellers SEM validação (são para gerenciar, não consumir)
 router.use('/app/seller-subscriptions', sellerSubscriptionRoutes);
 router.use('/app/seller-subaccounts', sellerSubAccountRoutes);
+
+// Rota para documentos do seller SEM validação de assinatura (para completar cadastro)
+// DEVE vir ANTES da rota genérica /app/seller para evitar conflitos
+router.use('/app/documents', sellerDocumentsRoutes);
 
 // Rotas específicas do seller COM validação de assinatura - DEVE VIR POR ÚLTIMO
 router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
