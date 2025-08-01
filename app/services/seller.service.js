@@ -295,8 +295,13 @@ class SellerService {
                             console.log('Seller criado sem integração inicial com Asaas - business_id ou email não disponível');
                         }
 
-                    // Assinatura será criada apenas quando completar documentos
-                    // await this.createDefaultSubscription(newSeller.id, t);
+                    // Se seller tem dados completos (business_id), criar assinatura
+                    if (storeInfo.business_id) {
+                        console.log(`Seller ${newSeller.id} tem dados completos - criando assinatura diretamente`);
+                        await this.createDefaultSubscription(newSeller.id, t);
+                    } else {
+                        console.log(`Seller ${newSeller.id} sem dados completos - assinatura será criada quando completar documentos`);
+                    }
 
                     return await Seller.findByPk(newSeller.id, {
                         include: [
@@ -333,8 +338,23 @@ class SellerService {
                 });
 
                 if (!hasSubscription) {
-                    console.log(`Seller ${seller.id} não possui assinatura - aguardando completar documentos para criar`);
-                    // Não criar assinatura automaticamente
+                    // Extrair informações da loja para verificar se tem dados completos
+                    let currentStoreInfo;
+                    try {
+                        currentStoreInfo = seller.nuvemshop_info ? 
+                            (typeof seller.nuvemshop_info === 'string' ? 
+                                JSON.parse(seller.nuvemshop_info) : 
+                                seller.nuvemshop_info) : {};
+                    } catch (error) {
+                        currentStoreInfo = {};
+                    }
+                    
+                    if (currentStoreInfo.business_id || storeInfo.business_id) {
+                        console.log(`Seller ${seller.id} tem dados completos - criando assinatura`);
+                        await this.createDefaultSubscription(seller.id, t);
+                    } else {
+                        console.log(`Seller ${seller.id} não possui assinatura - aguardando completar documentos para criar`);
+                    }
                 } else {
                     // Verificar se assinatura existente tem external_id (foi criada no Asaas)
                     if (!hasSubscription.external_id) {
