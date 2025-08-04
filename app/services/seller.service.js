@@ -298,7 +298,13 @@ class SellerService {
                     // Se seller tem dados completos (business_id), criar assinatura
                     if (storeInfo.business_id) {
                         console.log(`Seller ${newSeller.id} tem dados completos - criando assinatura diretamente`);
-                        await this.createDefaultSubscription(newSeller.id, t);
+                        try {
+                            const subscriptionResult = await this.createDefaultSubscription(newSeller.id, t);
+                            console.log(`Resultado da criação da assinatura para seller ${newSeller.id}:`, subscriptionResult);
+                        } catch (subscriptionError) {
+                            console.error(`Erro ao criar assinatura para seller ${newSeller.id}:`, subscriptionError.message);
+                            // Não falhar a criação do seller por conta da assinatura
+                        }
                     } else {
                         console.log(`Seller ${newSeller.id} sem dados completos - assinatura será criada quando completar documentos`);
                     }
@@ -996,6 +1002,7 @@ class SellerService {
      * Seguindo princípios SOLID: Single Responsibility - apenas cria assinatura
      */
     async createDefaultSubscription(sellerId, transaction = null) {
+        console.log(`INÍCIO createDefaultSubscription para seller ${sellerId}`);
         try {
             // Verificar se já existe uma assinatura (DRY - evita duplicação)
             const existingSubscription = await SellerSubscription.findOne({
@@ -1004,8 +1011,11 @@ class SellerService {
             });
 
             if (existingSubscription) {
+                console.log(`Seller ${sellerId} já possui assinatura existente:`, existingSubscription.id);
                 return { success: true, message: 'Assinatura já existe', data: existingSubscription };
             }
+
+            console.log(`Seller ${sellerId} não possui assinatura - prosseguindo com criação`);
 
             // Buscar o seller com dados do usuário para criar no Asaas
             const seller = await Seller.findByPk(sellerId, {
