@@ -1126,6 +1126,39 @@ class SellerService {
 
                 // Se tiver customer no Asaas, tentar criar assinatura no Asaas
                 if (seller.payments_customer_id) {
+                    console.log(`Seller ${sellerId} já possui customer no Asaas: ${seller.payments_customer_id}`);
+                    
+                    // Verificar se o customer no Asaas tem CPF/CNPJ atualizado
+                    const storeInfoParsed = seller.nuvemshop_info ? 
+                        (typeof seller.nuvemshop_info === 'string' ? 
+                            JSON.parse(seller.nuvemshop_info) : 
+                            seller.nuvemshop_info) : {};
+                    
+                    const validCpfCnpjForUpdate = storeInfoParsed.business_id || seller.user?.userData?.cpfCnpj;
+                    
+                    if (validCpfCnpjForUpdate) {
+                        console.log(`Atualizando customer ${seller.payments_customer_id} no Asaas com CPF/CNPJ: ${validCpfCnpjForUpdate}`);
+                        
+                        const updateCustomerData = {
+                            name: storeInfoParsed.name?.pt || storeInfoParsed.business_name || `Loja ${seller.nuvemshop_id}`,
+                            email: storeInfoParsed.email || seller.user?.email,
+                            cpfCnpj: validCpfCnpjForUpdate,
+                            mobilePhone: storeInfoParsed.phone || seller.user?.userData?.mobilePhone,
+                            groupName: AsaasCustomerService.SELLER_GROUP
+                        };
+                        
+                        const updateResult = await AsaasCustomerService.createOrUpdate(
+                            updateCustomerData,
+                            AsaasCustomerService.SELLER_GROUP
+                        );
+                        
+                        if (updateResult.success) {
+                            console.log(`Customer atualizado no Asaas com sucesso`);
+                        } else {
+                            console.warn(`Falha ao atualizar customer no Asaas: ${updateResult.message}`);
+                        }
+                    }
+                    
                     // Agora criar a assinatura no Asaas usando o SellerSubscriptionService
                     const SellerSubscriptionService = require('./seller-subscription.service');
                     
@@ -1156,7 +1189,7 @@ class SellerService {
                     console.log(`DEBUG - Plan data:`, planData);
                     console.log(`DEBUG - Billing info:`, billingInfo);
 
-                    const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
+                    const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo, transaction);
 
                     console.log(`DEBUG - Resultado da criação da assinatura:`, {
                         success: asaasResult.success,

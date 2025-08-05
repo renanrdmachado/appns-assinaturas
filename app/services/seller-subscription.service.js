@@ -13,9 +13,10 @@ class SellerSubscriptionService {
      * @param {number} sellerId - ID do seller
      * @param {Object} planData - Dados do plano (plan_name, value, cycle)
      * @param {Object} billingInfo - Informações de cobrança
+     * @param {Object} transaction - Transação do Sequelize (opcional)
      * @returns {Object} - Resultado da operação
      */
-    async createSubscription(sellerId, planData, billingInfo = {}) {
+    async createSubscription(sellerId, planData, billingInfo = {}, transaction = null) {
         try {
             console.log(`DEBUG - SellerSubscriptionService.createSubscription chamado com:`, {
                 sellerId,
@@ -25,8 +26,8 @@ class SellerSubscriptionService {
             
             console.log(`Criando assinatura para seller ${sellerId}`);
             
-            // Buscar seller
-            const seller = await Seller.findByPk(sellerId);
+            // Buscar seller (usando transação se fornecida)
+            const seller = await Seller.findByPk(sellerId, { transaction });
             if (!seller) {
                 return createError(`Seller com ID ${sellerId} não encontrado`, 404);
             }
@@ -174,7 +175,7 @@ class SellerSubscriptionService {
                     asaas_subscription_id: asaasSubscription.id,
                     created_via: 'api'
                 }
-            });
+            }, { transaction });
 
             return {
                 success: true,
