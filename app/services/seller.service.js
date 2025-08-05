@@ -1154,6 +1154,29 @@ class SellerService {
                         
                         if (updateResult.success) {
                             console.log(`Customer atualizado no Asaas com sucesso`);
+                            
+                            // Verificar se a atualização foi efetivada consultando o customer
+                            console.log(`Validando atualização do customer ${seller.payments_customer_id} no Asaas...`);
+                            const customerValidation = await AsaasCustomerService.get(seller.payments_customer_id);
+                            
+                            if (customerValidation.success && customerValidation.data.cpfCnpj) {
+                                console.log(`Customer validado - CPF/CNPJ: ${customerValidation.data.cpfCnpj}`);
+                            } else {
+                                console.warn(`Customer não possui CPF/CNPJ após atualização. Recriando customer...`);
+                                
+                                // Tentar recriar o customer completamente
+                                const recreateResult = await AsaasCustomerService.createOrUpdate(
+                                    updateCustomerData,
+                                    AsaasCustomerService.SELLER_GROUP
+                                );
+                                
+                                if (recreateResult.success && recreateResult.data.id !== seller.payments_customer_id) {
+                                    // Atualizar o seller com o novo customer ID
+                                    seller.payments_customer_id = recreateResult.data.id;
+                                    await seller.save({ transaction });
+                                    console.log(`Customer recriado com ID: ${recreateResult.data.id}`);
+                                }
+                            }
                         } else {
                             console.warn(`Falha ao atualizar customer no Asaas: ${updateResult.message}`);
                         }
