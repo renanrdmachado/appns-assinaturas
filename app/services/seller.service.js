@@ -1427,7 +1427,7 @@ class SellerService {
             };
 
             const SellerSubscriptionService = require('./seller-subscription.service');
-            const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo);
+            const asaasResult = await SellerSubscriptionService.createSubscription(sellerId, planData, billingInfo, transaction);
 
             if (!asaasResult.success) {
                 console.error(`Falha ao criar assinatura no Asaas: ${asaasResult.message}`);

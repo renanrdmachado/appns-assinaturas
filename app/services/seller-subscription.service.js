@@ -89,6 +89,22 @@ class SellerSubscriptionService {
                 fine: billingInfo.fine || null
             };
 
+            // Para CREDIT_CARD, adicionar informações do portador se disponíveis
+            if (billingInfo.billingType === 'CREDIT_CARD' && billingInfo.cpfCnpj) {
+                subscriptionData.creditCardHolderInfo = {
+                    name: billingInfo.name,
+                    email: billingInfo.email,
+                    cpfCnpj: billingInfo.cpfCnpj,
+                    mobilePhone: billingInfo.phone,
+                    addressNumber: '0', // Default
+                    province: 'Default', // Default
+                    postalCode: '00000000' // Default - será atualizado quando tiver dados reais
+                };
+
+                console.log('DEBUG - Adicionando informações do portador para CREDIT_CARD:', 
+                    JSON.stringify(subscriptionData.creditCardHolderInfo, null, 2));
+            }
+
             // Validar dados obrigatórios antes de enviar para Asaas
             console.log('DEBUG - Validando dados obrigatórios para Asaas...');
             const requiredFields = ['customer', 'billingType', 'cycle', 'value', 'nextDueDate'];
@@ -908,6 +924,122 @@ class SellerSubscriptionService {
             return { success: true, data: subscription };
         } catch (error) {
             console.error(`Erro ao buscar assinatura de vendedor por ID externo ${externalId}:`, error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
+     * Retry de assinatura com método de pagamento específico
+     * @param {number} sellerId - ID do seller
+     * @param {string} paymentMethod - Método de pagamento ('PIX', 'BOLETO', 'CREDIT_CARD')
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async retryWithPaymentMethod(sellerId, paymentMethod) {
+        const transaction = await sequelize.transaction();
+        
+        try {
+            console.log(`Tentando retry de assinatura para seller ${sellerId} com método ${paymentMethod}`);
+            
+            // Buscar seller com dados relacionados
+            const seller = await Seller.findByPk(sellerId, {
+                include: [
+                    { 
+                        model: require('../models/User'), 
+                        as: 'user',
+                        include: [{ model: require('../models/UserData'), as: 'userData' }] 
+                    }
+                ],
+                transaction
+            });
+
+            if (!seller) {
+                await transaction.rollback();
+                return createError(`Seller com ID ${sellerId} não encontrado`, 404);
+            }
+
+            // Verificar se já existe assinatura ativa
+            const existingSubscription = await SellerSubscription.findOne({
+                where: { 
+                    seller_id: sellerId, 
+                    status: 'active' 
+                },
+                transaction
+            });
+
+            if (existingSubscription) {
+                await transaction.rollback();
+                return {
+                    success: false,
+                    message: 'Seller já possui assinatura ativa',
+                    status: 400
+                };
+            }
+
+            // Verificar se seller tem customer no Asaas
+            if (!seller.payments_customer_id) {
+                await transaction.rollback();
+                return createError('Seller não possui customer no Asaas. Complete os dados primeiro.', 400);
+            }
+
+            // Preparar dados do plano
+            const planData = {
+                plan_name: 'Plano Básico',
+                value: 29.90,
+                cycle: 'MONTHLY',
+                features: {
+                    max_products: 100,
+                    max_orders_per_month: 500,
+                    support_level: 'basic'
+                }
+            };
+
+            // Preparar informações de cobrança com método especificado
+            let storeInfo;
+            try {
+                storeInfo = seller.nuvemshop_info ? 
+                    (typeof seller.nuvemshop_info === 'string' ? 
+                        JSON.parse(seller.nuvemshop_info) : 
+                        seller.nuvemshop_info) : {};
+            } catch (error) {
+                console.error('Erro ao fazer parse do nuvemshop_info:', error);
+                storeInfo = {};
+            }
+
+            const billingInfo = {
+                billingType: paymentMethod,
+                name: storeInfo.name?.pt || storeInfo.business_name || `Loja ${seller.nuvemshop_id}`,
+                email: storeInfo.email || seller.user?.email,
+                cpfCnpj: storeInfo.business_id || seller.user?.userData?.cpfCnpj,
+                phone: storeInfo.phone || seller.user?.userData?.mobilePhone
+            };
+
+            console.log(`Criando assinatura com método ${paymentMethod}:`, {
+                sellerId,
+                planData,
+                billingInfo
+            });
+
+            // Criar assinatura com método específico
+            const result = await this.createSubscription(sellerId, planData, billingInfo, transaction);
+
+            if (result.success) {
+                await transaction.commit();
+                console.log(`Retry de assinatura bem-sucedido com ${paymentMethod}`);
+                return {
+                    ...result,
+                    message: `Assinatura criada com sucesso usando ${paymentMethod}`
+                };
+            } else {
+                await transaction.rollback();
+                return {
+                    ...result,
+                    message: `Falha no retry com ${paymentMethod}: ${result.message}`
+                };
+            }
+
+        } catch (error) {
+            await transaction.rollback();
+            console.error(`Erro no retry de assinatura para seller ${sellerId}:`, error);
             return formatError(error);
         }
     }

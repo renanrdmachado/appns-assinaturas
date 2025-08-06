@@ -135,6 +135,44 @@ class SellerSubscriptionController {
       return res.status(500).json(formatError(error));
     }
   }
+
+  // Retry de assinatura com método de pagamento diferente
+  async retryPaymentMethod(req, res) {
+    const { seller_id } = req.params;
+    const { payment_method } = req.body; // 'PIX', 'BOLETO', 'CREDIT_CARD'
+    
+    try {
+      if (!payment_method) {
+        return res.status(400).json({
+          success: false,
+          message: 'Método de pagamento é obrigatório (PIX, BOLETO, CREDIT_CARD)'
+        });
+      }
+
+      if (!['PIX', 'BOLETO', 'CREDIT_CARD'].includes(payment_method)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Método de pagamento inválido. Use: PIX, BOLETO ou CREDIT_CARD'
+        });
+      }
+
+      const result = await SellerSubscriptionService.retryWithPaymentMethod(seller_id, payment_method);
+      
+      // Verificar se a operação foi bem-sucedida
+      if (!result.success) {
+        return res.status(result.status || 400).json(result);
+      }
+      
+      return res.json({ 
+        success: true,
+        message: `Assinatura processada com método ${payment_method}`,
+        data: result.data 
+      });
+    } catch (error) {
+      console.error(`Erro ao tentar retry de pagamento para vendedor ID ${seller_id}:`, error);
+      return res.status(500).json(formatError(error));
+    }
+  }
 }
 
 module.exports = new SellerSubscriptionController();
