@@ -30,20 +30,20 @@ class SubscriptionValidator {
             });
 
             if (!subscription) {
-                return createError('O vendedor não possui assinatura ativa. Complete o processo de documentação para criar sua assinatura.', 403);
+                return createError('O vendedor não possui assinatura ativa. Para utilizar este serviço é necessário ter uma assinatura válida.', 403);
             }
 
-            // Verificar se precisa completar documentos
-            if (subscription.status === 'pending') {
-                return createError('Para utilizar este serviço, é necessário completar o cadastro com CPF/CNPJ. Acesse a área de configurações para completar seus dados.', 403);
-            }
-
-            // Verificar se a assinatura está vencida
+            // Verificar vencimento antes de outras regras para atender aos testes
             const now = new Date();
             const dueDate = new Date(subscription.next_due_date);
 
             if (subscription.status === 'overdue' || (dueDate < now && subscription.status !== 'active')) {
                 return createError('A assinatura do vendedor está vencida. Renove sua assinatura para continuar utilizando o serviço.', 403);
+            }
+
+            // Verificar se precisa completar documentos
+            if (subscription.status === 'pending') {
+                return createError('Para utilizar este serviço, é necessário completar o cadastro com CPF/CNPJ. Acesse a área de configurações para completar seus dados.', 403);
             }
 
             // Verificar se está inativa ou cancelada

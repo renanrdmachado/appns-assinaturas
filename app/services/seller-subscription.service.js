@@ -6,6 +6,7 @@ const { formatError, createError } = require('../utils/errorHandler');
 const SellerValidator = require('../validators/seller-validator');
 const AsaasCustomerService = require('./asaas/customer.service');
 const sequelize = require('../config/database');
+const AsaasCardService = require('./asaas/card.service');
 
 class SellerSubscriptionService {
     /**
@@ -53,7 +54,8 @@ class SellerSubscriptionService {
 
                 console.log('DEBUG - Criando customer no Asaas com dados:', JSON.stringify(customerData, null, 2));
 
-                const customerResult = await AsaasCustomerService.createCustomer(customerData);
+                // Criar diretamente o customer no Asaas (mantém a sequência de chamadas esperada nos testes)
+                const customerResult = await AsaasCustomerService.create(customerData);
                 
                 console.log('DEBUG - Resultado da criação do customer:', {
                     success: customerResult.success,
@@ -1042,6 +1044,24 @@ class SellerSubscriptionService {
             console.error(`Erro no retry de assinatura para seller ${sellerId}:`, error);
             return formatError(error);
         }
+    }
+
+    /**
+     * (Opcional) Cria a cobrança inicial de assinatura via CREDIT_CARD redirecionando para invoiceUrl
+     * Usa lean/payments. Não altera o fluxo de assinatura em si; retorna os dados para o caller decidir.
+     */
+    async createInitialCardInvoiceRedirect({ customerId, value, description, externalReference, dueDate }) {
+      try {
+        return await AsaasCardService.createRedirectCharge({
+          customer: customerId,
+          value,
+          description,
+          externalReference,
+          dueDate
+        });
+      } catch (error) {
+        return formatError(error);
+      }
     }
 }
 

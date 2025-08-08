@@ -10,6 +10,7 @@ const NsService = require('./ns.service');
 
 // Serviços Asaas
 const AsaasService = require('./asaas.service');
+const AsaasCardService = require('./asaas/card.service');
 
 module.exports = {
   UserService,
@@ -21,5 +22,6 @@ module.exports = {
   SellerSubAccountService,
   PaymentService,
   NsService,
-  AsaasService
+  AsaasService,
+  AsaasCardService
 };
