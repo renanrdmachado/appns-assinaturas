@@ -9,6 +9,7 @@ const AsaasCustomerService = require('./asaas/customer.service');
 const AsaasFormatter = require('../utils/asaas-formatter');
 const SubscriptionValidator = require('../validators/subscription-validator'); // Usar o validador unificado
 const sequelize = require('../config/database');
+const { redactSensitive } = require('../utils/redact');
 
 class ShopperSubscriptionService {
     async get(id) {
@@ -323,7 +324,7 @@ class ShopperSubscriptionService {
             console.log('Formatando dados para assinatura no Asaas...');
             const asaasSubscriptionData = this.formatDataForAsaasSubscription(subscriptionData, customerId, shopper, order);
             
-            console.log('Dados formatados para ASAAS:', JSON.stringify(asaasSubscriptionData));
+            console.log('Dados formatados para ASAAS:', JSON.stringify(redactSensitive(asaasSubscriptionData)));
             console.log('Criando assinatura no Asaas...');
             const asaasResult = await subscriptionService.create(asaasSubscriptionData);
             
@@ -518,6 +519,40 @@ class ShopperSubscriptionService {
         if (data.interest) asaasData.interest = data.interest;
         if (data.fine) asaasData.fine = data.fine;
         
+        // Se o método for cartão, aceitar dados de cartão/token e antifraude
+        if ((data.billing_type || '').toUpperCase() === 'CREDIT_CARD') {
+            // creditCardHolderInfo pode ser passado no data (vindo do front)
+            if (data.creditCardHolderInfo) {
+                const holder = { ...data.creditCardHolderInfo };
+                if (!holder.addressNumber) holder.addressNumber = '0';
+                if (!holder.province) holder.province = 'Default';
+                if (!holder.postalCode) holder.postalCode = '00000000';
+                asaasData.creditCardHolderInfo = holder;
+            } else if (shopper?.user?.userData?.cpfCnpj) {
+                // Montar básico a partir dos dados do shopper
+                asaasData.creditCardHolderInfo = {
+                    name: shopper.name,
+                    email: shopper.email || shopper.user?.email,
+                    cpfCnpj: shopper.user.userData.cpfCnpj,
+                    mobilePhone: shopper.user.userData.mobilePhone,
+                    addressNumber: '0',
+                    province: 'Default',
+                    postalCode: shopper.user.userData.postalCode || '00000000'
+                };
+            }
+
+            // Encaminhar creditCard (captura imediata) ou creditCardToken
+            if (data.creditCard) {
+                asaasData.creditCard = data.creditCard;
+            } else if (data.creditCardToken) {
+                asaasData.creditCardToken = data.creditCardToken;
+            }
+
+            if (data.remoteIp) {
+                asaasData.remoteIp = data.remoteIp;
+            }
+        }
+
         // Adicionar metadata básica
         asaasData.metadata = {
             source: 'appns-assinaturas',

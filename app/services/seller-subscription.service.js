@@ -7,6 +7,7 @@ const SellerValidator = require('../validators/seller-validator');
 const AsaasCustomerService = require('./asaas/customer.service');
 const sequelize = require('../config/database');
 const AsaasCardService = require('./asaas/card.service');
+const { redactSensitive } = require('../utils/redact');
 
 class SellerSubscriptionService {
     /**
@@ -22,7 +23,8 @@ class SellerSubscriptionService {
             console.log(`DEBUG - SellerSubscriptionService.createSubscription chamado com:`, {
                 sellerId,
                 planData,
-                billingInfo
+                // Nunca logar dados sensíveis em claro
+                billingInfo: redactSensitive(billingInfo)
             });
             
             console.log(`Criando assinatura para seller ${sellerId}`);
@@ -91,20 +93,54 @@ class SellerSubscriptionService {
                 fine: billingInfo.fine || null
             };
 
-            // Para CREDIT_CARD, adicionar informações do portador se disponíveis
-            if (billingInfo.billingType === 'CREDIT_CARD' && billingInfo.cpfCnpj) {
-                subscriptionData.creditCardHolderInfo = {
-                    name: billingInfo.name,
-                    email: billingInfo.email,
-                    cpfCnpj: billingInfo.cpfCnpj,
-                    mobilePhone: billingInfo.phone,
-                    addressNumber: '0', // Default
-                    province: 'Default', // Default
-                    postalCode: '00000000' // Default - será atualizado quando tiver dados reais
-                };
+            // Para CREDIT_CARD, adicionar informações do portador e dados de cartão/token quando fornecidos
+            if (billingInfo.billingType === 'CREDIT_CARD') {
+                // creditCardHolderInfo: usar o fornecido ou montar a partir de billingInfo
+                if (billingInfo.creditCardHolderInfo) {
+                    const holder = { ...billingInfo.creditCardHolderInfo };
+                    // Defaults não intrusivos se não vierem
+                    if (!holder.addressNumber) holder.addressNumber = '0';
+                    if (!holder.province) holder.province = 'Default';
+                    if (!holder.postalCode) holder.postalCode = '00000000';
+                    subscriptionData.creditCardHolderInfo = holder;
+                } else if (billingInfo.cpfCnpj) {
+                    subscriptionData.creditCardHolderInfo = {
+                        name: billingInfo.name,
+                        email: billingInfo.email,
+                        cpfCnpj: billingInfo.cpfCnpj,
+                        mobilePhone: billingInfo.phone,
+                        addressNumber: '0',
+                        province: 'Default',
+                        postalCode: '00000000'
+                    };
+                }
 
-                console.log('DEBUG - Adicionando informações do portador para CREDIT_CARD:', 
-                    JSON.stringify(subscriptionData.creditCardHolderInfo, null, 2));
+                // Encaminhar creditCard ou creditCardToken se fornecido
+                if (billingInfo.creditCard) {
+                    // Não logar o número/ccv
+                    subscriptionData.creditCard = {
+                        holderName: billingInfo.creditCard.holderName,
+                        number: billingInfo.creditCard.number,
+                        expiryMonth: billingInfo.creditCard.expiryMonth,
+                        expiryYear: billingInfo.creditCard.expiryYear,
+                        ccv: billingInfo.creditCard.ccv
+                    };
+                } else if (billingInfo.creditCardToken) {
+                    subscriptionData.creditCardToken = billingInfo.creditCardToken;
+                }
+
+                // Remote IP (recomendado por gateways para antifraude)
+                if (billingInfo.remoteIp) {
+                    subscriptionData.remoteIp = billingInfo.remoteIp;
+                }
+
+                console.log('DEBUG - CREDIT_CARD payload enriquecido:', JSON.stringify(
+                    redactSensitive({
+                        creditCardHolderInfo: subscriptionData.creditCardHolderInfo,
+                        hasCreditCard: !!subscriptionData.creditCard,
+                        hasToken: !!subscriptionData.creditCardToken,
+                        remoteIp: subscriptionData.remoteIp
+                    }), null, 2));
             }
 
             // Validar dados obrigatórios antes de enviar para Asaas

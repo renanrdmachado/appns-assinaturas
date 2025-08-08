@@ -48,10 +48,15 @@ class SellerSubscriptionController {
   async store(req, res) {
     try {
       const { seller_id } = req.params;
-      const subscriptionData = req.body;
+      const { planData, billingInfo } = req.body || {};
+      
+      // Validar entrada mínima
+      if (!planData || typeof planData !== 'object') {
+        return res.status(400).json({ success: false, message: 'planData é obrigatório' });
+      }
       
       // Usar o novo método createSubscription que integra com Asaas
-      const result = await SellerSubscriptionService.createSubscription(seller_id, subscriptionData);
+      const result = await SellerSubscriptionService.createSubscription(seller_id, planData, billingInfo || {});
       
       // Verificar se a operação foi bem-sucedida
       if (!result.success) {
