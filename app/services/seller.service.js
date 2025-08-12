@@ -1278,13 +1278,28 @@ class SellerService {
                 return createError('Seller não está pendente de documentos', 400);
             }
 
-            // Atualizar UserData com os novos dados
-            const userData = seller.user.userData;
-            await userData.update({
-                cpfCnpj: cpfCnpj,
-                mobilePhone: phone || userData.mobilePhone,
-                address: address || userData.address
-            }, { transaction });
+            // Garantir que o UserData exista; se não existir, criar e vincular
+            let userData = seller.user ? seller.user.userData : null;
+            if (!seller.user) {
+                await transaction.rollback();
+                return createError('Seller não possui usuário associado para armazenar documentos', 400);
+            }
+            if (!userData) {
+                userData = await UserData.create({
+                    cpfCnpj: cpfCnpj,
+                    mobilePhone: phone || null,
+                    address: address || null
+                }, { transaction });
+                await seller.user.update({
+                    user_data_id: userData.id
+                }, { transaction });
+            } else {
+                await userData.update({
+                    cpfCnpj: cpfCnpj,
+                    mobilePhone: phone || userData.mobilePhone,
+                    address: address || userData.address
+                }, { transaction });
+            }
 
             // Atualizar User com nome se fornecido
             if (name) {
