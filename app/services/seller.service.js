@@ -913,6 +913,45 @@ class SellerService {
     }
 
     /**
+     * Garante que exista um Seller após OAuth, criando um registro mínimo se não houver.
+     * Use este método no fluxo de autorização da Nuvemshop, antes do front chamar /app/seller/store/:id
+     */
+    async ensureSellerExistsFromOAuth(nuvemshop_id, storeInfo = {}, nuvemshop_api_token = null) {
+        try {
+            if (!nuvemshop_id) return createError('ID da loja é obrigatório', 400);
+
+            // Já existe? retorna
+            const existing = await Seller.findOne({ where: { nuvemshop_id } });
+            if (existing) return { success: true, data: existing };
+
+            let parsed = storeInfo;
+            if (typeof parsed === 'string') {
+                try { parsed = JSON.parse(parsed); } catch { parsed = {}; }
+            }
+
+            const username = parsed?.name?.pt || parsed?.name || `Loja ${nuvemshop_id}`;
+            const email = parsed?.email || null;
+
+            const user = await User.create({ username, email, password: null, user_data_id: null });
+
+            const seller = await Seller.create({
+                nuvemshop_id,
+                nuvemshop_info: JSON.stringify(parsed || {}),
+                nuvemshop_api_token: nuvemshop_api_token || null,
+                app_status: 'pending',
+                app_start_date: new Date(),
+                user_id: user.id,
+                payments_customer_id: null
+            });
+
+            return { success: true, data: seller };
+        } catch (error) {
+            console.error('Erro ao garantir seller pós-OAuth:', error.message);
+            return formatError(error);
+        }
+    }
+
+    /**
      * Adicionar subconta ao seller
      */
 

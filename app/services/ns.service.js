@@ -76,6 +76,9 @@ class NsService {
                 accessToken: store.access_token
             });
             
+            // Garante que o Seller exista (cria se não existir)
+            await SellerService.ensureSellerExistsFromOAuth(store.user_id, storeData, store.access_token);
+
             const result = await SellerService.updateStoreInfo(store.user_id, store.access_token, storeData);
             
             if (!result.success) {
