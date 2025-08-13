@@ -46,7 +46,17 @@ class SellerSubscriptionService {
             
             if (!customerId) {
                 // Criar customer no Asaas para o seller
-                const nuvemshopInfo = seller.nuvemshop_info ? JSON.parse(seller.nuvemshop_info) : {};
+                let nuvemshopInfo = {};
+                try {
+                    if (seller.nuvemshop_info) {
+                        nuvemshopInfo = typeof seller.nuvemshop_info === 'string'
+                            ? JSON.parse(seller.nuvemshop_info)
+                            : seller.nuvemshop_info;
+                    }
+                } catch (e) {
+                    console.warn('WARN - Falha ao parsear nuvemshop_info, usando objeto vazio:', e.message);
+                    nuvemshopInfo = {};
+                }
                 const customerData = {
                     name: billingInfo.name || nuvemshopInfo.name?.pt || nuvemshopInfo.name || `Seller ${sellerId}`,
                     email: billingInfo.email || nuvemshopInfo.email || `seller${sellerId}@example.com`,
