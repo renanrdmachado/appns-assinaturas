@@ -1,4 +1,5 @@
 const { SellerSubscriptionService } = require('../services');
+const { getClientIp } = require('../utils/request-ip');
 const { formatError } = require('../utils/errorHandler');
 
 class SellerSubscriptionController {
@@ -55,8 +56,16 @@ class SellerSubscriptionController {
         return res.status(400).json({ success: false, message: 'planData é obrigatório' });
       }
       
+      // Forçar uso do IP real do requester no backend (ignorar qualquer remoteIp do front)
+      const remoteIp = getClientIp(req);
+      const safeBilling = {
+        ...(billingInfo || {}),
+        // Apenas define se não houver; o service também pode sobrepor com maior prioridade
+        remoteIp: remoteIp || undefined,
+      };
+
       // Usar o novo método createSubscription que integra com Asaas
-      const result = await SellerSubscriptionService.createSubscription(seller_id, planData, billingInfo || {});
+      const result = await SellerSubscriptionService.createSubscription(seller_id, planData, safeBilling);
       
       // Verificar se a operação foi bem-sucedida
       if (!result.success) {
