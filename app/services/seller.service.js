@@ -1278,27 +1278,63 @@ class SellerService {
                 return createError('Seller não está pendente de documentos', 400);
             }
 
-            // Garantir que o UserData exista; se não existir, criar e vincular
+            // Garantir que o UserData exista; se não existir, reutilizar por CPF/CNPJ ou criar e vincular
             let userData = seller.user ? seller.user.userData : null;
             if (!seller.user) {
                 await transaction.rollback();
                 return createError('Seller não possui usuário associado para armazenar documentos', 400);
             }
+            // Tentar reutilizar um UserData já existente com o mesmo CPF/CNPJ
+            const existingUserDataByCpf = await UserData.findOne({ where: { cpfCnpj }, transaction });
+
             if (!userData) {
-                userData = await UserData.create({
-                    cpfCnpj: cpfCnpj,
-                    mobilePhone: phone || null,
-                    address: address || null
-                }, { transaction });
-                await seller.user.update({
-                    user_data_id: userData.id
-                }, { transaction });
+                if (existingUserDataByCpf) {
+                    // Reutiliza e vincula ao usuário atual
+                    userData = existingUserDataByCpf;
+                    await seller.user.update({ user_data_id: userData.id }, { transaction });
+                    // Atualiza telefone/endereço se enviados (não quebra outros campos existentes)
+                    await userData.update({
+                        mobilePhone: phone ?? userData.mobilePhone,
+                        address: address ?? userData.address
+                    }, { transaction });
+                } else {
+                    // Cria um novo UserData
+                    userData = await UserData.create({
+                        cpfCnpj,
+                        mobilePhone: phone || null,
+                        address: address || null
+                    }, { transaction });
+                    await seller.user.update({ user_data_id: userData.id }, { transaction });
+                }
             } else {
-                await userData.update({
-                    cpfCnpj: cpfCnpj,
-                    mobilePhone: phone || userData.mobilePhone,
-                    address: address || userData.address
-                }, { transaction });
+                // Já existe um UserData vinculado ao usuário
+                if (userData.cpfCnpj && userData.cpfCnpj !== cpfCnpj) {
+                    // Caso o CPF informado seja diferente do atual, tentar migrar para o registro já existente
+                    if (existingUserDataByCpf) {
+                        // Reaponta o usuário para o UserData existente com este CPF
+                        await seller.user.update({ user_data_id: existingUserDataByCpf.id }, { transaction });
+                        userData = existingUserDataByCpf;
+                        // Atualiza telefone/endereço se enviados
+                        await userData.update({
+                            mobilePhone: phone ?? userData.mobilePhone,
+                            address: address ?? userData.address
+                        }, { transaction });
+                    } else {
+                        // Atualiza o UserData atual com o novo CPF (não existe conflito, pois não há outro com o mesmo cpfCnpj)
+                        await userData.update({
+                            cpfCnpj,
+                            mobilePhone: phone ?? userData.mobilePhone,
+                            address: address ?? userData.address
+                        }, { transaction });
+                    }
+                } else {
+                    // Mesmo CPF ou CPF ausente no registro atual: apenas atualiza telefone/endereço
+                    await userData.update({
+                        cpfCnpj: cpfCnpj || userData.cpfCnpj,
+                        mobilePhone: phone ?? userData.mobilePhone,
+                        address: address ?? userData.address
+                    }, { transaction });
+                }
             }
 
             // Atualizar User com nome se fornecido
