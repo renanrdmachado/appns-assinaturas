@@ -1,6 +1,9 @@
 const SellerService = require('../../services/seller.service');
 const AsaasCustomerService = require('../../services/asaas/customer.service');
 const SellerSubscriptionService = require('../../services/seller-subscription.service');
+const Seller = require('../../models/Seller');
+const User = require('../../models/User');
+const UserData = require('../../models/UserData');
 
 /**
  * Completa os dados do seller (CPF/CNPJ) e ativa integração com Asaas
@@ -68,22 +71,48 @@ async function checkSellerStatus(req, res) {
     try {
         const { sellerId } = req.params;
 
-        const sellerResult = await SellerService.get(sellerId);
-        if (!sellerResult.success) {
-            return res.status(404).json(sellerResult);
+        // Carrega seller com relações para expor userData ao front
+        const sellerWithRelations = await Seller.findByPk(sellerId, {
+            include: [{
+                model: User,
+                as: 'user',
+                include: [{ model: UserData, as: 'userData' }]
+            }]
+        });
+
+        if (!sellerWithRelations) {
+            return res.status(404).json({ success: false, message: `Seller com ID ${sellerId} não encontrado` });
         }
 
-        const seller = sellerResult.data;
+        // Tentar interpretar nuvemshop_info se for string
+        let storeInfo = sellerWithRelations.nuvemshop_info;
+        if (typeof storeInfo === 'string') {
+            try { storeInfo = JSON.parse(storeInfo); } catch (_) { storeInfo = {}; }
+        }
+
+        const userData = sellerWithRelations.user?.userData || null;
 
         res.json({
             success: true,
             data: {
-                seller_id: seller.id,
-                app_status: seller.app_status,
-                needsDocuments: seller.app_status === 'pending',
-                has_asaas_integration: !!seller.payments_customer_id,
-                store_name: seller.nuvemshop_info?.name?.pt || seller.nuvemshop_info?.name,
-                store_email: seller.nuvemshop_info?.email
+                seller_id: sellerWithRelations.id,
+                app_status: sellerWithRelations.app_status,
+                needsDocuments: sellerWithRelations.app_status === 'pending',
+                has_asaas_integration: !!sellerWithRelations.payments_customer_id,
+                store_name: storeInfo?.name?.pt || storeInfo?.name || null,
+                store_email: storeInfo?.email || sellerWithRelations.user?.email || null,
+                // Expor userData para o front decidir exibição de captura de cartão
+                userData: userData ? {
+                    cpfCnpj: userData.cpfCnpj || null,
+                    mobilePhone: userData.mobilePhone || null,
+                    address: userData.address || null,
+                    addressNumber: userData.addressNumber || null,
+                    province: userData.province || null,
+                    postalCode: userData.postalCode || null,
+                    birthDate: userData.birthDate || null
+                } : null,
+                // Conveniência: cpfCnpj também no topo
+                cpfCnpj: userData?.cpfCnpj || null
             }
         });
 
