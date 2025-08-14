@@ -127,7 +127,7 @@ class CustomerService {
             
             // Atualizar cliente no Asaas
             const customer = await AsaasApiClient.request({
-                method: 'POST',
+                method: 'PUT',
                 endpoint: `customers/${id}`,
                 data: customerData
             });

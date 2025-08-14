@@ -116,6 +116,43 @@ class SellerSubscriptionService {
                 // Salvar customer_id no seller
                 await seller.update({ payments_customer_id: customerId });
                 console.log(`Customer criado para seller ${sellerId}: ${customerId}`);
+            } else {
+                // Customer já existe: garantir cpfCnpj cadastrado no Asaas
+                try {
+                    const curr = await AsaasCustomerService.get(customerId);
+                    console.log('DEBUG - Carregado customer do Asaas para verificação:', {
+                        id: curr.data?.id,
+                        cpfCnpj: curr.data?.cpfCnpj ? 'present' : 'missing'
+                    });
+                    if (curr.success && !curr.data?.cpfCnpj) {
+                        // escolher cpf do billingInfo
+                        const pick = (v) => String(v || '').replace(/\D/g, '');
+                        const alt = [
+                            pick(billingInfo.cpfCnpj),
+                            pick(billingInfo.creditCardHolderInfo?.cpfCnpj)
+                        ].find(v => v && (v.length === 11 || v.length === 14));
+                        if (alt) {
+                            console.log('DEBUG - Atualizando customer no Asaas com cpfCnpj ausente');
+                            const up = await AsaasCustomerService.update(customerId, { cpfCnpj: alt });
+                            console.log('DEBUG - Resultado update customer cpfCnpj:', up.success ? 'ok' : up.message);
+                            if (!up.success) {
+                                return {
+                                    success: false,
+                                    status: up.status || 400,
+                                    message: `Não foi possível atualizar CPF/CNPJ do cliente no Asaas: ${up.message}`
+                                };
+                            }
+                        } else {
+                            return {
+                                success: false,
+                                status: 400,
+                                message: 'CPF/CNPJ ausente no cadastro do cliente no Asaas. Envie cpfCnpj em billingInfo.'
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.warn('WARN - Falha ao verificar/atualizar cpfCnpj do customer existente:', e.message);
+                }
             }
 
             // Dados da assinatura no Asaas
@@ -170,13 +207,59 @@ class SellerSubscriptionService {
 
                 // Encaminhar creditCard ou creditCardToken se fornecido
                 if (billingInfo.creditCard) {
-                    // Não logar o número/ccv
+                    // Validar e normalizar cartão (evitar número truncado/placeholder)
+                    const onlyDigits = (v) => String(v || '').replace(/\D/g, '');
+                    const isDigits = (v) => /^[0-9]+$/.test(String(v || ''));
+                    const cc = billingInfo.creditCard;
+                    const num = onlyDigits(cc.number);
+                    const ccv = onlyDigits(cc.ccv);
+                    const expM = onlyDigits(cc.expiryMonth);
+                    const expY = onlyDigits(cc.expiryYear);
+
+                    if (num.length < 13) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'Número de cartão inválido (parece truncado). Envie o número completo ou um creditCardToken.'
+                        };
+                    }
+                    if (!(ccv.length === 3 || ccv.length === 4)) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'CCV inválido. Deve ter 3 ou 4 dígitos.'
+                        };
+                    }
+                    const m = parseInt(expM, 10);
+                    if (!(m >= 1 && m <= 12)) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'Mês de expiração inválido.'
+                        };
+                    }
+                    const y = parseInt(expY, 10);
+                    if (!(String(y).length === 4)) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'Ano de expiração inválido. Use YYYY.'
+                        };
+                    }
+                    if (!cc.holderName || isDigits(cc.holderName) || String(cc.holderName).trim().length < 2) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'Nome do titular do cartão inválido.'
+                        };
+                    }
+
                     subscriptionData.creditCard = {
-                        holderName: billingInfo.creditCard.holderName,
-                        number: billingInfo.creditCard.number,
-                        expiryMonth: billingInfo.creditCard.expiryMonth,
-                        expiryYear: billingInfo.creditCard.expiryYear,
-                        ccv: billingInfo.creditCard.ccv
+                        holderName: String(cc.holderName).trim(),
+                        number: num,
+                        expiryMonth: expM.padStart(2, '0'),
+                        expiryYear: String(y),
+                        ccv
                     };
                 } else if (billingInfo.creditCardToken) {
                     subscriptionData.creditCardToken = billingInfo.creditCardToken;
@@ -249,17 +332,65 @@ class SellerSubscriptionService {
                 if (asaasError.asaasError && asaasError.asaasError.errors) {
                     console.error('DEBUG - Erros específicos do Asaas:', asaasError.asaasError.errors);
                 }
-                
-                return {
-                    success: false,
-                    message: `Erro ao criar assinatura no Asaas: ${asaasError.message}`,
-                    error: {
-                        message: asaasError.message,
-                        status: asaasError.status,
-                        asaasErrors: asaasError.asaasError?.errors || [],
-                        sentData: subscriptionData
+
+                // Fallback: se o Asaas reclamou de CPF/CNPJ ausente no cadastro, tentar atualizar e refazer uma vez
+                const errMsg = String(asaasError.message || '').toLowerCase();
+                const mentionsCpfMissing = errMsg.includes('cpf/cnpj') && errMsg.includes('cadastro');
+                if (mentionsCpfMissing) {
+                    try {
+                        const pick = (v) => String(v || '').replace(/\D/g, '');
+                        const altCpf = [
+                            pick(billingInfo.cpfCnpj),
+                            pick(subscriptionData.creditCardHolderInfo?.cpfCnpj)
+                        ].find(v => v && (v.length === 11 || v.length === 14));
+                        if (altCpf) {
+                            console.log('DEBUG - Tentando atualizar cpfCnpj do customer e refazer criação da assinatura...');
+                            const up = await AsaasCustomerService.update(customerId, { cpfCnpj: altCpf });
+                            console.log('DEBUG - Resultado update antes do retry:', up.success ? 'ok' : up.message);
+                            if (up.success) {
+                                try {
+                                    asaasSubscription = await AsaasApiClient.request({
+                                        method: 'POST',
+                                        endpoint: 'subscriptions',
+                                        data: subscriptionData
+                                    });
+                                    console.log('DEBUG - Retry após atualizar cpfCnpj: sucesso');
+                                } catch (retryErr) {
+                                    console.error('DEBUG - Retry falhou:', {
+                                        message: retryErr.message,
+                                        status: retryErr.status,
+                                        asaasError: retryErr.asaasError
+                                    });
+                                    return {
+                                        success: false,
+                                        message: `Erro ao criar assinatura no Asaas: ${retryErr.message}`,
+                                        error: {
+                                            message: retryErr.message,
+                                            status: retryErr.status,
+                                            asaasErrors: retryErr.asaasError?.errors || [],
+                                            sentData: subscriptionData
+                                        }
+                                    };
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('WARN - Exceção no fallback de atualização de cpfCnpj:', e.message);
                     }
-                };
+                }
+
+                if (!asaasSubscription) {
+                    return {
+                        success: false,
+                        message: `Erro ao criar assinatura no Asaas: ${asaasError.message}`,
+                        error: {
+                            message: asaasError.message,
+                            status: asaasError.status,
+                            asaasErrors: asaasError.asaasError?.errors || [],
+                            sentData: subscriptionData
+                        }
+                    };
+                }
             }
 
             console.log('Assinatura criada no Asaas:', asaasSubscription.id);
