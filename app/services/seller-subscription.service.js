@@ -57,10 +57,41 @@ class SellerSubscriptionService {
                     console.warn('WARN - Falha ao parsear nuvemshop_info, usando objeto vazio:', e.message);
                     nuvemshopInfo = {};
                 }
+                // Normalizar/validar CPF/CNPJ vindo do billingInfo ou da loja
+                const rawCpf = (billingInfo.cpfCnpj || '').toString();
+                const cleanCpf = rawCpf.replace(/\D/g, '');
+                const isMaskedCpf = rawCpf.includes('*');
+                const nsBusinessId = (nuvemshopInfo.business_id || '').toString().replace(/\D/g, '');
+
+                // Se cartão, validar cartão não mascarado (se enviado diretamente) antes
+                if ((billingInfo.billingType || '').toUpperCase() === 'CREDIT_CARD' && billingInfo.creditCard) {
+                    const cc = billingInfo.creditCard;
+                    if ((cc.number && /\*/.test(String(cc.number))) || (cc.ccv && /\*/.test(String(cc.ccv)))) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'Dados de cartão mascarados detectados. Envie token de cartão (creditCardToken) ou número/ccv sem máscara.'
+                        };
+                    }
+                }
+
+                // Escolher CPF/CNPJ limpo válido (11 ou 14 dígitos)
+                let cpfCnpjForCustomer = cleanCpf;
+                if (!(cpfCnpjForCustomer.length === 11 || cpfCnpjForCustomer.length === 14)) {
+                    cpfCnpjForCustomer = nsBusinessId;
+                }
+                if (!(cpfCnpjForCustomer.length === 11 || cpfCnpjForCustomer.length === 14)) {
+                    // Sem CPF/CNPJ válido para criar customer no Asaas
+                    return {
+                        success: false,
+                        status: 400,
+                        message: 'CPF/CNPJ inválido ou mascarado. Complete os documentos do seller ou envie o CPF/CNPJ sem máscara.'
+                    };
+                }
                 const customerData = {
                     name: billingInfo.name || nuvemshopInfo.name?.pt || nuvemshopInfo.name || `Seller ${sellerId}`,
                     email: billingInfo.email || nuvemshopInfo.email || `seller${sellerId}@example.com`,
-                    cpfCnpj: billingInfo.cpfCnpj || nuvemshopInfo.business_id || null, // Usar business_id se disponível
+                    cpfCnpj: cpfCnpjForCustomer,
                     phone: billingInfo.phone || nuvemshopInfo.phone || '00000000000'
                 };
 
@@ -112,12 +143,24 @@ class SellerSubscriptionService {
                     if (!holder.addressNumber) holder.addressNumber = '0';
                     if (!holder.province) holder.province = 'Default';
                     if (!holder.postalCode) holder.postalCode = '00000000';
+                    // Normalizar cpfCnpj se presente e não mascarado
+                    if (holder.cpfCnpj && typeof holder.cpfCnpj === 'string') {
+                        if (holder.cpfCnpj.includes('*')) {
+                            // Se mascarado, tentar usar o billingInfo.cpfCnpj limpo
+                            const alt = (billingInfo.cpfCnpj || '').replace(/\D/g, '');
+                            if (alt.length === 11 || alt.length === 14) holder.cpfCnpj = alt;
+                            else delete holder.cpfCnpj; // deixará para o Asaas validar com customer
+                        } else {
+                            holder.cpfCnpj = holder.cpfCnpj.replace(/\D/g, '');
+                        }
+                    }
                     subscriptionData.creditCardHolderInfo = holder;
                 } else if (billingInfo.cpfCnpj) {
+                    const cleaned = String(billingInfo.cpfCnpj).replace(/\D/g, '');
                     subscriptionData.creditCardHolderInfo = {
                         name: billingInfo.name,
                         email: billingInfo.email,
-                        cpfCnpj: billingInfo.cpfCnpj,
+                        cpfCnpj: cleaned,
                         mobilePhone: billingInfo.phone,
                         addressNumber: '0',
                         province: 'Default',
