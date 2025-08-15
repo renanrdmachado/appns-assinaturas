@@ -15,11 +15,11 @@ class CustomerService {
      * @param {string} groupName - Nome do grupo de clientes
      * @returns {Object} - Resultado da operação
      */
-    async createOrUpdate(customerData, groupName = '') {
+    async createOrUpdate(customerData, groupName = '', headers = {}) {
         try {
             // Verificar se o cliente já existe pelo CPF/CNPJ
             if (customerData.cpfCnpj) {
-                const existingCustomer = await this.findByCpfCnpj(customerData.cpfCnpj, groupName);
+                const existingCustomer = await this.findByCpfCnpj(customerData.cpfCnpj, groupName, headers);
                 
                 if (existingCustomer.success && existingCustomer.data) {
                     // Cliente existe, atualizar
@@ -30,7 +30,7 @@ class CustomerService {
                         customerData.groupName = groupName;
                     }
                     
-                    return await this.update(existingCustomer.data.id, customerData);
+                    return await this.update(existingCustomer.data.id, customerData, headers);
                 }
             }
             
@@ -40,7 +40,7 @@ class CustomerService {
                 customerData.groupName = groupName;
             }
             
-            return await this.create(customerData);
+            return await this.create(customerData, headers);
         } catch (error) {
             console.error('Erro ao criar ou atualizar cliente no Asaas:', error);
             return formatError(error);
@@ -52,7 +52,7 @@ class CustomerService {
      * @param {Object} customerData - Dados do cliente
      * @returns {Object} - Resultado da operação
      */
-    async create(customerData) {
+    async create(customerData, headers = {}) {
         try {
             // Validações básicas
             if (!customerData.name) {
@@ -103,7 +103,8 @@ class CustomerService {
             const customer = await AsaasApiClient.request({
                 method: 'POST',
                 endpoint: 'customers',
-                data: customerData
+                data: customerData,
+                headers
             });
             
             return { success: true, data: customer };
@@ -119,7 +120,7 @@ class CustomerService {
      * @param {Object} customerData - Dados do cliente
      * @returns {Object} - Resultado da operação
      */
-    async update(id, customerData) {
+    async update(id, customerData, headers = {}) {
         try {
             if (!id) {
                 return createError('ID do cliente é obrigatório', 400);
@@ -141,7 +142,8 @@ class CustomerService {
             const customer = await AsaasApiClient.request({
                 method: 'PUT',
                 endpoint: `customers/${id}`,
-                data: customerData
+                data: customerData,
+                headers
             });
             
             return { success: true, data: customer };
@@ -157,7 +159,7 @@ class CustomerService {
      * @param {string} groupName - Nome do grupo de clientes
      * @returns {Object} - Resultado da operação
      */
-    async findByCpfCnpj(cpfCnpj, groupName = '') {
+    async findByCpfCnpj(cpfCnpj, groupName = '', headers = {}) {
         try {
             if (!cpfCnpj) {
                 return createError('CPF/CNPJ é obrigatório', 400);
@@ -179,7 +181,8 @@ class CustomerService {
             const customers = await AsaasApiClient.request({
                 method: 'GET',
                 endpoint: 'customers',
-                params
+                params,
+                headers
             });
             
             if (customers.data && customers.data.length > 0) {
@@ -198,7 +201,7 @@ class CustomerService {
      * @param {string} id - ID do cliente no Asaas
      * @returns {Object} - Resultado da operação
      */
-    async get(id) {
+    async get(id, headers = {}) {
         try {
             if (!id) {
                 return createError('ID do cliente é obrigatório', 400);
@@ -207,7 +210,8 @@ class CustomerService {
             // Buscar cliente no Asaas
             const customer = await AsaasApiClient.request({
                 method: 'GET',
-                endpoint: `customers/${id}`
+                endpoint: `customers/${id}`,
+                headers
             });
             
             return { success: true, data: customer };
@@ -222,7 +226,7 @@ class CustomerService {
      * @param {Object} filters - Filtros para a listagem
      * @returns {Object} - Resultado da operação
      */
-    async getAll(filters = {}) {
+    async getAll(filters = {}, headers = {}) {
         try {
             // Parâmetros de busca
             const params = new URLSearchParams();
@@ -240,7 +244,8 @@ class CustomerService {
             const customers = await AsaasApiClient.request({
                 method: 'GET',
                 endpoint: 'customers',
-                params
+                params,
+                headers
             });
             
             return { success: true, data: customers };
@@ -255,7 +260,7 @@ class CustomerService {
      * @param {string} id - ID do cliente no Asaas
      * @returns {Object} - Resultado da operação
      */
-    async delete(id) {
+    async delete(id, headers = {}) {
         try {
             if (!id) {
                 return createError('ID do cliente é obrigatório', 400);
@@ -264,7 +269,8 @@ class CustomerService {
             // Excluir cliente no Asaas
             await AsaasApiClient.request({
                 method: 'DELETE',
-                endpoint: `customers/${id}`
+                endpoint: `customers/${id}`,
+                headers
             });
             
             return { success: true, message: 'Cliente excluído com sucesso' };
@@ -280,7 +286,7 @@ class CustomerService {
      * @param {Object} filters - Filtros adicionais
      * @returns {Object} - Resultado da operação
      */
-    async listByGroup(groupName, filters = {}) {
+    async listByGroup(groupName, filters = {}, headers = {}) {
         try {
             if (!groupName) {
                 return createError('Nome do grupo é obrigatório', 400);
@@ -293,7 +299,7 @@ class CustomerService {
             };
             
             // Usar o método getAll com o filtro de grupo
-            return await this.getAll(combinedFilters);
+            return await this.getAll(combinedFilters, headers);
         } catch (error) {
             console.error(`Erro ao listar clientes do grupo ${groupName} no Asaas:`, error);
             return formatError(error);
@@ -306,7 +312,7 @@ class CustomerService {
      * @param {string} groupName - Nome do grupo de clientes
      * @returns {Object} - Resultado da operação
      */
-    async findByExternalReference(externalReference, groupName = '') {
+    async findByExternalReference(externalReference, groupName = '', headers = {}) {
         try {
             if (!externalReference) {
                 return createError('Referência externa é obrigatória', 400);
@@ -323,7 +329,7 @@ class CustomerService {
             }
             
             // Usar o método getAll com o filtro de referência externa
-            const result = await this.getAll(filters);
+            const result = await this.getAll(filters, headers);
             
             if (result.success && result.data && result.data.data && result.data.data.length > 0) {
                 return { success: true, data: result.data.data[0] };

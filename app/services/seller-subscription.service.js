@@ -35,6 +35,15 @@ class SellerSubscriptionService {
                 return createError(`Seller com ID ${sellerId} não encontrado`, 404);
             }
 
+            // Definir headers de subconta (se existir) para chamadas Asaas
+            const asaasHeaders = seller.subaccount_api_key ? { access_token: seller.subaccount_api_key } : {};
+            if (seller.subaccount_api_key) {
+                const tail = seller.subaccount_api_key.slice(-4);
+                console.log('DEBUG - Usando subaccount access_token (mascarado): ****' + tail);
+            } else {
+                console.log('DEBUG - Usando access_token padrão do ambiente');
+            }
+
             // Verificar se seller já tem customer_id no Asaas
             let customerId = seller.payments_customer_id;
             
@@ -98,7 +107,7 @@ class SellerSubscriptionService {
                 console.log('DEBUG - Criando customer no Asaas com dados:', JSON.stringify(customerData, null, 2));
 
                 // Criar diretamente o customer no Asaas (mantém a sequência de chamadas esperada nos testes)
-                const customerResult = await AsaasCustomerService.create(customerData);
+                const customerResult = await AsaasCustomerService.create(customerData, asaasHeaders);
                 
                 console.log('DEBUG - Resultado da criação do customer:', {
                     success: customerResult.success,
@@ -119,10 +128,16 @@ class SellerSubscriptionService {
             } else {
                 // Customer já existe: garantir cpfCnpj cadastrado no Asaas
                 try {
-                    const curr = await AsaasCustomerService.get(customerId);
+                    const curr = await AsaasCustomerService.get(customerId, asaasHeaders);
+                    const maskInfo = (doc) => {
+                        if (!doc) return 'missing';
+                        const digits = String(doc).replace(/\D/g, '');
+                        const tail = digits.slice(-2);
+                        return `${digits.length}d (***${tail})`;
+                    };
                     console.log('DEBUG - Carregado customer do Asaas para verificação:', {
                         id: curr.data?.id,
-                        cpfCnpj: curr.data?.cpfCnpj ? 'present' : 'missing'
+                        cpfCnpj: maskInfo(curr.data?.cpfCnpj)
                     });
                     if (curr.success && !curr.data?.cpfCnpj) {
                         // escolher cpf do billingInfo
@@ -136,8 +151,10 @@ class SellerSubscriptionService {
                             const up = await AsaasCustomerService.update(customerId, { 
                                 cpfCnpj: alt,
                                 personType: alt.length === 11 ? 'FISICA' : 'JURIDICA'
-                            });
+                            }, asaasHeaders);
                             console.log('DEBUG - Resultado update customer cpfCnpj:', up.success ? 'ok' : up.message);
+                            // Pequeno delay para consistência eventual do Asaas
+                            await new Promise(res => setTimeout(res, 500));
                             if (!up.success) {
                                 return {
                                     success: false,
@@ -147,10 +164,10 @@ class SellerSubscriptionService {
                             }
                             // Revalidar após update
                             try {
-                                const after = await AsaasCustomerService.get(customerId);
+                                const after = await AsaasCustomerService.get(customerId, asaasHeaders);
                                 console.log('DEBUG - Verificação pós-update do customer:', {
                                     id: after.data?.id,
-                                    cpfCnpj: after.data?.cpfCnpj ? 'present' : 'missing'
+                                    cpfCnpj: maskInfo(after.data?.cpfCnpj)
                                 });
                                 if (!after.data?.cpfCnpj) {
                                     return {
@@ -340,7 +357,8 @@ class SellerSubscriptionService {
                 asaasSubscription = await AsaasApiClient.request({
                     method: 'POST',
                     endpoint: 'subscriptions',
-                    data: subscriptionData
+                    data: subscriptionData,
+                    headers: asaasHeaders
                 });
 
                 console.log('DEBUG - Resposta do Asaas (sucesso):', JSON.stringify(asaasSubscription, null, 2));
@@ -378,22 +396,31 @@ class SellerSubscriptionService {
                                 // reforça nome/email para aumentar chances de aceite do update
                                 name: billingInfo.name || subscriptionData.creditCardHolderInfo?.name,
                                 email: billingInfo.email || subscriptionData.creditCardHolderInfo?.email
-                            });
+                            }, asaasHeaders);
                             console.log('DEBUG - Resultado update antes do retry:', up.success ? 'ok' : up.message);
                             if (up.success) {
+                                // Delay curto para consistência
+                                await new Promise(res => setTimeout(res, 500));
                                 // revalidar com GET antes do retry
                                 try {
-                                    const after = await AsaasCustomerService.get(customerId);
+                                    const after = await AsaasCustomerService.get(customerId, asaasHeaders);
+                                    const maskInfo2 = (doc) => {
+                                        if (!doc) return 'missing';
+                                        const digits = String(doc).replace(/\D/g, '');
+                                        const tail = digits.slice(-2);
+                                        return `${digits.length}d (***${tail})`;
+                                    };
                                     console.log('DEBUG - Pós-update (pre-retry) customer state:', {
                                         id: after.data?.id,
-                                        cpfCnpj: after.data?.cpfCnpj ? 'present' : 'missing'
+                                        cpfCnpj: maskInfo2(after.data?.cpfCnpj)
                                     });
                                 } catch(_) {}
                                 try {
                                     asaasSubscription = await AsaasApiClient.request({
                                         method: 'POST',
                                         endpoint: 'subscriptions',
-                                        data: subscriptionData
+                                        data: subscriptionData,
+                                        headers: asaasHeaders
                                     });
                                     console.log('DEBUG - Retry após atualizar cpfCnpj: sucesso');
                                 } catch (retryErr) {
