@@ -124,6 +124,18 @@ class CustomerService {
             if (!id) {
                 return createError('ID do cliente é obrigatório', 400);
             }
+            // Sanitizar cpfCnpj e inferir personType se aplicável
+            if (customerData && customerData.cpfCnpj) {
+                const cleanCpfCnpj = String(customerData.cpfCnpj).replace(/\D/g, '');
+                customerData = {
+                    ...customerData,
+                    cpfCnpj: cleanCpfCnpj
+                };
+                if (!customerData.personType) {
+                    if (cleanCpfCnpj.length === 11) customerData.personType = 'FISICA';
+                    if (cleanCpfCnpj.length === 14) customerData.personType = 'JURIDICA';
+                }
+            }
             
             // Atualizar cliente no Asaas
             const customer = await AsaasApiClient.request({

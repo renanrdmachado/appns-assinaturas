@@ -133,7 +133,10 @@ class SellerSubscriptionService {
                         ].find(v => v && (v.length === 11 || v.length === 14));
                         if (alt) {
                             console.log('DEBUG - Atualizando customer no Asaas com cpfCnpj ausente');
-                            const up = await AsaasCustomerService.update(customerId, { cpfCnpj: alt });
+                            const up = await AsaasCustomerService.update(customerId, { 
+                                cpfCnpj: alt,
+                                personType: alt.length === 11 ? 'FISICA' : 'JURIDICA'
+                            });
                             console.log('DEBUG - Resultado update customer cpfCnpj:', up.success ? 'ok' : up.message);
                             if (!up.success) {
                                 return {
@@ -141,6 +144,23 @@ class SellerSubscriptionService {
                                     status: up.status || 400,
                                     message: `Não foi possível atualizar CPF/CNPJ do cliente no Asaas: ${up.message}`
                                 };
+                            }
+                            // Revalidar após update
+                            try {
+                                const after = await AsaasCustomerService.get(customerId);
+                                console.log('DEBUG - Verificação pós-update do customer:', {
+                                    id: after.data?.id,
+                                    cpfCnpj: after.data?.cpfCnpj ? 'present' : 'missing'
+                                });
+                                if (!after.data?.cpfCnpj) {
+                                    return {
+                                        success: false,
+                                        status: 400,
+                                        message: 'CPF/CNPJ continua ausente no cadastro do cliente no Asaas após tentativa de atualização. Oriente o usuário a completar os dados cadastrais.'
+                                    };
+                                }
+                            } catch (revalErr) {
+                                console.warn('WARN - Falha ao revalidar customer após update:', revalErr.message);
                             }
                         } else {
                             return {
@@ -351,9 +371,23 @@ class SellerSubscriptionService {
                         ].find(v => v && (v.length === 11 || v.length === 14));
                         if (altCpf) {
                             console.log('DEBUG - Tentando atualizar cpfCnpj do customer e refazer criação da assinatura...');
-                            const up = await AsaasCustomerService.update(customerId, { cpfCnpj: altCpf });
+                            const up = await AsaasCustomerService.update(customerId, { 
+                                cpfCnpj: altCpf,
+                                personType: altCpf.length === 11 ? 'FISICA' : 'JURIDICA',
+                                // reforça nome/email para aumentar chances de aceite do update
+                                name: billingInfo.name || subscriptionData.creditCardHolderInfo?.name,
+                                email: billingInfo.email || subscriptionData.creditCardHolderInfo?.email
+                            });
                             console.log('DEBUG - Resultado update antes do retry:', up.success ? 'ok' : up.message);
                             if (up.success) {
+                                // revalidar com GET antes do retry
+                                try {
+                                    const after = await AsaasCustomerService.get(customerId);
+                                    console.log('DEBUG - Pós-update (pre-retry) customer state:', {
+                                        id: after.data?.id,
+                                        cpfCnpj: after.data?.cpfCnpj ? 'present' : 'missing'
+                                    });
+                                } catch(_) {}
                                 try {
                                     asaasSubscription = await AsaasApiClient.request({
                                         method: 'POST',
