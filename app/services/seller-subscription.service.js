@@ -517,6 +517,7 @@ class SellerSubscriptionService {
                 const errMsg = String(asaasError.message || '').toLowerCase();
                 const asaasErrors = (asaasError.asaasError && asaasError.asaasError.errors) ? asaasError.asaasError.errors : [];
                 const mentionsRemoved = errMsg.includes('cliente removido') || asaasErrors.some(e => String(e.description || '').toLowerCase().includes('removido'));
+                const mentionsCpfMissing = errMsg.includes('cpf/cnpj') && (errMsg.includes('cadastro') || errMsg.includes('cliente'));
                 
                 // A lógica de retry para CPF/CNPJ foi removida, pois agora é tratada proativamente.
                 // Mantemos apenas o retry para cliente removido, que é um caso mais raro.
@@ -575,6 +576,56 @@ class SellerSubscriptionService {
                         };
                     }
                 }
+                
+                // Fallback controlado para inconsistência eventual do Asaas: cliente tem CPF/CNPJ, mas API de assinatura ainda acusa ausência
+                if (!asaasSubscription && mentionsCpfMissing) {
+                   try {
+                       console.log('DEBUG - Fallback: checando estado do customer após erro de CPF/CNPJ...');
+                       const state = await this._debugCustomerState(customerId, asaasHeaders);
+                       if (state.success && state.hasCpfCnpj) {
+                           const pick = (v) => String(v || '').replace(/\D/g, '');
+                           const customerDigits = pick(state.raw?.cpfCnpj);
+                           const holderDigits = pick(subscriptionData.creditCardHolderInfo?.cpfCnpj);
+                           // Alinhar o holder com o cadastro do cliente para evitar divergências sutis
+                           if (!holderDigits || holderDigits !== customerDigits) {
+                               subscriptionData.creditCardHolderInfo = {
+                                   ...subscriptionData.creditCardHolderInfo,
+                                   cpfCnpj: customerDigits
+                               };
+                               console.log('DEBUG - Holder cpfCnpj alinhado ao customer:', `***${customerDigits.slice(-2)}`);
+                           }
+                           // Aguardar mais tempo para consistência
+                           console.log('DEBUG - Aguardando 4s antes do retry devido à consistência eventual do Asaas...');
+                           await new Promise(res => setTimeout(res, 4000));
+                           // Revalidar rapidamente
+                           try { await AsaasCustomerService.get(customerId, asaasHeaders); } catch (_) {}
+                           // Tentar novamente uma única vez
+                           console.log('DEBUG - Retry único de criação da assinatura após alinhamento...');
+                           asaasSubscription = await AsaasApiClient.request({
+                               method: 'POST',
+                               endpoint: 'subscriptions',
+                               data: subscriptionData,
+                               headers: asaasHeaders
+                           });
+                           console.log('DEBUG - Retry (fallback consistência) sucesso');
+                       }
+                   } catch (retryConsistencyErr) {
+                       console.error('DEBUG - Retry (fallback consistência) falhou:', {
+                           message: retryConsistencyErr.message,
+                           status: retryConsistencyErr.status,
+                           asaasError: retryConsistencyErr.asaasError
+                       });
+                       // fazer um último dump do customer
+                       try {
+                           const finalCheck = await AsaasCustomerService.get(customerId, asaasHeaders);
+                           console.log('DEBUG - Customer state após fallback consistency:', {
+                               id: finalCheck.data?.id,
+                               cpfCnpj: finalCheck.data?.cpfCnpj,
+                               personType: finalCheck.data?.personType
+                           });
+                       } catch (_) {}
+                   }
+               }
                 
                 if (!asaasSubscription) {
                     return {
