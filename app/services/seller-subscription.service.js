@@ -269,6 +269,8 @@ class SellerSubscriptionService {
                     // Manter apenas campos suportados pelo Asaas
                     const allowedHolderFields = new Set(['name','email','cpfCnpj','phone','mobilePhone','address','addressNumber','addressComplement','postalCode']);
                     Object.keys(holder).forEach(k => { if (!allowedHolderFields.has(k)) delete holder[k]; });
+                    // Remover explicitamente province se vier do front
+                    if (holder.province !== undefined) delete holder.province;
 
                     // Garantir campos obrigatórios da doc Asaas
                     if (!holder.addressNumber) holder.addressNumber = '0';
