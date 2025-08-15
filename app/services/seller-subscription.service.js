@@ -158,7 +158,7 @@ class SellerSubscriptionService {
             // Dados da assinatura no Asaas
             const subscriptionData = {
                 customer: customerId,
-                billingType: billingInfo.billingType || 'PIX',
+                billingType: (billingInfo.billingType || 'PIX').toUpperCase(),
                 cycle: planData.cycle || 'MONTHLY',
                 value: planData.value,
                 nextDueDate: this.calculateNextDueDate(planData.cycle),
@@ -172,7 +172,7 @@ class SellerSubscriptionService {
             };
 
             // Para CREDIT_CARD, adicionar informações do portador e dados de cartão/token quando fornecidos
-            if (billingInfo.billingType === 'CREDIT_CARD') {
+            if ((billingInfo.billingType || '').toUpperCase() === 'CREDIT_CARD') {
                 // creditCardHolderInfo: usar o fornecido ou montar a partir de billingInfo
                 if (billingInfo.creditCardHolderInfo) {
                     const holder = { ...billingInfo.creditCardHolderInfo };
@@ -205,23 +205,31 @@ class SellerSubscriptionService {
                     };
                 }
 
-                // Encaminhar creditCard ou creditCardToken se fornecido
-                if (billingInfo.creditCard) {
+                // Encaminhar creditCardToken com prioridade. Se houver token e também um objeto creditCard (possivelmente mascarado para UI), usar o token.
+                if (billingInfo.creditCardToken) {
+                    subscriptionData.creditCardToken = billingInfo.creditCardToken;
+                } else if (billingInfo.creditCard) {
                     // Validar e normalizar cartão (evitar número truncado/placeholder)
                     const onlyDigits = (v) => String(v || '').replace(/\D/g, '');
                     const isDigits = (v) => /^[0-9]+$/.test(String(v || ''));
                     const cc = billingInfo.creditCard;
                     const num = onlyDigits(cc.number);
+                    console.log(`Número do cartão: ${num}`);
                     const ccv = onlyDigits(cc.ccv);
                     const expM = onlyDigits(cc.expiryMonth);
                     const expY = onlyDigits(cc.expiryYear);
+                                        const holderDigits = onlyDigits(cc.holderName);
 
-                    if (num.length < 13) {
-                        return {
-                            success: false,
-                            status: 400,
-                            message: 'Número de cartão inválido (parece truncado). Envie o número completo ou um creditCardToken.'
-                        };
+                                        if (num.length < 13) {
+                        const masked = /\*/.test(String(cc.number));
+                                                const swappedHint = holderDigits.length >= 13 && /^[0-9]+$/.test(String(cc.holderName || ''))
+                                                    ? ` (observamos ${holderDigits.length} dígitos em holderName — campos possivelmente invertidos)`
+                                                    : '';
+                                                return {
+                                                        success: false,
+                                                        status: 400,
+                                                        message: `Número de cartão inválido (${masked ? 'mascarado' : 'parece truncado'} - recebidos ${num.length} dígitos)${swappedHint}. Envie o número completo no campo creditCard.number ou um creditCardToken.`
+                                                };
                     }
                     if (!(ccv.length === 3 || ccv.length === 4)) {
                         return {
@@ -261,8 +269,6 @@ class SellerSubscriptionService {
                         expiryYear: String(y),
                         ccv
                     };
-                } else if (billingInfo.creditCardToken) {
-                    subscriptionData.creditCardToken = billingInfo.creditCardToken;
                 }
 
                 // Remote IP (recomendado por gateways para antifraude)
