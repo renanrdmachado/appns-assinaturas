@@ -5,18 +5,42 @@ class AsaasApiClient {
         try {
             const baseUrl = process.env.AS_URL; // e.g., https://api-sandbox.asaas.com/v3
             const url = `${baseUrl}/${endpoint}${params ? `?${params.toString()}` : ''}`;
+            
+            // Usar access_token customizado se fornecido nos headers, senão usar padrão
+            const finalAccessToken = headers.access_token || process.env.AS_TOKEN;
+            const finalHeaders = {
+                'Accept': 'application/json',
+                access_token: finalAccessToken,
+                ...headers
+            };
+            // Remover access_token duplicado se veio nos headers customizados
+            delete finalHeaders.access_token;
+            finalHeaders.access_token = finalAccessToken;
+            
             const config = {
                 method,
                 url,
-                headers: {
-                    'Accept': 'application/json',
-                    access_token: process.env.AS_TOKEN,
-                    ...headers
-                },
+                headers: finalHeaders,
                 data
             };
             
+            // Log detalhado para debug
+            console.log(`DEBUG - AsaasApiClient ${method} ${endpoint}:`, {
+                url: url.replace(/(access_token=)[^&]+/, '$1[MASKED]'),
+                headers: Object.keys(finalHeaders),
+                hasData: !!data,
+                dataKeys: data ? Object.keys(data) : []
+            });
+            
             const response = await axios(config);
+            
+            // Log da resposta (sem dados sensíveis)
+            console.log(`DEBUG - AsaasApiClient response ${response.status}:`, {
+                status: response.status,
+                hasData: !!response.data,
+                dataKeys: response.data ? Object.keys(response.data) : []
+            });
+            
             return response.data;
         } catch (error) {
             // Capturar e formatar o erro da API Asaas
