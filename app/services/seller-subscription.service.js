@@ -213,17 +213,23 @@ class SellerSubscriptionService {
                 // creditCardHolderInfo: usar o fornecido ou montar a partir de billingInfo
                 if (billingInfo.creditCardHolderInfo) {
                     const holder = { ...billingInfo.creditCardHolderInfo };
+                    // Manter apenas campos suportados pelo Asaas
+                    const allowedHolderFields = new Set(['name','email','cpfCnpj','phone','mobilePhone','address','addressNumber','addressComplement','postalCode']);
+                    Object.keys(holder).forEach(k => { if (!allowedHolderFields.has(k)) delete holder[k]; });
+
                     // Garantir campos obrigatórios da doc Asaas
                     if (!holder.addressNumber) holder.addressNumber = '0';
-                    if (!holder.postalCode) holder.postalCode = '59082110';
-                    // Normalizar CEP para dígitos
+                    // Normalizar CEP para dígitos e validar valor (evitar placeholders como 00000000)
+                    if (!holder.postalCode) holder.postalCode = '00000000';
                     if (holder.postalCode) holder.postalCode = String(holder.postalCode).replace(/\D/g, '');
+
                     // Garantir phone conforme doc: se só houver mobilePhone, duplicar; se só houver phone, duplicar
                     if (!holder.phone && holder.mobilePhone) holder.phone = holder.mobilePhone;
                     if (!holder.mobilePhone && holder.phone) holder.mobilePhone = holder.phone;
                     // Se ainda faltar phone, use billingInfo.phone
                     if (!holder.phone && billingInfo.phone) holder.phone = String(billingInfo.phone).replace(/\D/g, '');
                     if (!holder.mobilePhone && billingInfo.phone) holder.mobilePhone = String(billingInfo.phone).replace(/\D/g, '');
+
                     // Normalizar cpfCnpj se presente e não mascarado
                     if (holder.cpfCnpj && typeof holder.cpfCnpj === 'string') {
                         if (holder.cpfCnpj.includes('*')) {
@@ -235,6 +241,20 @@ class SellerSubscriptionService {
                             holder.cpfCnpj = holder.cpfCnpj.replace(/\D/g, '');
                         }
                     }
+
+                    // Validações proativas para evitar erro genérico do Asaas
+                    const invalidCep = !holder.postalCode || holder.postalCode.length !== 8 || /(\d)\1{7}/.test(holder.postalCode);
+                    if (invalidCep) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'CEP (postalCode) inválido para o titular do cartão. Envie um CEP brasileiro válido com 8 dígitos.'
+                        };
+                    }
+
+                    // Remover quaisquer campos vazios/undefined
+                    Object.keys(holder).forEach(k => { if (holder[k] === undefined || holder[k] === null || holder[k] === '') delete holder[k]; });
+
                     subscriptionData.creditCardHolderInfo = holder;
                 } else if (billingInfo.cpfCnpj) {
                     const cleaned = String(billingInfo.cpfCnpj).replace(/\D/g, '');
@@ -247,7 +267,7 @@ class SellerSubscriptionService {
                         phone: billingInfo.phone ? String(billingInfo.phone).replace(/\D/g, '') : '00000000000',
                         mobilePhone: billingInfo.phone ? String(billingInfo.phone).replace(/\D/g, '') : '00000000000',
                         addressNumber: '0',
-                        postalCode: '59082110'
+                        postalCode: '00000000'
                     };
                 }
 
