@@ -214,6 +214,7 @@ class SellerSubscriptionService {
                     subscriptionData.creditCardHolderInfo = holder;
                 } else if (billingInfo.cpfCnpj) {
                     const cleaned = String(billingInfo.cpfCnpj).replace(/\D/g, '');
+                    console.log(`CPF/CNPJ limpo: ${cleaned}`);
                     subscriptionData.creditCardHolderInfo = {
                         name: billingInfo.name,
                         email: billingInfo.email,
