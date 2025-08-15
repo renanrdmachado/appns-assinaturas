@@ -20,9 +20,9 @@ class SellerSubscriptionService {
             const tail = digits.slice(-2);
             const summary = digits ? `${digits.length}d (***${tail})` : 'missing';
             console.log('DEBUG - _debugCustomerState:', {
-                id: c.id, name: c.name, personType: c.personType, cpfSummary: summary
+                id: c.id, name: c.name, personType: c.personType, deleted: c.deleted === true, cpfSummary: summary
             });
-            return { success: true, hasCpfCnpj: !!digits, cpfLen: digits.length, cpfSummary: summary, personType: c.personType, raw: c };
+            return { success: true, hasCpfCnpj: !!digits, cpfLen: digits.length, cpfSummary: summary, personType: c.personType, deleted: c.deleted === true, raw: c };
         } catch (e) {
             console.warn('WARN - _debugCustomerState falhou:', e.message);
             return { success: false, message: e.message };
@@ -157,6 +157,37 @@ class SellerSubscriptionService {
                         id: curr.data?.id,
                         cpfCnpj: maskInfo(curr.data?.cpfCnpj)
                     });
+                    // Se customer estiver deletado, recriar automaticamente
+                    if (curr.success && curr.data?.deleted === true) {
+                        console.warn('WARN - Customer no Asaas está marcado como deletado. Recriando customer antes da assinatura.');
+                        const pickDigits = (v) => String(v || '').replace(/\D/g, '');
+                        const candidateCpf = pickDigits(curr.data?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj) || pickDigits(billingInfo.creditCardHolderInfo?.cpfCnpj);
+                        if (!candidateCpf || !(candidateCpf.length === 11 || candidateCpf.length === 14)) {
+                            return {
+                                success: false,
+                                status: 400,
+                                message: 'Customer no Asaas está deletado e não há CPF/CNPJ válido para recriação automática. Informe cpfCnpj em billingInfo.'
+                            };
+                        }
+                        const customerData = {
+                            name: billingInfo.name || curr.data?.name || `Seller ${sellerId}`,
+                            email: billingInfo.email || curr.data?.email || `seller${sellerId}@example.com`,
+                            cpfCnpj: candidateCpf,
+                            phone: billingInfo.phone || curr.data?.mobilePhone || curr.data?.phone || '00000000000'
+                        };
+                        console.log('DEBUG - Recriando customer no Asaas (deletado):', JSON.stringify(customerData, null, 2));
+                        const created = await AsaasCustomerService.create(customerData, asaasHeaders);
+                        if (!created.success) {
+                            return {
+                                success: false,
+                                status: created.status || 400,
+                                message: `Falha ao recriar customer no Asaas: ${created.message}`
+                            };
+                        }
+                        customerId = created.data.id;
+                        await seller.update({ payments_customer_id: customerId });
+                        console.log(`DEBUG - Customer recriado: ${customerId} (atualizado em Seller)`);
+                    }
                     if (curr.success && !curr.data?.cpfCnpj) {
                         // escolher cpf do billingInfo
                         const pick = (v) => String(v || '').replace(/\D/g, '');
@@ -476,9 +507,66 @@ class SellerSubscriptionService {
                     console.error('DEBUG - Erros específicos do Asaas:', asaasError.asaasError.errors);
                 }
 
-                // Fallback: se o Asaas reclamou de CPF/CNPJ ausente no cadastro, tentar atualizar e refazer uma vez
+                // Fallback: se o Asaas apontar cliente removido, tentar recriar customer e refazer; se apontar CPF/CNPJ ausente, atualizar e refazer
                 const errMsg = String(asaasError.message || '').toLowerCase();
+                const asaasErrors = (asaasError.asaasError && asaasError.asaasError.errors) ? asaasError.asaasError.errors : [];
+                const mentionsRemoved = errMsg.includes('cliente removido') || asaasErrors.some(e => String(e.description || '').toLowerCase().includes('removido'));
                 const mentionsCpfMissing = errMsg.includes('cpf/cnpj') && errMsg.includes('cadastro');
+                if (mentionsRemoved) {
+                    console.log('DEBUG - Detectado erro: cliente removido. Tentando recriar customer e refazer criação da assinatura...');
+                    try {
+                        const pickDigits = (v) => String(v || '').replace(/\D/g, '');
+                        const altCpf = pickDigits(subscriptionData.creditCardHolderInfo?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj);
+                        if (!altCpf || !(altCpf.length === 11 || altCpf.length === 14)) {
+                            return {
+                                success: false,
+                                status: 400,
+                                message: 'Cliente no Asaas está removido e não foi possível determinar um CPF/CNPJ válido para recriação. Informe cpfCnpj.'
+                            };
+                        }
+                        const newCustomerData = {
+                            name: billingInfo.name || `Seller ${sellerId}`,
+                            email: billingInfo.email || `seller${sellerId}@example.com`,
+                            cpfCnpj: altCpf,
+                            phone: billingInfo.phone || '00000000000'
+                        };
+                        const created = await AsaasCustomerService.create(newCustomerData, asaasHeaders);
+                        if (!created.success) {
+                            return {
+                                success: false,
+                                status: created.status || 400,
+                                message: `Falha ao recriar customer no Asaas: ${created.message}`
+                            };
+                        }
+                        customerId = created.data.id;
+                        await Seller.update({ payments_customer_id: customerId }, { where: { id: sellerId } });
+                        subscriptionData.customer = customerId;
+                        console.log('DEBUG - Novo customer criado. Tentando criar subscription novamente...');
+                        asaasSubscription = await AsaasApiClient.request({
+                            method: 'POST',
+                            endpoint: 'subscriptions',
+                            data: subscriptionData,
+                            headers: asaasHeaders
+                        });
+                        console.log('DEBUG - Retry após recriar customer: sucesso');
+                    } catch (retryRemovedErr) {
+                        console.error('DEBUG - Retry após recriar customer falhou:', {
+                            message: retryRemovedErr.message,
+                            status: retryRemovedErr.status,
+                            asaasError: retryRemovedErr.asaasError
+                        });
+                        return {
+                            success: false,
+                            message: `Erro ao criar assinatura no Asaas após recriar customer: ${retryRemovedErr.message}`,
+                            error: {
+                                message: retryRemovedErr.message,
+                                status: retryRemovedErr.status,
+                                asaasErrors: retryRemovedErr.asaasError?.errors || [],
+                                sentData: subscriptionData
+                            }
+                        };
+                    }
+                }
                 if (mentionsCpfMissing) {
                     console.log('DEBUG - Detectado erro de CPF/CNPJ no cadastro. Fazendo GET do customer antes do retry...');
                     
