@@ -10,6 +10,24 @@ const AsaasCardService = require('./asaas/card.service');
 const { redactSensitive } = require('../utils/redact');
 
 class SellerSubscriptionService {
+    // Utilitário interno para depurar estado do customer no Asaas
+    async _debugCustomerState(customerId, asaasHeaders = {}) {
+        try {
+            const result = await AsaasCustomerService.get(customerId, asaasHeaders);
+            if (!result.success) return { success: false, message: result.message };
+            const c = result.data || {};
+            const digits = String(c.cpfCnpj || '').replace(/\D/g, '');
+            const tail = digits.slice(-2);
+            const summary = digits ? `${digits.length}d (***${tail})` : 'missing';
+            console.log('DEBUG - _debugCustomerState:', {
+                id: c.id, name: c.name, personType: c.personType, cpfSummary: summary
+            });
+            return { success: true, hasCpfCnpj: !!digits, cpfLen: digits.length, cpfSummary: summary, personType: c.personType, raw: c };
+        } catch (e) {
+            console.warn('WARN - _debugCustomerState falhou:', e.message);
+            return { success: false, message: e.message };
+        }
+    }
     /**
      * Cria uma assinatura para um seller no Asaas
      * @param {number} sellerId - ID do seller
@@ -259,6 +277,16 @@ class SellerSubscriptionService {
                 } else if (billingInfo.cpfCnpj) {
                     const cleaned = String(billingInfo.cpfCnpj).replace(/\D/g, '');
                     console.log(`CPF/CNPJ limpo: ${cleaned}`);
+                    // Tentar obter CEP do billingInfo, já que é obrigatório
+                    const providedPostal = billingInfo.creditCardHolderInfo?.postalCode || billingInfo.postalCode;
+                    const postalDigits = providedPostal ? String(providedPostal).replace(/\D/g, '') : '';
+                    if (!postalDigits || postalDigits.length !== 8 || /(\d)\1{7}/.test(postalDigits)) {
+                        return {
+                            success: false,
+                            status: 400,
+                            message: 'postalCode (CEP) é obrigatório e deve ter 8 dígitos válidos em creditCardHolderInfo.'
+                        };
+                    }
                     subscriptionData.creditCardHolderInfo = {
                         name: billingInfo.name,
                         email: billingInfo.email,
@@ -267,7 +295,7 @@ class SellerSubscriptionService {
                         phone: billingInfo.phone ? String(billingInfo.phone).replace(/\D/g, '') : '00000000000',
                         mobilePhone: billingInfo.phone ? String(billingInfo.phone).replace(/\D/g, '') : '00000000000',
                         addressNumber: '0',
-                        postalCode: '00000000'
+                        postalCode: postalDigits
                     };
                 }
 
@@ -403,6 +431,21 @@ class SellerSubscriptionService {
             }
 
             console.log('DEBUG - Dados validados com sucesso');
+
+            // Pré-checagem isolada: garantir que o customer tem cpfCnpj salvo no Asaas antes de enviar
+            try {
+                const state = await this._debugCustomerState(customerId, asaasHeaders);
+                if (!state.success) {
+                    console.warn('WARN - Pré-checagem do customer falhou:', state.message);
+                } else if (!state.hasCpfCnpj) {
+                    console.warn('WARN - Customer no Asaas sem CPF/CNPJ antes do POST da assinatura. Interrompendo.');
+                    return {
+                        success: false,
+                        status: 400,
+                        message: 'O customer no Asaas está sem CPF/CNPJ. Atualize o cadastro antes de criar a assinatura.'
+                    };
+                }
+            } catch (_) {}
 
             // Criar assinatura no Asaas
             console.log('DEBUG - Enviando dados para Asaas:', JSON.stringify(subscriptionData, null, 2));
