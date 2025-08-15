@@ -62,8 +62,43 @@ class SellerSubscriptionService {
                 console.log('DEBUG - Usando access_token padrão do ambiente');
             }
 
+            // Determinar CPF/CNPJ válido no início para reutilizar em todo o método
+            let validCpfCnpj = null;
+            let nuvemshopInfo = {};
+            try {
+                if (seller.nuvemshop_info) {
+                    nuvemshopInfo = typeof seller.nuvemshop_info === 'string'
+                        ? JSON.parse(seller.nuvemshop_info)
+                        : seller.nuvemshop_info;
+                }
+            } catch (e) {
+                console.warn('WARN - Falha ao parsear nuvemshop_info, usando objeto vazio:', e.message);
+                nuvemshopInfo = {};
+            }
+
+            // Normalizar/validar CPF/CNPJ vindo do billingInfo ou da loja
+            const rawCpf = (billingInfo.cpfCnpj || '').toString();
+            const cleanCpf = rawCpf.replace(/\D/g, '');
+            const isMaskedCpf = rawCpf.includes('*');
+            const nsBusinessId = (nuvemshopInfo.business_id || '').toString().replace(/\D/g, '');
+
+            // Tentar alternativas para CPF/CNPJ válido
+            const cpfAlternatives = [
+                cleanCpf.length === 11 || cleanCpf.length === 14 ? cleanCpf : null,
+                nsBusinessId.length === 11 || nsBusinessId.length === 14 ? nsBusinessId : null,
+                // Tentar também do creditCardHolderInfo se disponível
+                billingInfo.creditCardHolderInfo?.cpfCnpj && !billingInfo.creditCardHolderInfo.cpfCnpj.includes('*') 
+                    ? String(billingInfo.creditCardHolderInfo.cpfCnpj).replace(/\D/g, '') : null
+            ].filter(Boolean);
+
+            if (cpfAlternatives.length > 0) {
+                validCpfCnpj = cpfAlternatives[0];
+            }
+
             // Verificar se seller já tem customer_id no Asaas
             let customerId = seller.payments_customer_id;
+            
+            console.log(`DEBUG - CPF/CNPJ válido determinado: ${validCpfCnpj ? `${validCpfCnpj.length}d (***${validCpfCnpj.slice(-2)})` : 'não encontrado'}`);
             
             console.log('DEBUG - Status do customer:', {
                 sellerId: sellerId,
@@ -73,23 +108,6 @@ class SellerSubscriptionService {
             
             if (!customerId) {
                 // Criar customer no Asaas para o seller
-                let nuvemshopInfo = {};
-                try {
-                    if (seller.nuvemshop_info) {
-                        nuvemshopInfo = typeof seller.nuvemshop_info === 'string'
-                            ? JSON.parse(seller.nuvemshop_info)
-                            : seller.nuvemshop_info;
-                    }
-                } catch (e) {
-                    console.warn('WARN - Falha ao parsear nuvemshop_info, usando objeto vazio:', e.message);
-                    nuvemshopInfo = {};
-                }
-                // Normalizar/validar CPF/CNPJ vindo do billingInfo ou da loja
-                const rawCpf = (billingInfo.cpfCnpj || '').toString();
-                const cleanCpf = rawCpf.replace(/\D/g, '');
-                const isMaskedCpf = rawCpf.includes('*');
-                const nsBusinessId = (nuvemshopInfo.business_id || '').toString().replace(/\D/g, '');
-
                 // Se cartão, validar cartão não mascarado (se enviado diretamente) antes
                 if ((billingInfo.billingType || '').toUpperCase() === 'CREDIT_CARD' && billingInfo.creditCard) {
                     const cc = billingInfo.creditCard;
@@ -102,12 +120,7 @@ class SellerSubscriptionService {
                     }
                 }
 
-                // Escolher CPF/CNPJ limpo válido (11 ou 14 dígitos)
-                let cpfCnpjForCustomer = cleanCpf;
-                if (!(cpfCnpjForCustomer.length === 11 || cpfCnpjForCustomer.length === 14)) {
-                    cpfCnpjForCustomer = nsBusinessId;
-                }
-                if (!(cpfCnpjForCustomer.length === 11 || cpfCnpjForCustomer.length === 14)) {
+                if (!validCpfCnpj) {
                     // Sem CPF/CNPJ válido para criar customer no Asaas
                     return {
                         success: false,
@@ -115,10 +128,11 @@ class SellerSubscriptionService {
                         message: 'CPF/CNPJ inválido ou mascarado. Complete os documentos do seller ou envie o CPF/CNPJ sem máscara.'
                     };
                 }
+                
                 const customerData = {
                     name: billingInfo.name || nuvemshopInfo.name?.pt || nuvemshopInfo.name || `Seller ${sellerId}`,
                     email: billingInfo.email || nuvemshopInfo.email || `seller${sellerId}@example.com`,
-                    cpfCnpj: cpfCnpjForCustomer,
+                    cpfCnpj: validCpfCnpj,
                     phone: billingInfo.phone || nuvemshopInfo.phone || '00000000000'
                 };
 
@@ -161,7 +175,7 @@ class SellerSubscriptionService {
                     if (curr.success && curr.data?.deleted === true) {
                         console.warn('WARN - Customer no Asaas está marcado como deletado. Recriando customer antes da assinatura.');
                         const pickDigits = (v) => String(v || '').replace(/\D/g, '');
-                        const candidateCpf = pickDigits(curr.data?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj) || pickDigits(billingInfo.creditCardHolderInfo?.cpfCnpj);
+                        const candidateCpf = validCpfCnpj || pickDigits(curr.data?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj) || pickDigits(billingInfo.creditCardHolderInfo?.cpfCnpj);
                         if (!candidateCpf || !(candidateCpf.length === 11 || candidateCpf.length === 14)) {
                             return {
                                 success: false,
@@ -189,9 +203,9 @@ class SellerSubscriptionService {
                         console.log(`DEBUG - Customer recriado: ${customerId} (atualizado em Seller)`);
                     }
                     if (curr.success && !curr.data?.cpfCnpj) {
-                        // escolher cpf do billingInfo
+                        // escolher cpf do billingInfo ou usar o validCpfCnpj
                         const pick = (v) => String(v || '').replace(/\D/g, '');
-                        const alt = [
+                        const alt = validCpfCnpj || [
                             pick(billingInfo.cpfCnpj),
                             pick(billingInfo.creditCardHolderInfo?.cpfCnpj)
                         ].find(v => v && (v.length === 11 || v.length === 14));
@@ -203,7 +217,7 @@ class SellerSubscriptionService {
                             }, asaasHeaders);
                             console.log('DEBUG - Resultado update customer cpfCnpj:', up.success ? 'ok' : up.message);
                             // Pequeno delay para consistência eventual do Asaas
-                            await new Promise(res => setTimeout(res, 500));
+                            await new Promise(res => setTimeout(res, 1000)); // Aumentado para 1 segundo
                             if (!up.success) {
                                 return {
                                     success: false,
@@ -282,10 +296,12 @@ class SellerSubscriptionService {
                     // Normalizar cpfCnpj se presente e não mascarado
                     if (holder.cpfCnpj && typeof holder.cpfCnpj === 'string') {
                         if (holder.cpfCnpj.includes('*')) {
-                            // Se mascarado, tentar usar o billingInfo.cpfCnpj limpo
-                            const alt = (billingInfo.cpfCnpj || '').replace(/\D/g, '');
-                            if (alt.length === 11 || alt.length === 14) holder.cpfCnpj = alt;
-                            else delete holder.cpfCnpj; // deixará para o Asaas validar com customer
+                            // Se mascarado, usar o CPF válido determinado anteriormente
+                            if (validCpfCnpj && (validCpfCnpj.length === 11 || validCpfCnpj.length === 14)) {
+                                holder.cpfCnpj = validCpfCnpj;
+                            } else {
+                                delete holder.cpfCnpj; // deixará para o Asaas validar com customer
+                            }
                         } else {
                             holder.cpfCnpj = holder.cpfCnpj.replace(/\D/g, '');
                         }
@@ -305,9 +321,9 @@ class SellerSubscriptionService {
                     Object.keys(holder).forEach(k => { if (holder[k] === undefined || holder[k] === null || holder[k] === '') delete holder[k]; });
 
                     subscriptionData.creditCardHolderInfo = holder;
-                } else if (billingInfo.cpfCnpj) {
-                    const cleaned = String(billingInfo.cpfCnpj).replace(/\D/g, '');
-                    console.log(`CPF/CNPJ limpo: ${cleaned}`);
+                } else if (billingInfo.cpfCnpj || validCpfCnpj) {
+                    const cpfToUse = validCpfCnpj || String(billingInfo.cpfCnpj).replace(/\D/g, '');
+                    console.log(`CPF/CNPJ limpo: ${cpfToUse}`);
                     // Tentar obter CEP do billingInfo, já que é obrigatório
                     const providedPostal = billingInfo.creditCardHolderInfo?.postalCode || billingInfo.postalCode;
                     const postalDigits = providedPostal ? String(providedPostal).replace(/\D/g, '') : '';
@@ -321,7 +337,7 @@ class SellerSubscriptionService {
                     subscriptionData.creditCardHolderInfo = {
                         name: billingInfo.name,
                         email: billingInfo.email,
-                        cpfCnpj: cleaned,
+                        cpfCnpj: cpfToUse,
                         // Duplicar phone/mobilePhone para atender doc
                         phone: billingInfo.phone ? String(billingInfo.phone).replace(/\D/g, '') : '00000000000',
                         mobilePhone: billingInfo.phone ? String(billingInfo.phone).replace(/\D/g, '') : '00000000000',
@@ -516,7 +532,7 @@ class SellerSubscriptionService {
                     console.log('DEBUG - Detectado erro: cliente removido. Tentando recriar customer e refazer criação da assinatura...');
                     try {
                         const pickDigits = (v) => String(v || '').replace(/\D/g, '');
-                        const altCpf = pickDigits(subscriptionData.creditCardHolderInfo?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj);
+                        const altCpf = validCpfCnpj || pickDigits(subscriptionData.creditCardHolderInfo?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj);
                         if (!altCpf || !(altCpf.length === 11 || altCpf.length === 14)) {
                             return {
                                 success: false,
@@ -586,7 +602,7 @@ class SellerSubscriptionService {
                     
                     try {
                         const pick = (v) => String(v || '').replace(/\D/g, '');
-                        const altCpf = [
+                        const altCpf = validCpfCnpj || [
                             pick(billingInfo.cpfCnpj),
                             pick(subscriptionData.creditCardHolderInfo?.cpfCnpj)
                         ].find(v => v && (v.length === 11 || v.length === 14));
@@ -605,7 +621,7 @@ class SellerSubscriptionService {
                             console.log('DEBUG - Resultado update antes do retry:', up.success ? 'ok' : up.message);
                             if (up.success) {
                                 // Delay curto para consistência
-                                await new Promise(res => setTimeout(res, 500));
+                                await new Promise(res => setTimeout(res, 1000)); // Aumentado para 1 segundo
                                 // revalidar com GET antes do retry
                                 try {
                                     const after = await AsaasCustomerService.get(customerId, asaasHeaders);
