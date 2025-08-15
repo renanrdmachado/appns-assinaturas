@@ -218,7 +218,7 @@ class SellerSubscriptionService {
                         name: billingInfo.name,
                         email: billingInfo.email,
                         cpfCnpj: cleaned,
-                        mobilePhone: billingInfo.phone,
+                        phone: billingInfo.phone,
                         addressNumber: '0',
                         province: 'Default',
                         postalCode: '00000000'
