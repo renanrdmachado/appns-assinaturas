@@ -93,13 +93,15 @@ class CustomerService {
                 return createError('CPF/CNPJ deve ter 11 ou 14 dígitos', 400);
             }
 
-            // Atualizar customerData com CPF/CNPJ limpo
+            // Atualizar customerData com CPF/CNPJ limpo e personType inferido
             customerData = {
                 ...customerData,
-                cpfCnpj: cleanCpfCnpj
+                cpfCnpj: cleanCpfCnpj,
+                personType: cleanCpfCnpj.length === 11 ? 'FISICA' : 'JURIDICA'
             };
             
             // Criar cliente no Asaas
+            console.log('DEBUG - Criando cliente no Asaas com dados:', JSON.stringify(customerData, null, 2));
             const customer = await AsaasApiClient.request({
                 method: 'POST',
                 endpoint: 'customers',
