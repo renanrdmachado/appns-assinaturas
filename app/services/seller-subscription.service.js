@@ -158,29 +158,34 @@ class SellerSubscriptionService {
                 await seller.update({ payments_customer_id: customerId });
                 console.log(`Customer criado para seller ${sellerId}: ${customerId}`);
             } else {
-                // Customer já existe: garantir cpfCnpj cadastrado no Asaas
+                // Customer já existe: garantir que o cpfCnpj no Asaas corresponde ao da requisição.
                 try {
                     const curr = await AsaasCustomerService.get(customerId, asaasHeaders);
+                    const asaasCpfCnpj = String(curr.data?.cpfCnpj || '').replace(/\D/g, '');
+
                     const maskInfo = (doc) => {
                         if (!doc) return 'missing';
                         const digits = String(doc).replace(/\D/g, '');
                         const tail = digits.slice(-2);
                         return `${digits.length}d (***${tail})`;
                     };
-                    console.log('DEBUG - Carregado customer do Asaas para verificação:', {
+                    console.log('DEBUG - Verificando customer existente no Asaas:', {
                         id: curr.data?.id,
-                        cpfCnpj: maskInfo(curr.data?.cpfCnpj)
+                        cpfCnpjAsaas: maskInfo(asaasCpfCnpj),
+                        cpfCnpjRequest: maskInfo(validCpfCnpj),
+                        deleted: curr.data?.deleted
                     });
-                    // Se customer estiver deletado, recriar automaticamente
+
+                    // CASO 1: Customer deletado no Asaas -> Recriar
                     if (curr.success && curr.data?.deleted === true) {
-                        console.warn('WARN - Customer no Asaas está marcado como deletado. Recriando customer antes da assinatura.');
+                        console.warn('WARN - Customer no Asaas está marcado como deletado. Recriando...');
+                        // A lógica de recriação existente é mantida aqui...
                         const pickDigits = (v) => String(v || '').replace(/\D/g, '');
                         const candidateCpf = validCpfCnpj || pickDigits(curr.data?.cpfCnpj) || pickDigits(billingInfo.cpfCnpj) || pickDigits(billingInfo.creditCardHolderInfo?.cpfCnpj);
                         if (!candidateCpf || !(candidateCpf.length === 11 || candidateCpf.length === 14)) {
                             return {
-                                success: false,
-                                status: 400,
-                                message: 'Customer no Asaas está deletado e não há CPF/CNPJ válido para recriação automática. Informe cpfCnpj em billingInfo.'
+                                success: false, status: 400,
+                                message: 'Customer no Asaas está deletado e não há CPF/CNPJ válido para recriação.'
                             };
                         }
                         const customerData = {
@@ -189,69 +194,54 @@ class SellerSubscriptionService {
                             cpfCnpj: candidateCpf,
                             phone: billingInfo.phone || curr.data?.mobilePhone || curr.data?.phone || '00000000000'
                         };
-                        console.log('DEBUG - Recriando customer no Asaas (deletado):', JSON.stringify(customerData, null, 2));
                         const created = await AsaasCustomerService.create(customerData, asaasHeaders);
                         if (!created.success) {
-                            return {
-                                success: false,
-                                status: created.status || 400,
-                                message: `Falha ao recriar customer no Asaas: ${created.message}`
-                            };
+                            return { success: false, status: created.status || 400, message: `Falha ao recriar customer: ${created.message}` };
                         }
                         customerId = created.data.id;
                         await seller.update({ payments_customer_id: customerId });
-                        console.log(`DEBUG - Customer recriado: ${customerId} (atualizado em Seller)`);
-                    }
-                    if (curr.success && !curr.data?.cpfCnpj) {
-                        // escolher cpf do billingInfo ou usar o validCpfCnpj
-                        const pick = (v) => String(v || '').replace(/\D/g, '');
-                        const alt = validCpfCnpj || [
-                            pick(billingInfo.cpfCnpj),
-                            pick(billingInfo.creditCardHolderInfo?.cpfCnpj)
-                        ].find(v => v && (v.length === 11 || v.length === 14));
-                        if (alt) {
-                            console.log('DEBUG - Atualizando customer no Asaas com cpfCnpj ausente');
-                            const up = await AsaasCustomerService.update(customerId, { 
-                                cpfCnpj: alt,
-                                personType: alt.length === 11 ? 'FISICA' : 'JURIDICA'
-                            }, asaasHeaders);
-                            console.log('DEBUG - Resultado update customer cpfCnpj:', up.success ? 'ok' : up.message);
-                            // Pequeno delay para consistência eventual do Asaas
-                            await new Promise(res => setTimeout(res, 1000)); // Aumentado para 1 segundo
-                            if (!up.success) {
-                                return {
-                                    success: false,
-                                    status: up.status || 400,
-                                    message: `Não foi possível atualizar CPF/CNPJ do cliente no Asaas: ${up.message}`
-                                };
-                            }
-                            // Revalidar após update
-                            try {
-                                const after = await AsaasCustomerService.get(customerId, asaasHeaders);
-                                console.log('DEBUG - Verificação pós-update do customer:', {
-                                    id: after.data?.id,
-                                    cpfCnpj: maskInfo(after.data?.cpfCnpj)
-                                });
-                                if (!after.data?.cpfCnpj) {
-                                    return {
-                                        success: false,
-                                        status: 400,
-                                        message: 'CPF/CNPJ continua ausente no cadastro do cliente no Asaas após tentativa de atualização. Oriente o usuário a completar os dados cadastrais.'
-                                    };
-                                }
-                            } catch (revalErr) {
-                                console.warn('WARN - Falha ao revalidar customer após update:', revalErr.message);
-                            }
-                        } else {
+                        console.log(`DEBUG - Customer recriado: ${customerId}`);
+                    
+                    // CASO 2: CPF/CNPJ no Asaas está ausente ou difere do CPF/CNPJ válido da requisição -> Atualizar
+                    } else if (validCpfCnpj && asaasCpfCnpj !== validCpfCnpj) {
+                        console.warn(`WARN - CPF/CNPJ divergente ou ausente. Asaas: ${maskInfo(asaasCpfCnpj)}, Req: ${maskInfo(validCpfCnpj)}. Atualizando Asaas...`);
+                        
+                        const updatePayload = { 
+                            cpfCnpj: validCpfCnpj,
+                            personType: validCpfCnpj.length === 11 ? 'FISICA' : 'JURIDICA',
+                            name: billingInfo.name || curr.data?.name,
+                            email: billingInfo.email || curr.data?.email
+                        };
+                        
+                        const up = await AsaasCustomerService.update(customerId, updatePayload, asaasHeaders);
+
+                        if (!up.success) {
                             return {
-                                success: false,
-                                status: 400,
-                                message: 'CPF/CNPJ ausente no cadastro do cliente no Asaas. Envie cpfCnpj em billingInfo.'
+                                success: false, status: up.status || 400,
+                                message: `Não foi possível atualizar CPF/CNPJ no Asaas: ${up.message}`
+                            };
+                        }
+                        
+                        console.log('DEBUG - Cliente atualizado. Aguardando 2s para consistência da API...');
+                        await new Promise(res => setTimeout(res, 2000)); // Delay aumentado para garantir consistência
+
+                        // Revalidar após o delay para garantir que a mudança propagou
+                        const afterUpdate = await AsaasCustomerService.get(customerId, asaasHeaders);
+                        const finalCpfCnpj = String(afterUpdate.data?.cpfCnpj || '').replace(/\D/g, '');
+
+                        console.log('DEBUG - Verificação pós-atualização:', {
+                            cpfCnpjFinal: maskInfo(finalCpfCnpj)
+                        });
+
+                        if (finalCpfCnpj !== validCpfCnpj) {
+                            return {
+                                success: false, status: 400,
+                                message: 'A atualização de CPF/CNPJ no Asaas não foi refletida a tempo. Tente novamente em alguns instantes.'
                             };
                         }
                     }
                 } catch (e) {
-                    console.warn('WARN - Falha ao verificar/atualizar cpfCnpj do customer existente:', e.message);
+                    console.warn('WARN - Falha ao verificar/atualizar customer existente:', e.message);
                 }
             }
 
@@ -527,7 +517,9 @@ class SellerSubscriptionService {
                 const errMsg = String(asaasError.message || '').toLowerCase();
                 const asaasErrors = (asaasError.asaasError && asaasError.asaasError.errors) ? asaasError.asaasError.errors : [];
                 const mentionsRemoved = errMsg.includes('cliente removido') || asaasErrors.some(e => String(e.description || '').toLowerCase().includes('removido'));
-                const mentionsCpfMissing = errMsg.includes('cpf/cnpj') && errMsg.includes('cadastro');
+                
+                // A lógica de retry para CPF/CNPJ foi removida, pois agora é tratada proativamente.
+                // Mantemos apenas o retry para cliente removido, que é um caso mais raro.
                 if (mentionsRemoved) {
                     console.log('DEBUG - Detectado erro: cliente removido. Tentando recriar customer e refazer criação da assinatura...');
                     try {
@@ -583,107 +575,7 @@ class SellerSubscriptionService {
                         };
                     }
                 }
-                if (mentionsCpfMissing) {
-                    console.log('DEBUG - Detectado erro de CPF/CNPJ no cadastro. Fazendo GET do customer antes do retry...');
-                    
-                    // Primeiro verificar o estado atual do customer
-                    try {
-                        const preCheck = await AsaasCustomerService.get(customerId, asaasHeaders);
-                        console.log('DEBUG - Estado do customer antes do retry:', {
-                            id: preCheck.data?.id,
-                            name: preCheck.data?.name,
-                            cpfCnpj: preCheck.data?.cpfCnpj,
-                            personType: preCheck.data?.personType,
-                            email: preCheck.data?.email
-                        });
-                    } catch (preErr) {
-                        console.warn('WARN - Falha ao verificar customer antes do retry:', preErr.message);
-                    }
-                    
-                    try {
-                        const pick = (v) => String(v || '').replace(/\D/g, '');
-                        const altCpf = validCpfCnpj || [
-                            pick(billingInfo.cpfCnpj),
-                            pick(subscriptionData.creditCardHolderInfo?.cpfCnpj)
-                        ].find(v => v && (v.length === 11 || v.length === 14));
-                        if (altCpf) {
-                            console.log('DEBUG - Tentando atualizar cpfCnpj do customer e refazer criação da assinatura...');
-                            const updatePayload = { 
-                                cpfCnpj: altCpf,
-                                personType: altCpf.length === 11 ? 'FISICA' : 'JURIDICA',
-                                // reforça nome/email para aumentar chances de aceite do update
-                                name: billingInfo.name || subscriptionData.creditCardHolderInfo?.name,
-                                email: billingInfo.email || subscriptionData.creditCardHolderInfo?.email
-                            };
-                            console.log('DEBUG - Payload do PUT customer:', updatePayload);
-                            
-                            const up = await AsaasCustomerService.update(customerId, updatePayload, asaasHeaders);
-                            console.log('DEBUG - Resultado update antes do retry:', up.success ? 'ok' : up.message);
-                            if (up.success) {
-                                // Delay curto para consistência
-                                await new Promise(res => setTimeout(res, 1000)); // Aumentado para 1 segundo
-                                // revalidar com GET antes do retry
-                                try {
-                                    const after = await AsaasCustomerService.get(customerId, asaasHeaders);
-                                    const maskInfo2 = (doc) => {
-                                        if (!doc) return 'missing';
-                                        const digits = String(doc).replace(/\D/g, '');
-                                        const tail = digits.slice(-2);
-                                        return `${digits.length}d (***${tail})`;
-                                    };
-                                    console.log('DEBUG - Pós-update (pre-retry) customer state:', {
-                                        id: after.data?.id,
-                                        name: after.data?.name,
-                                        cpfCnpj: maskInfo2(after.data?.cpfCnpj),
-                                        personType: after.data?.personType,
-                                        email: after.data?.email
-                                    });
-                                } catch(_) {}
-                                try {
-                                    console.log('DEBUG - Tentando criar subscription novamente com o mesmo payload...');
-                                    asaasSubscription = await AsaasApiClient.request({
-                                        method: 'POST',
-                                        endpoint: 'subscriptions',
-                                        data: subscriptionData,
-                                        headers: asaasHeaders
-                                    });
-                                    console.log('DEBUG - Retry após atualizar cpfCnpj: sucesso');
-                                } catch (retryErr) {
-                                    console.error('DEBUG - Retry falhou:', {
-                                        message: retryErr.message,
-                                        status: retryErr.status,
-                                        asaasError: retryErr.asaasError
-                                    });
-                                    
-                                    // Se ainda falhar, fazer um último GET do customer para debug
-                                    try {
-                                        const finalCheck = await AsaasCustomerService.get(customerId, asaasHeaders);
-                                        console.log('DEBUG - Customer state após retry falhou:', {
-                                            id: finalCheck.data?.id,
-                                            name: finalCheck.data?.name,
-                                            cpfCnpj: finalCheck.data?.cpfCnpj,
-                                            personType: finalCheck.data?.personType
-                                        });
-                                    } catch(_) {}
-                                    
-                                    return {
-                                        success: false,
-                                        message: `Erro ao criar assinatura no Asaas: ${retryErr.message}`,
-                                        error: {
-                                            message: retryErr.message,
-                                            status: retryErr.status,
-                                            asaasErrors: retryErr.asaasError?.errors || [],
-                                            sentData: subscriptionData
-                                        }
-                                    };
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('WARN - Exceção no fallback de atualização de cpfCnpj:', e.message);
-                    }
-                }
-
+                
                 if (!asaasSubscription) {
                     return {
                         success: false,
@@ -1550,43 +1442,16 @@ class SellerSubscriptionService {
             const result = await this.createSubscription(sellerId, planData, billingInfo, transaction);
 
             if (result.success) {
-                await transaction.commit();
-                console.log(`Retry de assinatura bem-sucedido com ${paymentMethod}`);
-                return {
-                    ...result,
-                    message: `Assinatura criada com sucesso usando ${paymentMethod}`
-                };
+                console.log('Assinatura criada com sucesso:', result.data);
             } else {
-                await transaction.rollback();
-                return {
-                    ...result,
-                    message: `Falha no retry com ${paymentMethod}: ${result.message}`
-                };
+                console.error('Erro ao criar assinatura:', result.message);
             }
 
+            return result;
         } catch (error) {
-            await transaction.rollback();
-            console.error(`Erro no retry de assinatura para seller ${sellerId}:`, error);
+            console.error('Erro ao tentar retry de assinatura:', error);
             return formatError(error);
         }
-    }
-
-    /**
-     * (Opcional) Cria a cobrança inicial de assinatura via CREDIT_CARD redirecionando para invoiceUrl
-     * Usa lean/payments. Não altera o fluxo de assinatura em si; retorna os dados para o caller decidir.
-     */
-    async createInitialCardInvoiceRedirect({ customerId, value, description, externalReference, dueDate }) {
-      try {
-        return await AsaasCardService.createRedirectCharge({
-          customer: customerId,
-          value,
-          description,
-          externalReference,
-          dueDate
-        });
-      } catch (error) {
-        return formatError(error);
-      }
     }
 }
 
