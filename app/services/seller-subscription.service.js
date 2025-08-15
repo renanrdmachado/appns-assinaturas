@@ -590,11 +590,60 @@ class SellerSubscriptionService {
                 if (!asaasSubscription && mentionsCpfMissing) {
                    try {
                        console.log('DEBUG - Fallback: checando estado do customer após erro de CPF/CNPJ...');
+                       
+                       // Fazer diagnóstico completo primeiro
+                       console.log('🔍 Iniciando diagnóstico completo do customer...');
+                       const diagnostic = await this._fullCustomerDiagnostic(customerId, asaasHeaders);
+                       console.log('📊 Recomendação do diagnóstico:', diagnostic.recommendation);
+                       
                        const state = await this._debugCustomerState(customerId, asaasHeaders);
+                       console.log('DEBUG - Estado completo do customer:', JSON.stringify(state.raw, null, 2));
+                       
                        if (state.success && state.hasCpfCnpj) {
                            const pick = (v) => String(v || '').replace(/\D/g, '');
                            const customerDigits = pick(state.raw?.cpfCnpj);
                            const holderDigits = pick(subscriptionData.creditCardHolderInfo?.cpfCnpj);
+                           
+                           // Verificar se customer tem todos os campos mínimos obrigatórios
+                           const customerData = state.raw;
+                           const missingFields = [];
+                           if (!customerData.name || customerData.name.trim() === '') missingFields.push('name');
+                           if (!customerData.email || customerData.email.trim() === '') missingFields.push('email');
+                           if (!customerData.cpfCnpj || customerData.cpfCnpj.replace(/\D/g, '') === '') missingFields.push('cpfCnpj');
+                           if (!customerData.phone || customerData.phone.replace(/\D/g, '') === '') missingFields.push('phone');
+                           
+                           console.log('DEBUG - Campos obrigatórios do customer:', {
+                               name: customerData.name ? '✓' : '✗',
+                               email: customerData.email ? '✓' : '✗', 
+                               cpfCnpj: customerData.cpfCnpj ? '✓' : '✗',
+                               phone: customerData.phone ? '✓' : '✗',
+                               missingFields: missingFields
+                           });
+                           
+                           // Se faltam campos críticos, tentar atualizar o customer completamente
+                           if (missingFields.length > 0) {
+                               console.warn('WARN - Customer tem campos obrigatórios faltando. Tentando atualizar...');
+                               const updatePayload = {
+                                   name: customerData.name || billingInfo.name || `Seller ${sellerId}`,
+                                   email: customerData.email || billingInfo.email || `seller${sellerId}@example.com`,
+                                   cpfCnpj: customerDigits || validCpfCnpj,
+                                   phone: customerData.phone || billingInfo.phone || '00000000000'
+                               };
+                               
+                               try {
+                                   await AsaasApiClient.request({
+                                       method: 'PUT',
+                                       endpoint: `customers/${customerId}`,
+                                       data: updatePayload,
+                                       headers: asaasHeaders
+                                   });
+                                   console.log('DEBUG - Customer atualizado com campos obrigatórios.');
+                                   await new Promise(res => setTimeout(res, 3000)); // Aguardar mais tempo
+                               } catch (updateErr) {
+                                   console.error('DEBUG - Erro ao atualizar customer:', updateErr.message);
+                               }
+                           }
+                           
                            // Alinhar o holder com o cadastro do cliente para evitar divergências sutis
                            if (!holderDigits || holderDigits !== customerDigits) {
                                subscriptionData.creditCardHolderInfo = {
@@ -603,11 +652,14 @@ class SellerSubscriptionService {
                                };
                                console.log('DEBUG - Holder cpfCnpj alinhado ao customer:', `***${customerDigits.slice(-2)}`);
                            }
+                           
                            // Aguardar mais tempo para consistência
-                           console.log('DEBUG - Aguardando 4s antes do retry devido à consistência eventual do Asaas...');
-                           await new Promise(res => setTimeout(res, 4000));
+                           console.log('DEBUG - Aguardando 6s antes do retry devido à consistência eventual do Asaas...');
+                           await new Promise(res => setTimeout(res, 6000));
+                           
                            // Revalidar rapidamente
                            try { await AsaasCustomerService.get(customerId, asaasHeaders); } catch (_) {}
+                           
                            // Tentar novamente uma única vez
                            console.log('DEBUG - Retry único de criação da assinatura após alinhamento...');
                            asaasSubscription = await AsaasApiClient.request({
@@ -617,6 +669,37 @@ class SellerSubscriptionService {
                                headers: asaasHeaders
                            });
                            console.log('DEBUG - Retry (fallback consistência) sucesso');
+                       } else {
+                           // Última tentativa: recriar customer do zero
+                           console.warn('WARN - Customer sem CPF/CNPJ válido mesmo após checks. Tentando recriar customer...');
+                           const newCustomerData = {
+                               name: billingInfo.name || `Seller ${sellerId}`,
+                               email: billingInfo.email || `seller${sellerId}@example.com`,
+                               cpfCnpj: validCpfCnpj,
+                               phone: billingInfo.phone || '00000000000'
+                           };
+                           
+                           try {
+                               const created = await AsaasCustomerService.create(newCustomerData, asaasHeaders);
+                               if (created.success) {
+                                   const newCustomerId = created.data.id;
+                                   await Seller.update({ payments_customer_id: newCustomerId }, { where: { id: sellerId } });
+                                   subscriptionData.customer = newCustomerId;
+                                   
+                                   console.log('DEBUG - Novo customer criado para forçar consistência:', newCustomerId);
+                                   await new Promise(res => setTimeout(res, 2000));
+                                   
+                                   asaasSubscription = await AsaasApiClient.request({
+                                       method: 'POST',
+                                       endpoint: 'subscriptions',
+                                       data: subscriptionData,
+                                       headers: asaasHeaders
+                                   });
+                                   console.log('DEBUG - Sucesso com customer recriado');
+                               }
+                           } catch (recreateErr) {
+                               console.error('DEBUG - Falha ao recriar customer:', recreateErr.message);
+                           }
                        }
                    } catch (retryConsistencyErr) {
                        console.error('DEBUG - Retry (fallback consistência) falhou:', {
@@ -630,7 +713,10 @@ class SellerSubscriptionService {
                            console.log('DEBUG - Customer state após fallback consistency:', {
                                id: finalCheck.data?.id,
                                cpfCnpj: finalCheck.data?.cpfCnpj,
-                               personType: finalCheck.data?.personType
+                               personType: finalCheck.data?.personType,
+                               name: finalCheck.data?.name,
+                               email: finalCheck.data?.email,
+                               phone: finalCheck.data?.phone
                            });
                        } catch (_) {}
                    }
@@ -1511,6 +1597,109 @@ class SellerSubscriptionService {
         } catch (error) {
             console.error('Erro ao tentar retry de assinatura:', error);
             return formatError(error);
+        }
+    }
+
+    /**
+     * Diagnóstico completo de um customer no Asaas para troubleshooting
+     */
+    async _fullCustomerDiagnostic(customerId, asaasHeaders) {
+        try {
+            console.log('=== DIAGNÓSTICO COMPLETO DO CUSTOMER ===');
+            const customer = await AsaasCustomerService.get(customerId, asaasHeaders);
+            
+            if (!customer.success) {
+                console.error('❌ Customer não encontrado ou erro ao buscar:', customer.message);
+                return { success: false, message: customer.message };
+            }
+            
+            const data = customer.data;
+            console.log('📋 Dados completos do customer:');
+            console.log(JSON.stringify(data, null, 2));
+            
+            // Verificar campos obrigatórios para cartão
+            const requiredFields = {
+                'ID': data.id,
+                'Nome': data.name,
+                'Email': data.email, 
+                'CPF/CNPJ': data.cpfCnpj,
+                'Telefone': data.phone || data.mobilePhone,
+                'Tipo Pessoa': data.personType,
+                'Deletado': data.deleted
+            };
+            
+            console.log('🔍 Status dos campos obrigatórios:');
+            let missingCritical = [];
+            for (const [field, value] of Object.entries(requiredFields)) {
+                const hasValue = value && String(value).trim() !== '';
+                console.log(`  ${hasValue ? '✅' : '❌'} ${field}: ${value || 'AUSENTE'}`);
+                if (!hasValue && ['Nome', 'Email', 'CPF/CNPJ'].includes(field)) {
+                    missingCritical.push(field);
+                }
+            }
+            
+            // Verificar CPF/CNPJ especificamente
+            if (data.cpfCnpj) {
+                const cpfClean = data.cpfCnpj.replace(/\D/g, '');
+                console.log('📄 Análise CPF/CNPJ:');
+                console.log(`  Valor bruto: "${data.cpfCnpj}"`);
+                console.log(`  Apenas dígitos: "${cpfClean}"`);
+                console.log(`  Comprimento: ${cpfClean.length} (esperado: 11 para CPF ou 14 para CNPJ)`);
+                console.log(`  Válido para pessoa: ${data.personType}`);
+                
+                const isValidLength = cpfClean.length === 11 || cpfClean.length === 14;
+                const matchesPersonType = (data.personType === 'FISICA' && cpfClean.length === 11) || 
+                                         (data.personType === 'JURIDICA' && cpfClean.length === 14);
+                console.log(`  ✅ Comprimento válido: ${isValidLength}`);
+                console.log(`  ✅ Compatível com tipo pessoa: ${matchesPersonType}`);
+            }
+            
+            // Tentar criar uma cobrança de teste PIX para verificar se o customer funciona
+            console.log('🧪 Teste de compatibilidade: tentando criar cobrança PIX simples...');
+            try {
+                const testCharge = await AsaasApiClient.request({
+                    method: 'POST',
+                    endpoint: 'payments',
+                    data: {
+                        customer: customerId,
+                        billingType: 'PIX',
+                        value: 0.01,
+                        dueDate: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0]
+                    },
+                    headers: asaasHeaders
+                });
+                console.log('✅ Customer funciona para cobranças PIX');
+                
+                // Deletar a cobrança de teste
+                try {
+                    await AsaasApiClient.request({
+                        method: 'DELETE',
+                        endpoint: `payments/${testCharge.id}`,
+                        headers: asaasHeaders
+                    });
+                    console.log('🗑️ Cobrança de teste removida');
+                } catch (_) {}
+                
+            } catch (testErr) {
+                console.error('❌ Customer falha até para PIX:', testErr.message);
+                if (testErr.asaasError?.errors) {
+                    console.error('Erros Asaas:', testErr.asaasError.errors);
+                }
+            }
+            
+            console.log('=== FIM DO DIAGNÓSTICO ===');
+            return { 
+                success: true, 
+                data, 
+                missingCritical,
+                recommendation: missingCritical.length > 0 ? 
+                    `Campos críticos faltando: ${missingCritical.join(', ')}. Considere recriar o customer.` :
+                    'Customer parece estar completo. O problema pode ser de timing/consistência do Asaas.'
+            };
+            
+        } catch (err) {
+            console.error('❌ Erro no diagnóstico:', err.message);
+            return { success: false, message: err.message };
         }
     }
 }
