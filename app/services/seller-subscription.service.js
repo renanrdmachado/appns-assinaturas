@@ -253,40 +253,41 @@ class SellerSubscriptionService {
                 value: planData.value,
                 nextDueDate: this.calculateNextDueDate(planData.cycle),
                 description: `Assinatura ${planData.plan_name} - Seller ${sellerId}`,
-                externalReference: `seller_${sellerId}`,
-                // Configurações específicas
-                split: null,
-                discount: billingInfo.discount || null,
-                interest: billingInfo.interest || null,
-                fine: billingInfo.fine || null
+                externalReference: `seller_${sellerId}`
             };
+
+            // Incluir opcionais somente se fornecidos
+            if (billingInfo.split) subscriptionData.split = billingInfo.split;
+            if (billingInfo.discount) subscriptionData.discount = billingInfo.discount;
+            if (billingInfo.interest) subscriptionData.interest = billingInfo.interest;
+            if (billingInfo.fine) subscriptionData.fine = billingInfo.fine;
 
             // Para CREDIT_CARD, adicionar informações do portador e dados de cartão/token quando fornecidos
             if ((billingInfo.billingType || '').toUpperCase() === 'CREDIT_CARD') {
-                // creditCardHolderInfo: usar o fornecido ou montar a partir de billingInfo
-                if (billingInfo.creditCardHolderInfo) {
-                    const holder = { ...billingInfo.creditCardHolderInfo };
-                    // Manter apenas campos suportados pelo Asaas
-                    const allowedHolderFields = new Set(['name','email','cpfCnpj','phone','mobilePhone','address','addressNumber','addressComplement','postalCode']);
-                    Object.keys(holder).forEach(k => { if (!allowedHolderFields.has(k)) delete holder[k]; });
-                    // Remover explicitamente province se vier do front
-                    if (holder.province !== undefined) delete holder.province;
+                 // creditCardHolderInfo: usar o fornecido ou montar a partir de billingInfo
+                 if (billingInfo.creditCardHolderInfo) {
+                     const holder = { ...billingInfo.creditCardHolderInfo };
+                     // Manter apenas campos suportados pelo Asaas
+                     const allowedHolderFields = new Set(['name','email','cpfCnpj','phone','mobilePhone','addressNumber','addressComplement','postalCode']);
+                     Object.keys(holder).forEach(k => { if (!allowedHolderFields.has(k)) delete holder[k]; });
+                     // Remover explicitamente province se vier do front
+                     if (holder.province !== undefined) delete holder.province;
 
-                    // Garantir campos obrigatórios da doc Asaas
-                    if (!holder.addressNumber) holder.addressNumber = '0';
-                    // Normalizar CEP para dígitos e validar valor (evitar placeholders como 00000000)
-                    if (!holder.postalCode) holder.postalCode = '00000000';
-                    if (holder.postalCode) holder.postalCode = String(holder.postalCode).replace(/\D/g, '');
+                     // Garantir campos obrigatórios da doc Asaas
+                     if (!holder.addressNumber) holder.addressNumber = '0';
+                     // Normalizar CEP para dígitos e validar valor (evitar placeholders como 00000000)
+                     if (!holder.postalCode) holder.postalCode = '00000000';
+                     if (holder.postalCode) holder.postalCode = String(holder.postalCode).replace(/\D/g, '');
 
-                    // Garantir phone conforme doc: se só houver mobilePhone, duplicar; se só houver phone, duplicar
-                    if (!holder.phone && holder.mobilePhone) holder.phone = holder.mobilePhone;
-                    if (!holder.mobilePhone && holder.phone) holder.mobilePhone = holder.phone;
-                    // Se ainda faltar phone, use billingInfo.phone
-                    if (!holder.phone && billingInfo.phone) holder.phone = String(billingInfo.phone).replace(/\D/g, '');
-                    if (!holder.mobilePhone && billingInfo.phone) holder.mobilePhone = String(billingInfo.phone).replace(/\D/g, '');
+                     // Garantir phone conforme doc: se só houver mobilePhone, duplicar; se só houver phone, duplicar
+                     if (!holder.phone && holder.mobilePhone) holder.phone = holder.mobilePhone;
+                     if (!holder.mobilePhone && holder.phone) holder.mobilePhone = holder.phone;
+                     // Se ainda faltar phone, use billingInfo.phone
+                     if (!holder.phone && billingInfo.phone) holder.phone = String(billingInfo.phone).replace(/\D/g, '');
+                     if (!holder.mobilePhone && billingInfo.phone) holder.mobilePhone = String(billingInfo.phone).replace(/\D/g, '');
 
-                    // Normalizar cpfCnpj se presente e não mascarado
-                    if (holder.cpfCnpj && typeof holder.cpfCnpj === 'string') {
+                     // Normalizar cpfCnpj se presente e não mascarado
+                     if (holder.cpfCnpj && typeof holder.cpfCnpj === 'string') {
                         if (holder.cpfCnpj.includes('*')) {
                             // Se mascarado, usar o CPF válido determinado anteriormente
                             if (validCpfCnpj && (validCpfCnpj.length === 11 || validCpfCnpj.length === 14)) {
@@ -297,22 +298,22 @@ class SellerSubscriptionService {
                         } else {
                             holder.cpfCnpj = holder.cpfCnpj.replace(/\D/g, '');
                         }
-                    }
+                     }
 
-                    // Validações proativas para evitar erro genérico do Asaas
-                    const invalidCep = !holder.postalCode || holder.postalCode.length !== 8 || /(\d)\1{7}/.test(holder.postalCode);
-                    if (invalidCep) {
+                     // Validações proativas para evitar erro genérico do Asaas
+                     const invalidCep = !holder.postalCode || holder.postalCode.length !== 8 || /(\d)\1{7}/.test(holder.postalCode);
+                     if (invalidCep) {
                         return {
                             success: false,
                             status: 400,
                             message: 'CEP (postalCode) inválido para o titular do cartão. Envie um CEP brasileiro válido com 8 dígitos.'
                         };
-                    }
+                     }
 
-                    // Remover quaisquer campos vazios/undefined
-                    Object.keys(holder).forEach(k => { if (holder[k] === undefined || holder[k] === null || holder[k] === '') delete holder[k]; });
+                     // Remover quaisquer campos vazios/undefined
+                     Object.keys(holder).forEach(k => { if (holder[k] === undefined || holder[k] === null || holder[k] === '') delete holder[k]; });
 
-                    subscriptionData.creditCardHolderInfo = holder;
+                     subscriptionData.creditCardHolderInfo = holder;
                 } else if (billingInfo.cpfCnpj || validCpfCnpj) {
                     const cpfToUse = validCpfCnpj || String(billingInfo.cpfCnpj).replace(/\D/g, '');
                     console.log(`CPF/CNPJ limpo: ${cpfToUse}`);
@@ -404,19 +405,25 @@ class SellerSubscriptionService {
                     };
                 }
 
-                // Remote IP (recomendado por gateways para antifraude)
+                // Remote IP (requerido pelo Asaas para cartão)
                 if (billingInfo.remoteIp) {
                     subscriptionData.remoteIp = billingInfo.remoteIp;
+                } else {
+                    return { success: false, status: 400, message: 'remoteIp é obrigatório para cobranças com cartão (Asaas).' };
                 }
-
-                console.log('DEBUG - CREDIT_CARD payload enriquecido:', JSON.stringify(
-                    redactSensitive({
-                        creditCardHolderInfo: subscriptionData.creditCardHolderInfo,
-                        hasCreditCard: !!subscriptionData.creditCard,
-                        hasToken: !!subscriptionData.creditCardToken,
-                        remoteIp: subscriptionData.remoteIp
-                    }), null, 2));
             }
+
+            // Remover chaves nulas/undefined do payload (evita nulls explícitos no Asaas)
+            const prune = (obj) => {
+                if (!obj || typeof obj !== 'object') return obj;
+                Object.keys(obj).forEach(k => {
+                    const v = obj[k];
+                    if (v && typeof v === 'object' && !Array.isArray(v)) prune(v);
+                    if (v === null || v === undefined || v === '') delete obj[k];
+                });
+                return obj;
+            };
+            prune(subscriptionData);
 
             // Validar dados obrigatórios antes de enviar para Asaas
             console.log('DEBUG - Validando dados obrigatórios para Asaas...');

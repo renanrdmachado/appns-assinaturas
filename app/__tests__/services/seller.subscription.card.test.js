@@ -61,6 +61,7 @@ describe('SellerSubscriptionService - CREDIT_CARD holder info', () => {
       email: 'seller@x.com', 
       cpfCnpj: '123******09',  // CPF mascarado
       phone: '11999999999',
+  remoteIp: '127.0.0.1', // necessário para cobranças com cartão
       postalCode: '12345678',  // CEP obrigatório diretamente em billingInfo (não em creditCardHolderInfo)
       creditCard: {
         holderName: 'Seller Name',
