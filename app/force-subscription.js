@@ -46,7 +46,7 @@ async function testStrategy1_DiagnosticOnly(data) {
     try {
         const asaasHeaders = {
             'Accept': 'application/json',
-            'access_token': process.env.ASAAS_ACCESS_TOKEN || '$aact_YjE4MzZjOTAtMjc1ZS00OWE0LTllOWUtMTEyNjJjMjE2MzQw'
+            'access_token': process.env.AS_TOKEN
         };
         
         // Executar diagnóstico no customer atual

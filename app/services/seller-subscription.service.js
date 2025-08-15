@@ -620,15 +620,32 @@ class SellerSubscriptionService {
                                missingFields: missingFields
                            });
                            
-                           // Se faltam campos críticos, tentar atualizar o customer completamente
-                           if (missingFields.length > 0) {
-                               console.warn('WARN - Customer tem campos obrigatórios faltando. Tentando atualizar...');
+                           // Verificar campos de endereço para assinaturas de cartão
+                           const addressFields = ['address', 'addressNumber', 'postalCode'];
+                           const missingAddress = addressFields.filter(field => !customerData[field]);
+                           
+                           console.log('DEBUG - Verificação endereço:', {
+                               address: customerData.address ? '✓' : '✗',
+                               addressNumber: customerData.addressNumber ? '✓' : '✗',
+                               postalCode: customerData.postalCode ? '✓' : '✗',
+                               missingAddress: missingAddress
+                           });
+                           
+                           // Se faltam campos críticos OU campos de endereço, tentar atualizar o customer completamente
+                           if (missingFields.length > 0 || missingAddress.length > 0) {
+                               console.warn('WARN - Customer tem campos faltando. Tentando atualizar com dados completos...');
                                const updatePayload = {
                                    name: customerData.name || billingInfo.name || `Seller ${sellerId}`,
                                    email: customerData.email || billingInfo.email || `seller${sellerId}@example.com`,
                                    cpfCnpj: customerDigits || validCpfCnpj,
-                                   phone: customerData.phone || billingInfo.phone || '00000000000'
+                                   phone: customerData.phone || billingInfo.phone || '00000000000',
+                                   // Adicionar campos de endereço obrigatórios para cartão
+                                   address: customerData.address || 'Rua Principal',
+                                   addressNumber: customerData.addressNumber || (billingInfo.creditCardHolderInfo?.addressNumber) || '0',
+                                   postalCode: customerData.postalCode || (billingInfo.creditCardHolderInfo?.postalCode) || '00000000'
                                };
+                               
+                               console.log('DEBUG - Dados de atualização:', JSON.stringify(updatePayload, null, 2));
                                
                                try {
                                    await AsaasApiClient.request({
@@ -637,8 +654,8 @@ class SellerSubscriptionService {
                                        data: updatePayload,
                                        headers: asaasHeaders
                                    });
-                                   console.log('DEBUG - Customer atualizado com campos obrigatórios.');
-                                   await new Promise(res => setTimeout(res, 3000)); // Aguardar mais tempo
+                                   console.log('DEBUG - Customer atualizado com campos obrigatórios + endereço.');
+                                   await new Promise(res => setTimeout(res, 5000)); // Aguardar mais tempo para propagação
                                } catch (updateErr) {
                                    console.error('DEBUG - Erro ao atualizar customer:', updateErr.message);
                                }
@@ -1655,7 +1672,7 @@ class SellerSubscriptionService {
             }
             
             // Tentar criar uma cobrança de teste PIX para verificar se o customer funciona
-            console.log('🧪 Teste de compatibilidade: tentando criar cobrança PIX simples...');
+            console.log('🧪 Teste de compatibilidade: tentando criar cobrança PIX de R$ 5,00...');
             try {
                 const testCharge = await AsaasApiClient.request({
                     method: 'POST',
@@ -1663,7 +1680,7 @@ class SellerSubscriptionService {
                     data: {
                         customer: customerId,
                         billingType: 'PIX',
-                        value: 0.01,
+                        value: 5.00, // Valor mínimo
                         dueDate: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0]
                     },
                     headers: asaasHeaders

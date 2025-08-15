@@ -14,7 +14,7 @@ async function debugCustomer(customerId = 'cus_000006937381') {
         // Headers padrão do Asaas
         const asaasHeaders = {
             'Accept': 'application/json',
-            'access_token': process.env.ASAAS_ACCESS_TOKEN || '$aact_YjE4MzZjOTAtMjc1ZS00OWE0LTllOWUtMTEyNjJjMjE2MzQw'
+            'access_token': process.env.ASAAS_ACCESS_TOKEN
         };
         
         // Executar diagnóstico completo
