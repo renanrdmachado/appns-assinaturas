@@ -54,7 +54,9 @@ class NsWebhooksService {
             
             return { success: true, data: result };
         } catch (error) {
-            console.error('Erro ao criar webhook:', error.message, error.response?.data || '');
+            console.error('Erro ao criar webhook:', error.message, error.response?.data || '',
+                error.nsError ? { status: error.nsError.status, body: error.nsError.originalError } : ''
+            );
             return formatError(error);
         }
     }
@@ -73,7 +75,9 @@ class NsWebhooksService {
             
             return { success: true, data: result };
         } catch (error) {
-            console.error('Erro ao atualizar webhook:', error.message, error.response?.data || '');
+            console.error('Erro ao atualizar webhook:', error.message, error.response?.data || '',
+                error.nsError ? { status: error.nsError.status, body: error.nsError.originalError } : ''
+            );
             return formatError(error);
         }
     }
@@ -133,73 +137,21 @@ class NsWebhooksService {
                     url: `${apiBase}/ns/lgpd-webhooks/customers/data-request`
                 }
             ];
-            
-            const results = [];
-            
-            // Primeiro, buscar webhooks existentes
-            const existingWebhooks = await this.getWebhooks(storeId, accessToken);
-            
-            if (existingWebhooks.success) {
-                console.log(`Encontrados ${existingWebhooks.data.length} webhooks existentes`);
-            }
-            
-            // Criar cada webhook LGPD
-            for (const webhook of webhooksToCreate) {
-                try {
-                    // Verificar se já existe
-                    const existing = existingWebhooks.success ? 
-                        existingWebhooks.data.find(w => w.event === webhook.event) : null;
-                    
-                    if (existing) {
-                        console.log(`Webhook ${webhook.event} já existe (ID: ${existing.id})`);
-                        
-                        // Atualizar URL se necessário
-                        if (existing.url !== webhook.url) {
-                            const updateResult = await this.updateWebhook(
-                                storeId, 
-                                accessToken, 
-                                existing.id, 
-                                webhook
-                            );
-                            
-                            results.push({
-                                event: webhook.event,
-                                action: 'updated',
-                                result: updateResult
-                            });
-                        } else {
-                            results.push({
-                                event: webhook.event,
-                                action: 'already_exists',
-                                webhook_id: existing.id
-                            });
-                        }
-                    } else {
-                        // Criar novo webhook
-                        const createResult = await this.createWebhook(storeId, accessToken, webhook);
-                        
-                        results.push({
-                            event: webhook.event,
-                            action: 'created',
-                            result: createResult
-                        });
-                    }
-                } catch (webhookError) {
-                    console.error(`Erro ao processar webhook ${webhook.event}:`, webhookError.message);
-                    results.push({
-                        event: webhook.event,
-                        action: 'error',
-                        error: webhookError.message
-                    });
-                }
-            }
-            
-            console.log(`Configuração de webhooks LGPD concluída para loja ${storeId}`);
-            
+
+            // IMPORTANTE: Eventos LGPD (store/redact, customers/redact, customers/data_request)
+            // NÃO são registráveis via endpoint /webhooks. Eles são gerenciados pela Nuvemshop
+            // e devem ser configurados nas configurações do app no Partners Portal.
+            // Por isso, não tentaremos criá-los via API aqui para evitar 422.
+
+            console.log('Aviso: Eventos LGPD não são criados via API /webhooks. Use as URLs configuradas no Partners Portal.');
+            console.log('Endpoints locais prontos para receber:', webhooksToCreate);
+
+            console.log(`Configuração de webhooks LGPD concluída para loja ${storeId} (sem criação via API)`);
+
             return {
                 success: true,
-                message: 'Webhooks LGPD configurados',
-                data: results
+                message: 'LGPD gerenciado via Portal; endpoints locais prontos',
+                data: webhooksToCreate
             };
             
         } catch (error) {
