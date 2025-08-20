@@ -54,7 +54,7 @@ class NsWebhooksService {
             
             return { success: true, data: result };
         } catch (error) {
-            console.error('Erro ao criar webhook:', error.message);
+            console.error('Erro ao criar webhook:', error.message, error.response?.data || '');
             return formatError(error);
         }
     }
@@ -73,7 +73,7 @@ class NsWebhooksService {
             
             return { success: true, data: result };
         } catch (error) {
-            console.error('Erro ao atualizar webhook:', error.message);
+            console.error('Erro ao atualizar webhook:', error.message, error.response?.data || '');
             return formatError(error);
         }
     }
@@ -103,19 +103,34 @@ class NsWebhooksService {
         try {
             console.log(`Configurando webhooks LGPD para loja ${storeId}`);
             
+            // Normalizar base URL para evitar duplicar /api
+            const normalizeApiBase = (url) => {
+                if (!url) return '';
+                let b = url.trim();
+                // remover barras finais
+                b = b.replace(/\/+$/, '');
+                // se já termina com /api (case-insensitive), manter; senão, acrescentar /api
+                if (!/\/api$/i.test(b)) {
+                    b = `${b}/api`;
+                }
+                return b;
+            };
+
+            const apiBase = normalizeApiBase(baseUrl);
+
             // URLs dos webhooks LGPD
             const webhooksToCreate = [
                 {
                     event: 'store/redact',
-                    url: `${baseUrl}/api/ns/lgpd-webhooks/store/redact`
+                    url: `${apiBase}/ns/lgpd-webhooks/store/redact`
                 },
                 {
                     event: 'customers/redact', 
-                    url: `${baseUrl}/api/ns/lgpd-webhooks/customers/redact`
+                    url: `${apiBase}/ns/lgpd-webhooks/customers/redact`
                 },
                 {
                     event: 'customers/data_request',
-                    url: `${baseUrl}/api/ns/lgpd-webhooks/customers/data-request`
+                    url: `${apiBase}/ns/lgpd-webhooks/customers/data-request`
                 }
             ];
             

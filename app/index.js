@@ -25,7 +25,15 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-app.use(express.json());
+// Captura corpo bruto para validação HMAC de webhooks
+app.use(express.json({
+    verify: (req, res, buf) => {
+        // Guardar raw body apenas para webhooks da Nuvemshop (evita overhead geral)
+        if (req.originalUrl.startsWith('/ns') || req.originalUrl.startsWith('/webhook')) {
+            req.rawBody = Buffer.from(buf);
+        }
+    }
+}));
 app.use('/', routes);
 
 app.listen(port, () => {

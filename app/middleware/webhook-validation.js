@@ -13,10 +13,13 @@ const nuvemshopWebhook = (requiredFields = []) => {
             headers: req.headers,
             timestamp: new Date().toISOString()
         });
-        
-        // Validar estrutura
+
+        // 1) Validar assinatura HMAC
+        if (!validateSignature(req, res)) return;
+
+        // 2) Validar estrutura do payload
         if (!validateStructure(req, res, requiredFields)) return;
-        
+
         console.log('✅ Webhook validado com sucesso');
         next();
     };
@@ -25,9 +28,57 @@ const nuvemshopWebhook = (requiredFields = []) => {
 /**
  * Valida assinatura HMAC do webhook Nuvemshop
  */
+function timingSafeEqualHex(aHex, bHex) {
+    try {
+        const a = Buffer.from(String(aHex).trim().toLowerCase(), 'hex');
+        const b = Buffer.from(String(bHex).trim().toLowerCase(), 'hex');
+        if (a.length !== b.length) return false;
+        return crypto.timingSafeEqual(a, b);
+    } catch {
+        return false;
+    }
+}
+
 function validateSignature(req, res) {
-    // Pular validação por enquanto para debug
-    console.log('⚠️ Validação de assinatura desabilitada para debug');
+    // Permitir desabilitar validação via env em cenários de debug
+    if (process.env.NUVEMSHOP_WEBHOOK_VERIFY_DISABLED === 'true') {
+        console.log('⚠️ Validação de assinatura desabilitada por NUVEMSHOP_WEBHOOK_VERIFY_DISABLED=true');
+        return true;
+    }
+
+    // Header (case-insensitive). Em Node, headers ficam lowercased
+    const headerSig = req.headers['x-linkedstore-hmac-sha256'] || req.headers['http_x_linkedstore_hmac_sha256'];
+    if (!headerSig) {
+        console.error('❌ Assinatura ausente: x-linkedstore-hmac-sha256');
+        res.status(401).json({ success: false, message: 'Assinatura ausente' });
+        return false;
+    }
+
+    // Segredo exclusivo: usar somente NS_CLIENT_SECRET
+    const secret = process.env.NS_CLIENT_SECRET;
+
+    if (!secret) {
+    console.error('❌ Segredo do webhook não configurado (NS_CLIENT_SECRET)');
+        res.status(500).json({ success: false, message: 'Segredo do webhook não configurado' });
+        return false;
+    }
+
+    // Usar corpo bruto (bytes) para cálculo do HMAC
+    const raw = req.rawBody;
+    if (!raw) {
+        console.error('❌ rawBody ausente. Configure express.json({ verify }) para capturar o corpo bruto');
+        res.status(500).json({ success: false, message: 'rawBody ausente para validação' });
+        return false;
+    }
+
+    const computed = crypto.createHmac('sha256', secret).update(raw).digest('hex');
+
+    if (!timingSafeEqualHex(headerSig, computed)) {
+        console.error('❌ Assinatura inválida');
+        res.status(401).json({ success: false, message: 'Assinatura inválida' });
+        return false;
+    }
+
     return true;
 }
 
