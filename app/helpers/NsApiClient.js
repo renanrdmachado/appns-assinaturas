@@ -30,7 +30,24 @@ class NsApiClient {
             }
             
             const baseUrl = process.env.NS_API_URL || 'https://api.nuvemshop.com.br/2025-03';
-            const url = `${baseUrl}/${storeIdStr}/${endpoint}${params ? `?${params.toString()}` : ''}`;
+            let query = '';
+            if (params) {
+                if (typeof params === 'string') {
+                    query = params.startsWith('?') ? params : `?${params}`;
+                } else {
+                    const usp = new URLSearchParams();
+                    for (const [k, v] of Object.entries(params)) {
+                        if (Array.isArray(v)) {
+                            v.forEach(val => usp.append(k, val));
+                        } else if (v !== undefined && v !== null) {
+                            usp.append(k, String(v));
+                        }
+                    }
+                    const qs = usp.toString();
+                    query = qs ? `?${qs}` : '';
+                }
+            }
+            const url = `${baseUrl}/${storeIdStr}/${endpoint}${query}`;
             
             console.log(`NsApiClient: Preparando requisição para ${url}`);
             console.log(`NsApiClient: Método: ${method}, StoreId: ${storeIdStr}`);
@@ -53,6 +70,13 @@ class NsApiClient {
             
             console.log(`Enviando requisição para Nuvemshop API: ${method} ${url}`);
             console.log('Headers:', JSON.stringify(config.headers, null, 2).replace(accessTokenStr, '****'));
+            if (data) {
+                try {
+                    console.log('Body:', JSON.stringify(data));
+                } catch (_) {
+                    console.log('Body: [object]');
+                }
+            }
             
             const response = await axios(config);
             console.log(`Resposta da Nuvemshop API: ${response.status}`);
@@ -64,9 +88,9 @@ class NsApiClient {
                 const nsResponse = error.response.data;
                 
                 // Criar mensagem de erro amigável baseada na resposta da Nuvemshop
-                const errorMessage = nsResponse.message || 
+                const errorMessage = nsResponse?.message || 
                                     nsResponse.error_description || 
-                                    nsResponse.error || 
+                                    nsResponse?.error || 
                                     error.response.statusText || 
                                     error.message;
                 
