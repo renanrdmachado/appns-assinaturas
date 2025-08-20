@@ -57,9 +57,12 @@ function validateStructure(req, res, requiredFields) {
 // Middlewares específicos para cada endpoint
 const storeRedactWebhook = nuvemshopWebhook(['store_id']);
 const customersWebhook = nuvemshopWebhook(['store_id', 'customer']);
+// Webhook de data request exige também o objeto data_request
+const customersDataRequestWebhook = nuvemshopWebhook(['store_id', 'customer', 'data_request']);
 
 module.exports = {
     nuvemshopWebhook,
     storeRedactWebhook,
-    customersWebhook
+    customersWebhook,
+    customersDataRequestWebhook
 };

@@ -27,6 +27,7 @@ const sellerDocumentsRoutes = require('./seller/documents.routes');
 // Rotas de integrações
 const nsRoutes = require('./ns.routes');
 const asaasRoutes = require('./asaas.routes');
+const webhookCompatRoutes = require('./webhook.routes');
 
 // Configuração das rotas mantendo URLs originais
 router.use('/app/products', productRoutes);
@@ -57,5 +58,7 @@ router.use('/app/seller', validateSellerSubscription, sellerSpecificRoutes);
 // Rotas de integração
 router.use('/ns', nsRoutes);
 router.use('/asaas', asaasRoutes);
+// Rotas de compatibilidade para URLs configuradas externamente (sem prefixo /api)
+router.use('/webhook', webhookCompatRoutes);
 
 module.exports = router;
