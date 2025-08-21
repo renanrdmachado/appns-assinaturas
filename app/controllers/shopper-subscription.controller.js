@@ -1,5 +1,6 @@
 const ShopperSubscriptionService = require('../services/shopper-subscription.service');
 const { formatError } = require('../utils/errorHandler');
+const { getClientIp } = require('../utils/request-ip');
 
 class ShopperSubscriptionController {
   // Listar todas as assinaturas de compradores
@@ -46,10 +47,16 @@ class ShopperSubscriptionController {
   async store(req, res) {
     try {
       const { order_id } = req.params;
-      const subscriptionData = req.body;
+      const subscriptionData = { ...(req.body || {}) };
+
+      // Se for cartão, injeta o remoteIp calculado no backend
+      if ((subscriptionData?.billing_type || subscriptionData?.billingType) === 'CREDIT_CARD') {
+        const ip = getClientIp(req);
+        subscriptionData.remoteIp = ip;
+      }
       
       // Passar order_id e dados da assinatura para o service
-      const result = await ShopperSubscriptionService.create(order_id, subscriptionData);
+  const result = await ShopperSubscriptionService.create(order_id, subscriptionData);
       
       if (!result.success) {
         return res.status(result.status || 400).json(result);

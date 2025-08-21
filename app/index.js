@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 
 const app = express();
-app.set('trust proxy', 1); // Corrige o uso do X-Forwarded-For para rate limit atrás de proxy
+app.set('trust proxy', true); // confiar no proxy para req.ip e X-Forwarded-For
 const port = 10000;
 
 // Configuração do CORS

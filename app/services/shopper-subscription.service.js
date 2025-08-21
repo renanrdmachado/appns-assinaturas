@@ -519,38 +519,25 @@ class ShopperSubscriptionService {
         if (data.interest) asaasData.interest = data.interest;
         if (data.fine) asaasData.fine = data.fine;
         
-        // Se o método for cartão, aceitar dados de cartão/token e antifraude
+        // Se cartão, montar seção de cartão de forma DRY
         if ((data.billing_type || '').toUpperCase() === 'CREDIT_CARD') {
-            // creditCardHolderInfo pode ser passado no data (vindo do front)
-            if (data.creditCardHolderInfo) {
-                const holder = { ...data.creditCardHolderInfo };
-                if (!holder.addressNumber) holder.addressNumber = '0';
-                if (!holder.province) holder.province = 'Default';
-                if (!holder.postalCode) holder.postalCode = '00000000';
-                asaasData.creditCardHolderInfo = holder;
-            } else if (shopper?.user?.userData?.cpfCnpj) {
-                // Montar básico a partir dos dados do shopper
-                asaasData.creditCardHolderInfo = {
-                    name: shopper.name,
-                    email: shopper.email || shopper.user?.email,
-                    cpfCnpj: shopper.user.userData.cpfCnpj,
-                    mobilePhone: shopper.user.userData.mobilePhone,
-                    addressNumber: '0',
-                    province: 'Default',
-                    postalCode: shopper.user.userData.postalCode || '00000000'
-                };
-            }
+            const { composeCardSection } = require('../utils/asaas-subscription.mapper');
+            const holderInfo = data.creditCardHolderInfo || (shopper?.user?.userData ? {
+                name: shopper.name,
+                email: shopper.email || shopper.user?.email,
+                cpfCnpj: shopper.user.userData.cpfCnpj,
+                mobilePhone: shopper.user.userData.mobilePhone,
+                addressNumber: '0',
+                postalCode: shopper.user.userData.postalCode || '00000000'
+            } : undefined);
 
-            // Encaminhar creditCard (captura imediata) ou creditCardToken
-            if (data.creditCard) {
-                asaasData.creditCard = data.creditCard;
-            } else if (data.creditCardToken) {
-                asaasData.creditCardToken = data.creditCardToken;
-            }
-
-            if (data.remoteIp) {
-                asaasData.remoteIp = data.remoteIp;
-            }
+            Object.assign(asaasData, composeCardSection({
+                billingType: 'CREDIT_CARD',
+                creditCard: data.creditCard,
+                creditCardToken: data.creditCardToken,
+                creditCardHolderInfo: holderInfo,
+                remoteIp: data.remoteIp,
+            }));
         }
 
         // Adicionar metadata básica
