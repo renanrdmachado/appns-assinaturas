@@ -8,6 +8,63 @@ const SellerSubscription = require('../../../models/SellerSubscription');
 const { formatError } = require('../../../utils/errorHandler');
 
 /**
+ * Handler para o evento SUBSCRIPTION_CREATED
+ * Sincroniza a assinatura local (se existir) com os dados iniciais do Asaas
+ * @param {Object} eventData - Dados do evento recebido pelo webhook
+ * @returns {Object} Resultado do processamento
+ */
+async function handleSubscriptionCreated(eventData) {
+    try {
+        console.log(`Processando evento SUBSCRIPTION_CREATED para assinatura ID ${eventData.subscription.id}`);
+
+        const subscriptionId = eventData.subscription.id;
+        const subData = {
+            value: eventData.subscription.value,
+            status: eventData.subscription.status === 'ACTIVE' ? 'active' : 'inactive',
+            cycle: eventData.subscription.cycle,
+            next_due_date: eventData.subscription.nextDueDate ? new Date(eventData.subscription.nextDueDate) : null,
+            billing_type: eventData.subscription.billingType
+        };
+
+        // Tenta seller depois shopper; atualiza apenas se existir localmente
+        const sellerSubResult = await SellerSubscriptionService.getByExternalId(subscriptionId);
+        if (sellerSubResult.success && sellerSubResult.data) {
+            await SellerSubscriptionService.update(sellerSubResult.data.id, subData);
+            return {
+                success: true,
+                event: eventData.event,
+                subscriptionId,
+                type: 'seller_subscription',
+                message: 'Assinatura de vendedor sincronizada na criação'
+            };
+        }
+
+        const shopperSubResult = await ShopperSubscriptionService.getByExternalId(subscriptionId);
+        if (shopperSubResult.success && shopperSubResult.data) {
+            await ShopperSubscriptionService.update(shopperSubResult.data.id, subData);
+            return {
+                success: true,
+                event: eventData.event,
+                subscriptionId,
+                type: 'shopper_subscription',
+                message: 'Assinatura de shopper sincronizada na criação'
+            };
+        }
+
+        // Não cria local se não existir: mantém KISS/idempotente
+        return {
+            success: true,
+            event: eventData.event,
+            subscriptionId,
+            message: 'Assinatura não encontrada localmente; nenhuma ação realizada'
+        };
+    } catch (error) {
+        console.error('Erro ao processar criação de assinatura:', error);
+        return formatError(error);
+    }
+}
+
+/**
  * Handler para o evento SUBSCRIPTION_DELETED
  * Aplica soft delete às assinaturas locais ao invés de excluí-las definitivamente
  * @param {Object} eventData - Dados do evento recebido pelo webhook
@@ -221,6 +278,7 @@ async function handleSubscriptionUpdated(eventData) {
 }
 
 module.exports = {
+    handleSubscriptionCreated,
     handleSubscriptionDeleted,
     handleSubscriptionRenewed,
     handleSubscriptionUpdated

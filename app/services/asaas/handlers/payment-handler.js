@@ -193,8 +193,15 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
             // Ativa a assinatura local
             if (payableType === 'shopper_subscription') {
                 await ShopperSubscriptionService.updateStatusLocal(subscription.id, 'active');
+                // Atualiza próxima cobrança se conhecida
+                if (paymentInfo.dueDate) {
+                    await ShopperSubscriptionService.update(subscription.id, { next_due_date: new Date(paymentInfo.dueDate) });
+                }
             } else if (payableType === 'seller_subscription') {
                 await SellerSubscriptionService.update(subscription.id, { status: 'active' });
+                if (paymentInfo.dueDate) {
+                    await SellerSubscriptionService.update(subscription.id, { next_due_date: new Date(paymentInfo.dueDate) });
+                }
             }
         } else if (['overdue', 'canceled', 'refunded'].includes(paymentData.status)) {
             let assinaturaStatus = paymentData.status;

@@ -19,6 +19,7 @@ const EVENT_HANDLERS = {
     'PAYMENT_CANCELED': paymentHandler.handlePaymentCanceled,
     
     // Eventos de assinatura
+    'SUBSCRIPTION_CREATED': (eventData) => subscriptionHandler.handleSubscriptionCreated(eventData),
     'SUBSCRIPTION_DELETED': (eventData) => subscriptionHandler.handleSubscriptionDeleted(eventData),
     'SUBSCRIPTION_RENEWED': (eventData) => subscriptionHandler.handleSubscriptionRenewed(eventData),
     'SUBSCRIPTION_UPDATED': (eventData) => subscriptionHandler.handleSubscriptionUpdated(eventData)
