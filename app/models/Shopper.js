@@ -11,7 +11,22 @@ const Shopper = sequelize.define('Shopper', {
   nuvemshop_id: {
     type: DataTypes.STRING,
     unique: true,
-    allowNull: true // Mudando para true para tornar o campo opcional
+    allowNull: true, // Campo opcional
+    set(value) {
+      // Normaliza valores "vazios" para null para não violar unique com '0' ou ''
+      if (
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        value === 0 ||
+        value === '0' ||
+        (typeof value === 'string' && value.trim().toLowerCase() === 'null')
+      ) {
+        this.setDataValue('nuvemshop_id', null);
+      } else {
+        this.setDataValue('nuvemshop_id', String(value));
+      }
+    }
   },
   nuvemshop_info: {
     type: DataTypes.TEXT,

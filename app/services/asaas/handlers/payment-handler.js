@@ -238,15 +238,8 @@ async function updatePaymentStatus(entity, entityType, paymentInfo, status) {
                 return false;
             }
         } else if (entityType === 'shopper') {
-            // Update shopper payment status
-            const result = await ShopperService.update(entity.id, updateData);
-            if (result.success) {
-                console.log(`Atualizado status de pagamento do shopper ${entity.id} para ${status}`);
-                return true;
-            } else {
-                console.error(`Erro ao atualizar status de pagamento do shopper ${entity.id}:`, result.message);
-                return false;
-            }
+            // Shopper não mantém status agregado; não atualizar
+            return true;
         } 
         return false;
     } catch (error) {

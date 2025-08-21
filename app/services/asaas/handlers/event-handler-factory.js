@@ -11,73 +11,17 @@ const { formatError } = require('../../../utils/errorHandler');
  */
 const EVENT_HANDLERS = {
     // Eventos de pagamento
-    'PAYMENT_CREATED': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSellerPaymentConfirmed(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler normal
-        return await paymentHandler.handlePaymentCreated(eventData);
-    },
-    'PAYMENT_RECEIVED': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSellerPaymentConfirmed(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler normal
-        return await paymentHandler.handlePaymentConfirmed(eventData);
-    },
-    'PAYMENT_CONFIRMED': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSellerPaymentConfirmed(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler normal
-        return await paymentHandler.handlePaymentConfirmed(eventData);
-    },
-    'PAYMENT_OVERDUE': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSellerPaymentOverdue(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler normal
-        return await paymentHandler.handlePaymentOverdue(eventData);
-    },
+    'PAYMENT_CREATED': (eventData) => paymentHandler.handlePaymentCreated(eventData),
+    'PAYMENT_RECEIVED': (eventData) => paymentHandler.handlePaymentConfirmed(eventData),
+    'PAYMENT_CONFIRMED': (eventData) => paymentHandler.handlePaymentConfirmed(eventData),
+    'PAYMENT_OVERDUE': (eventData) => paymentHandler.handlePaymentOverdue(eventData),
     'PAYMENT_REFUNDED': paymentHandler.handlePaymentRefunded,
     'PAYMENT_CANCELED': paymentHandler.handlePaymentCanceled,
     
     // Eventos de assinatura
-    'SUBSCRIPTION_DELETED': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSubscriptionDeleted(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler de shopper
-        return await subscriptionHandler.handleSubscriptionDeleted(eventData);
-    },
-    'SUBSCRIPTION_RENEWED': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSubscriptionRenewed(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler de shopper
-        return await subscriptionHandler.handleSubscriptionRenewed(eventData);
-    },
-    'SUBSCRIPTION_UPDATED': async (eventData) => {
-        // Primeiro tenta com handler de seller
-        const sellerResult = await sellerSubscriptionHandler.handleSubscriptionUpdated(eventData);
-        if (sellerResult.processed !== false) {
-            return sellerResult;
-        }
-        // Se não for de seller, usa handler de shopper
-        return await subscriptionHandler.handleSubscriptionUpdated(eventData);
-    }
+    'SUBSCRIPTION_DELETED': (eventData) => subscriptionHandler.handleSubscriptionDeleted(eventData),
+    'SUBSCRIPTION_RENEWED': (eventData) => subscriptionHandler.handleSubscriptionRenewed(eventData),
+    'SUBSCRIPTION_UPDATED': (eventData) => subscriptionHandler.handleSubscriptionUpdated(eventData)
 };
 
 class EventHandlerFactory {

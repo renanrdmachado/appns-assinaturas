@@ -236,7 +236,7 @@ class ShopperService {
                     email: data.email,
                     user_id: user.id,
                     payments_customer_id: data.payments_customer_id,
-                    payments_status: data.payments_status || "PENDING"
+                    // payments_status não é relevante para shopper; não definir por padrão
                 }, { transaction: t });
                 
                 return shopper;
