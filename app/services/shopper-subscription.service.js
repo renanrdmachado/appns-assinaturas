@@ -10,6 +10,7 @@ const AsaasFormatter = require('../utils/asaas-formatter');
 const SubscriptionValidator = require('../validators/subscription-validator'); // Usar o validador unificado
 const sequelize = require('../config/database');
 const { redactSensitive } = require('../utils/redact');
+const Product = require('../models/Product');
 
 class ShopperSubscriptionService {
     async get(id) {
@@ -19,7 +20,7 @@ class ShopperSubscriptionService {
             }
             
             // Modificado para incluir dados do shopper e do pedido
-            const subscription = await ShopperSubscription.findByPk(id, {
+        const subscription = await ShopperSubscription.findByPk(id, {
                 include: [
                     {
                         model: Shopper,
@@ -32,7 +33,8 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-                    }
+            },
+            { model: Order, as: 'order' }
                 ]
             });
             
@@ -52,7 +54,7 @@ class ShopperSubscriptionService {
     async getAll() {
         try {
             // Modificado para incluir dados do shopper e do pedido
-            const subscriptions = await ShopperSubscription.findAll({
+        const subscriptions = await ShopperSubscription.findAll({
                 include: [
                     {
                         model: Shopper,
@@ -65,7 +67,8 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-                    }
+            },
+            { model: Order, as: 'order' }
                 ]
             });
             
@@ -97,7 +100,7 @@ class ShopperSubscriptionService {
             }
             
             // Modificado para incluir dados do shopper e do pedido
-            const subscriptions = await ShopperSubscription.findAll({
+        const subscriptions = await ShopperSubscription.findAll({
                 where: { shopper_id: shopperId },
                 include: [
                     {
@@ -111,7 +114,8 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-                    }
+            },
+            { model: Order, as: 'order' }
                 ]
             });
             
@@ -135,7 +139,7 @@ class ShopperSubscriptionService {
             }
             
             // Modificado para incluir dados do shopper e do pedido
-            const subscriptions = await ShopperSubscription.findAll({
+        const subscriptions = await ShopperSubscription.findAll({
                 where: { order_id: orderId },
                 include: [
                     {
@@ -149,7 +153,8 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-                    }
+            },
+            { model: Order, as: 'order' }
                 ]
             });
             
@@ -282,19 +287,14 @@ class ShopperSubscriptionService {
                 console.log(`Comprador ${shopper.id} já possui ID de cliente Asaas: ${customerId}. Reutilizando...`);
             }
             
-            // VERIFICAR DATA DE VENCIMENTO - Não pode ser menor que hoje
-            let nextDueDate = data.next_due_date || order.next_due_date;
-            console.log('Data original da Order:', order.next_due_date);
-            console.log('Data de vencimento extraída antes do processamento:', nextDueDate);
-            
             // Preparar dados da assinatura
             const subscriptionData = {
                 // Usar dados fornecidos ou do pedido
                 plan_name: data.plan_name || `Assinatura do Pedido #${order.id}`,
-                value: data.value || order.value,
-                cycle: data.cycle || order.cycle || 'MONTHLY',
-                next_due_date: nextDueDate,
-                billing_type: data.billing_type || order.billing_type || 'BOLETO',
+                value: data.value, // se não vier, será calculado abaixo
+                cycle: data.cycle || 'MONTHLY',
+                next_due_date: data.next_due_date,
+                billing_type: data.billing_type || 'BOLETO',
                 // Armazenar os IDs de relacionamento
                 shopper_id: shopperId,
                 order_id: orderId
@@ -309,6 +309,28 @@ class ShopperSubscriptionService {
             }
             
             console.log('Dados montados para formatação:', JSON.stringify(subscriptionData, null, 2));
+
+            // Se valor não foi fornecido, calcular a partir dos produtos do pedido
+            if (subscriptionData.value === undefined || subscriptionData.value === null) {
+                try {
+                    const prodIds = order.products.map(p => (typeof p === 'object' && p.product_id) ? p.product_id : p);
+                    const foundProducts = await Product.findAll({ where: { id: prodIds } });
+                    if (foundProducts.length !== prodIds.length) {
+                        await transaction.rollback();
+                        return createError('Um ou mais produtos do pedido não foram encontrados para cálculo do valor', 404);
+                    }
+                    const total = foundProducts.reduce((sum, prod) => {
+                        const prodInfo = order.products.find(p => (p.product_id || p) == prod.id);
+                        const quantity = prodInfo && prodInfo.quantity ? parseInt(prodInfo.quantity) : 1;
+                        const unit = typeof prod.getSubscriptionPrice === 'function' ? prod.getSubscriptionPrice() : (prod.subscription_price || prod.price);
+                        return sum + (unit * quantity);
+                    }, 0);
+                    subscriptionData.value = total;
+                } catch (calcErr) {
+                    await transaction.rollback();
+                    return formatError(calcErr);
+                }
+            }
             
             // Criar padrão para data de início
             if (!subscriptionData.start_date) {

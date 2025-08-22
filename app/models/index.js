@@ -17,7 +17,9 @@ Seller.hasMany(User, { foreignKey: 'seller_id', as: 'users' });
 
 // Relações para SellerSubscription
 SellerSubscription.belongsTo(Seller, { foreignKey: 'seller_id', as: 'seller' });
-Seller.hasMany(SellerSubscription, { foreignKey: 'seller_id', as: 'subscriptions' });
+
+// Associações 1:1 (preferidas) para reforçar a unicidade da assinatura por seller
+Seller.hasOne(SellerSubscription, { foreignKey: 'seller_id', as: 'subscription' });
 
 // Relações para Order (assinaturas de produtos)
 Order.belongsTo(Seller, { foreignKey: 'seller_id', as: 'seller' });

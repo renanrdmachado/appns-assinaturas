@@ -29,13 +29,22 @@ class AsaasFormatter {
      * @returns {string} - Data formatada.
      */
     static formatDate(date) {
-        if (!(date instanceof Date)) {
-            date = new Date(date);
+        // Se vier string no formato DD/MM/YYYY (padrão de alguns webhooks do Asaas)
+        if (typeof date === 'string') {
+            const ddmmyyyy = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            if (ddmmyyyy.test(date)) {
+                const [, dd, mm, yyyy] = date.match(ddmmyyyy);
+                return `${yyyy}-${mm}-${dd}`; // YYYY-MM-DD
+            }
+            // Para strings ISO ou YYYY-MM-DD, cair no parse nativo
         }
-        if (isNaN(date.getTime())) {
+
+        // Date, timestamp, ou outras strings parseáveis
+        const d = date instanceof Date ? date : new Date(date);
+        if (isNaN(d.getTime())) {
             throw new Error('Data inválida');
         }
-        return date.toISOString().split('T')[0];
+        return d.toISOString().split('T')[0];
     }
 
     /**

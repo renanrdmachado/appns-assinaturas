@@ -8,9 +8,9 @@ class OrderValidator extends BaseValidator {
             this.throwError("Dados do pedido são obrigatórios", 400);
         }
 
-        // Validar campos obrigatórios (seller_id será determinado automaticamente pelos produtos)
-        const requiredFields = ['shopper_id', 'products', 'customer_info', 
-                             'value', 'cycle', 'next_due_date'];
+    // Validar campos obrigatórios (seller_id será determinado automaticamente pelos produtos)
+    // Importante: Order não armazena mais dados de assinatura (value, cycle, next_due_date)
+    const requiredFields = ['shopper_id', 'products', 'customer_info'];
         errors.push(...this.validateRequiredFields(orderData, requiredFields, 'pedido'));
         
         // Validações específicas
@@ -18,13 +18,6 @@ class OrderValidator extends BaseValidator {
             errors.push("O campo 'products' deve ser um array ou objeto válido.");
         }
 
-        if (orderData.value && isNaN(parseFloat(orderData.value))) {
-            errors.push("O campo 'value' deve ser um número válido.");
-        }
-
-        if (orderData.next_due_date && !this.isValidDate(orderData.next_due_date)) {
-            errors.push("O campo 'next_due_date' deve ser uma data válida.");
-        }
 
         return this.throwValidationErrors(errors);
     }
@@ -51,13 +44,7 @@ class OrderValidator extends BaseValidator {
             errors.push("O campo 'products' deve ser um array ou objeto válido.");
         }
 
-        if (orderData.value !== undefined && isNaN(parseFloat(orderData.value))) {
-            errors.push("O campo 'value' deve ser um número válido.");
-        }
-
-        if (orderData.next_due_date !== undefined && !this.isValidDate(orderData.next_due_date)) {
-            errors.push("O campo 'next_due_date' deve ser uma data válida.");
-        }
+    // Campos de assinatura foram removidos do Order; não validar aqui
 
         return this.throwValidationErrors(errors);
     }

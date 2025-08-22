@@ -6,6 +6,7 @@ const SellerSubscriptionService = require('../../seller-subscription.service');
 const ShopperSubscription = require('../../../models/ShopperSubscription');
 const SellerSubscription = require('../../../models/SellerSubscription');
 const { formatError } = require('../../../utils/errorHandler');
+const AsaasFormatter = require('../../../utils/asaas-formatter');
 
 /**
  * Handler para o evento SUBSCRIPTION_CREATED
@@ -22,7 +23,7 @@ async function handleSubscriptionCreated(eventData) {
             value: eventData.subscription.value,
             status: eventData.subscription.status === 'ACTIVE' ? 'active' : 'inactive',
             cycle: eventData.subscription.cycle,
-            next_due_date: eventData.subscription.nextDueDate ? new Date(eventData.subscription.nextDueDate) : null,
+            next_due_date: eventData.subscription.nextDueDate ? AsaasFormatter.formatDate(eventData.subscription.nextDueDate) : null,
             billing_type: eventData.subscription.billingType
         };
 
@@ -164,7 +165,7 @@ async function handleSubscriptionRenewed(eventData) {
             
             // Atualizar data de vencimento e ciclo
             await SellerSubscriptionService.update(sellerSubResult.data.id, {
-                next_due_date: new Date(eventData.subscription.nextDueDate),
+                next_due_date: AsaasFormatter.formatDate(eventData.subscription.nextDueDate),
                 cycle: eventData.subscription.cycle
             });
             
@@ -180,7 +181,7 @@ async function handleSubscriptionRenewed(eventData) {
                 
                 // Atualizar data de vencimento e ciclo
                 await ShopperSubscriptionService.update(shopperSubResult.data.id, {
-                    next_due_date: new Date(eventData.subscription.nextDueDate),
+                    next_due_date: AsaasFormatter.formatDate(eventData.subscription.nextDueDate),
                     cycle: eventData.subscription.cycle
                 });
                 
@@ -229,7 +230,7 @@ async function handleSubscriptionUpdated(eventData) {
             value: eventData.subscription.value,
             status: eventData.subscription.status === 'ACTIVE' ? 'active' : 'inactive',
             cycle: eventData.subscription.cycle,
-            next_due_date: new Date(eventData.subscription.nextDueDate),
+            next_due_date: AsaasFormatter.formatDate(eventData.subscription.nextDueDate),
             billing_type: eventData.subscription.billingType
         };
         

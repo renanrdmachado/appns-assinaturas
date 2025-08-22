@@ -7,6 +7,7 @@ const SellerSubscriptionService = require('../../seller-subscription.service');
 const SellerService = require('../../seller.service');
 const ShopperService = require('../../shopper.service');
 const { formatError } = require('../../../utils/errorHandler');
+const AsaasFormatter = require('../../../utils/asaas-formatter');
 
 /**
  * Mapeia os status de pagamento da Asaas para os status internos
@@ -166,6 +167,7 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
         
         // Busca pagamento existente
         let payment = await Payment.findOne({ where: { external_id: paymentInfo.id } });
+        const formattedDue = paymentInfo.dueDate ? AsaasFormatter.formatDate(paymentInfo.dueDate) : null;
         const paymentData = {
             external_id: paymentInfo.id,
             payable_type: payableType,
@@ -174,7 +176,7 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
             value: paymentInfo.value ?? 0,
             net_value: paymentInfo.netValue ?? null,
             payment_date: paymentInfo.paymentDate ? new Date(paymentInfo.paymentDate) : (paymentInfo.confirmedDate ? new Date(paymentInfo.confirmedDate) : null),
-            due_date: paymentInfo.dueDate ? new Date(paymentInfo.dueDate) : null,
+            due_date: formattedDue ? new Date(formattedDue) : null,
             // payment_method removido (redundante a billingType)
             invoice_url: paymentInfo.invoiceUrl ?? null,
             description: paymentInfo.description ?? null,
@@ -194,13 +196,13 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
             if (payableType === 'shopper_subscription') {
                 await ShopperSubscriptionService.updateStatusLocal(subscription.id, 'active');
                 // Atualiza próxima cobrança se conhecida
-                if (paymentInfo.dueDate) {
-                    await ShopperSubscriptionService.update(subscription.id, { next_due_date: new Date(paymentInfo.dueDate) });
+                if (formattedDue) {
+                    await ShopperSubscriptionService.update(subscription.id, { next_due_date: formattedDue });
                 }
             } else if (payableType === 'seller_subscription') {
                 await SellerSubscriptionService.update(subscription.id, { status: 'active' });
-                if (paymentInfo.dueDate) {
-                    await SellerSubscriptionService.update(subscription.id, { next_due_date: new Date(paymentInfo.dueDate) });
+                if (formattedDue) {
+                    await SellerSubscriptionService.update(subscription.id, { next_due_date: formattedDue });
                 }
             }
         } else if (['overdue', 'canceled', 'refunded'].includes(paymentData.status)) {

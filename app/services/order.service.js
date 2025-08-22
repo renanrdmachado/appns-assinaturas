@@ -109,8 +109,7 @@ class OrderService {
             console.log('DEBUG - Dados que serão enviados para Order.create:', {
                 seller_id: automaticSellerId,
                 shopper_id: data.shopper_id,
-                products: data.products,
-                value: total
+                products: data.products
             });
 
             const order = await Order.create({
@@ -119,12 +118,7 @@ class OrderService {
                 products: data.products,
                 customer_info: data.customer_info,
                 nuvemshop: data.nuvemshop,
-                value: total,
-                cycle: data.cycle,
-                next_due_date: data.next_due_date,
-                external_id: data.external_id,
-                status: data.status || 'pending',
-                billing_type: data.billing_type,
+                // Dados de assinatura não são mais persistidos em Order
                 metadata: data.metadata
             });
             
@@ -167,12 +161,6 @@ class OrderService {
                 ...(data.products && { products: data.products }),
                 ...(data.customer_info && { customer_info: data.customer_info }),
                 ...(data.nuvemshop && { nuvemshop: data.nuvemshop }),
-                ...(data.value && { value: data.value }),
-                ...(data.cycle && { cycle: data.cycle }),
-                ...(data.next_due_date && { next_due_date: data.next_due_date }),
-                ...(data.status && { status: data.status }),
-                ...(data.external_id && { external_id: data.external_id }),
-                ...(data.billing_type && { billing_type: data.billing_type }),
                 ...(data.metadata && { metadata: data.metadata })
             });
             

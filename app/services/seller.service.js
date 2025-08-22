@@ -275,6 +275,35 @@ class SellerService {
                     } catch (error) {
                         currentStoreInfo = {};
                     }
+                    // Garantir criação de UserData mínima se ausente e houver dados na store
+                    if (seller.user && !seller.user.userData) {
+                        const maybeCpf = currentStoreInfo.business_id;
+                        const maybePhone = currentStoreInfo.phone;
+                        const addr = currentStoreInfo.address || null;
+                        const addrNumber = currentStoreInfo.address_number || null;
+                        const province = currentStoreInfo.province || null;
+                        const cep = currentStoreInfo.postal_code || currentStoreInfo.zip || null;
+                        if (maybeCpf || maybePhone || addr || cep) {
+                            // Reutiliza UserData existente por cpfCnpj, se houver
+                            let ud = null;
+                            if (maybeCpf) {
+                                ud = await UserData.findOne({ where: { cpfCnpj: maybeCpf }, transaction: t });
+                            }
+                            if (!ud) {
+                                ud = await UserData.create({
+                                    cpfCnpj: maybeCpf || null,
+                                    mobilePhone: maybePhone || null,
+                                    address: addr,
+                                    addressNumber: addrNumber,
+                                    province: province,
+                                    postalCode: cep
+                                }, { transaction: t });
+                            }
+                            await seller.user.update({ user_data_id: ud.id }, { transaction: t });
+                            // refletir em memória
+                            seller.user.userData = ud;
+                        }
+                    }
                     
                     if (currentStoreInfo.business_id || storeInfo.business_id) {
                         console.log(`Seller ${seller.id} tem dados completos - criando assinatura`);

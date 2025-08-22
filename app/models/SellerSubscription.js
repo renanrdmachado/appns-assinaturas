@@ -12,6 +12,7 @@ const SellerSubscription = sequelize.define('SellerSubscription', {
   seller_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
+  unique: true,
     comment: 'ID do vendedor que assina o SaaS'
   },
   
