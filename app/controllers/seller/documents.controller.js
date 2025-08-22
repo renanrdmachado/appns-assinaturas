@@ -1,6 +1,4 @@
 const SellerService = require('../../services/seller.service');
-const AsaasCustomerService = require('../../services/asaas/customer.service');
-const SellerSubscriptionService = require('../../services/seller-subscription.service');
 const Seller = require('../../models/Seller');
 const User = require('../../models/User');
 const UserData = require('../../models/UserData');
@@ -99,14 +97,23 @@ async function checkSellerStatus(req, res) {
             order: [['createdAt', 'DESC']]
         });
         const subscriptionStatus = subscription ? subscription.status : null;
+        const hasActiveSubscription = !!(subscription && subscription.status === 'active');
+
+        // Determinar documentos completos com base no CPF/CNPJ disponível
+        const cpfFromUserData = userData?.cpfCnpj || null;
+        const cpfFromStore = storeInfo?.business_id || null;
+        const effectiveCpfCnpj = cpfFromUserData || cpfFromStore || null;
+        const needsDocuments = !effectiveCpfCnpj; // true se nenhum CPF/CNPJ disponível ainda
 
         res.json({
             success: true,
             data: {
                 seller_id: sellerWithRelations.id,
                 app_status: sellerWithRelations.app_status,
-                needsDocuments: sellerWithRelations.app_status === 'pending',
-                has_asaas_integration: !!sellerWithRelations.payments_customer_id,
+                // Front espera needsDocuments true quando não há CPF/CNPJ ainda
+                needsDocuments,
+                // Status local da assinatura do seller (true apenas se status === 'active')
+                has_active_subscription: hasActiveSubscription,
                 store_name: storeInfo?.name?.pt || storeInfo?.name || null,
                 store_email: storeInfo?.email || sellerWithRelations.user?.email || null,
                 // Status da assinatura do seller (1:1)
@@ -125,7 +132,7 @@ async function checkSellerStatus(req, res) {
                     birthDate: userData.birthDate || null
                 } : null,
                 // Conveniência: cpfCnpj também no topo
-                cpfCnpj: userData?.cpfCnpj || null
+                cpfCnpj: effectiveCpfCnpj
             }
         });
 
