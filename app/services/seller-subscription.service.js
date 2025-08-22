@@ -9,6 +9,7 @@ const subscriptionService = require('./asaas/subscription.service');
 const sequelize = require('../config/database');
 const AsaasCardService = require('./asaas/card.service');
 const { redactSensitive } = require('../utils/redact');
+const AsaasFormatter = require('../utils/asaas-formatter');
 
 class SellerSubscriptionService {
     // Utilitário interno para depurar estado do customer no Asaas
@@ -1410,10 +1411,18 @@ class SellerSubscriptionService {
             customer: customerId, // ID do cliente no Asaas
             billingType: data.billing_type || 'BOLETO', // Tipo de cobrança
             value: data.value, // Valor da assinatura
-            nextDueDate: data.next_due_date, // Data de vencimento
             cycle: cycle, // Ciclo de cobrança normalizado
             description: data.plan_name || 'Assinatura SaaS', // Descrição
         };
+
+        // Garantir formatação da data no padrão YYYY-MM-DD
+        if (data.next_due_date) {
+            try {
+                asaasData.nextDueDate = AsaasFormatter.formatDate(data.next_due_date);
+            } catch (error) {
+                throw new Error(`Erro ao formatar data de vencimento: ${error.message}`);
+            }
+        }
         
         // Adicionar campos opcionais apenas se estiverem definidos
         if (data.max_payments) asaasData.maxPayments = data.max_payments;
@@ -1422,7 +1431,13 @@ class SellerSubscriptionService {
         // Usando ID da nossa aplicação
         asaasData.externalReference = `seller_subscription_${seller.id}`;
         
-        if (data.end_date) asaasData.endDate = data.end_date;
+        if (data.end_date) {
+            try {
+                asaasData.endDate = AsaasFormatter.formatDate(data.end_date);
+            } catch (error) {
+                throw new Error(`Erro ao formatar data final: ${error.message}`);
+            }
+        }
         if (data.discount) asaasData.discount = data.discount;
         if (data.interest) asaasData.interest = data.interest;
         if (data.fine) asaasData.fine = data.fine;
@@ -1455,10 +1470,26 @@ class SellerSubscriptionService {
         const asaasData = {};
         
         if (data.value !== undefined) asaasData.value = data.value;
-        if (data.next_due_date !== undefined) asaasData.nextDueDate = data.next_due_date;
-        if (data.cycle !== undefined) asaasData.cycle = data.cycle;
+        if (data.next_due_date !== undefined) {
+            try {
+                asaasData.nextDueDate = AsaasFormatter.formatDate(data.next_due_date);
+            } catch (error) {
+                throw new Error(`Erro ao formatar data de vencimento: ${error.message}`);
+            }
+        }
+        if (data.cycle !== undefined) asaasData.cycle = AsaasFormatter.normalizeCycle(data.cycle) || data.cycle;
         if (data.plan_name !== undefined) asaasData.description = data.plan_name;
-        if (data.end_date !== undefined) asaasData.endDate = data.end_date;
+        if (data.end_date !== undefined) {
+            if (data.end_date === null) {
+                asaasData.endDate = null;
+            } else {
+                try {
+                    asaasData.endDate = AsaasFormatter.formatDate(data.end_date);
+                } catch (error) {
+                    throw new Error(`Erro ao formatar data final: ${error.message}`);
+                }
+            }
+        }
         if (data.max_payments !== undefined) asaasData.maxPayments = data.max_payments;
         if (data.billing_type !== undefined) asaasData.billingType = data.billing_type;
         
