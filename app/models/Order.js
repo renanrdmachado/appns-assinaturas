@@ -10,21 +10,21 @@ const Order = sequelize.define('Order', {
   },
   // Dados do vendedor e comprador
   seller_id: {
-    type: DataTypes.STRING,
+    type: DataTypes.INTEGER,
     allowNull: false
   },
   shopper_id: {
-    type: DataTypes.STRING,
+    type: DataTypes.INTEGER,
     allowNull: false
   },
-  
+
   // Identificação externa na plataforma de pagamento
   external_id: {
     type: DataTypes.STRING,
     allowNull: true,
     comment: 'ID da assinatura na plataforma de pagamento'
   },
-  
+
   // Detalhes da compra - lista de produtos comprados
   products: {
     type: DataTypes.JSON,
@@ -39,7 +39,7 @@ const Order = sequelize.define('Order', {
     type: DataTypes.JSON,
     allowNull: true
   },
-  
+
   // Dados da assinatura
   value: {
     type: DataTypes.DECIMAL(10, 2),
@@ -68,13 +68,13 @@ const Order = sequelize.define('Order', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  
+
   // Dados de pagamento
   billing_type: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  
+
   // Metadados e informações adicionais
   metadata: {
     type: DataTypes.JSON,

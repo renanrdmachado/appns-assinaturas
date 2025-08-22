@@ -9,7 +9,7 @@ const Product = sequelize.define('Product', {
     autoIncrement: true
   },
   seller_id: {
-    type: DataTypes.STRING,
+  type: DataTypes.INTEGER,
     allowNull: false
   },
   name: {
