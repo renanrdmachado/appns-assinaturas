@@ -4,6 +4,7 @@ const SellerSubscriptionService = require('../../services/seller-subscription.se
 const Seller = require('../../models/Seller');
 const User = require('../../models/User');
 const UserData = require('../../models/UserData');
+const SellerSubscription = require('../../models/SellerSubscription');
 
 /**
  * Completa os dados do seller (CPF/CNPJ) e ativa integração com Asaas
@@ -92,6 +93,13 @@ async function checkSellerStatus(req, res) {
 
         const userData = sellerWithRelations.user?.userData || null;
 
+        // Buscar assinatura 1:1 do seller (não deletada)
+        const subscription = await SellerSubscription.findOne({
+            where: { seller_id: sellerWithRelations.id, deleted_at: null },
+            order: [['createdAt', 'DESC']]
+        });
+        const subscriptionStatus = subscription ? subscription.status : null;
+
         res.json({
             success: true,
             data: {
@@ -101,6 +109,11 @@ async function checkSellerStatus(req, res) {
                 has_asaas_integration: !!sellerWithRelations.payments_customer_id,
                 store_name: storeInfo?.name?.pt || storeInfo?.name || null,
                 store_email: storeInfo?.email || sellerWithRelations.user?.email || null,
+                // Status da assinatura do seller (1:1)
+                subscription_status: subscriptionStatus,
+                // Campos auxiliares úteis (opcional)
+                subscription_id: subscription?.id || null,
+                subscription_external_id: subscription?.external_id || null,
                 // Expor userData para o front decidir exibição de captura de cartão
                 userData: userData ? {
                     cpfCnpj: userData.cpfCnpj || null,
