@@ -52,7 +52,8 @@ const Seller = sequelize.define('Seller', {
   },
   app_status: {
     type: DataTypes.STRING,
-    allowNull: true
+  allowNull: true,
+  defaultValue: 'pending'
   },
   subaccount_id: {
     type: DataTypes.STRING,

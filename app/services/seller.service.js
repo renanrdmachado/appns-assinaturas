@@ -202,7 +202,8 @@ class SellerService {
                     });
 
                     if (!existingSubscription) {
-                        const defaultSubscription = this.getDefaultSubscriptionConfig(seller.id, 'active');
+                        // Criar assinatura local pendente; ativaremos somente após confirmação de dados
+                        const defaultSubscription = this.getDefaultSubscriptionConfig(seller.id, 'pending');
                         await SellerSubscription.create(defaultSubscription, { transaction: t });
                     }
 
@@ -253,7 +254,8 @@ class SellerService {
                 // Atualizar informações do vendedor
                 seller.nuvemshop_api_token = nuvemshop_api_token;
                 seller.nuvemshop_info = JSON.stringify(storeInfo);
-                seller.app_status = storeInfo.plan_name || seller.app_status || 'active';
+                // Não promover automaticamente via plan_name; manter fluxo explícito de ativação
+                seller.app_status = seller.app_status || 'pending';
                 await seller.save({ transaction: t });
 
                 // Verificar se possui assinatura, se não criar uma padrão
@@ -543,14 +545,16 @@ class SellerService {
                 return createError('ID da loja é obrigatório', 400);
             }
             
-            const [seller, created] = await Seller.upsert({
+            // Compat: atualiza o customer_id e, se vier status do provedor, reflete em app_status
+            const payload = {
                 nuvemshop_id: storeId,
-                payments_customer_id: payments.customer,
-                payments_subscription_id: payments.id,
-                payments_next_due: payments.nextDueDate,
-                payments_status: "PENDING",
-                app_status: payments.status
-            });
+                payments_customer_id: payments.customer || null
+            };
+            if (payments && payments.status) {
+                payload.app_status = String(payments.status).toLowerCase();
+            }
+
+            const [seller, created] = await Seller.upsert(payload);
             
             return { success: true, data: seller.dataValues };
         } catch (error) {
@@ -1004,8 +1008,9 @@ class SellerService {
             }
             
             const validCpfCnpj = storeInfo.business_id || seller.user?.userData?.cpfCnpj;
-            const subscriptionStatus = validCpfCnpj ? 'active' : 'pending';
-            const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId, subscriptionStatus);
+            // Sempre inicia como pending; ativação ocorre após confirmação e criação bem-sucedida no Asaas
+            const subscriptionStatus = 'pending';
+            const defaultSubscriptionData = this.getDefaultSubscriptionConfig(sellerId, 'pending');
 
             console.log(`Verificando possibilidade de integração com Asaas para seller ${sellerId}...`);
             console.log(`Business ID disponível: ${!!storeInfo.business_id}`);
@@ -1233,7 +1238,7 @@ class SellerService {
      * Configuração padrão da assinatura (DRY - centraliza configuração)
      * Seguindo princípios SOLID: Open/Closed - fácil de estender sem modificar
      */
-    getDefaultSubscriptionConfig(sellerId, status = 'active') {
+    getDefaultSubscriptionConfig(sellerId, status = 'pending') {
         return {
             seller_id: sellerId,
             plan_name: 'Plano Básico',
