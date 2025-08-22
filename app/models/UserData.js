@@ -14,7 +14,7 @@ const UserData = sequelize.define('UserData', {
   cpfCnpj: {
     type: DataTypes.STRING,
     unique: true,
-    allowNull: false
+    allowNull: true
   },
   address: {
     type: DataTypes.STRING,

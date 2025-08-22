@@ -10,7 +10,7 @@ const SellerSubscription = require('../../models/SellerSubscription');
 async function completeSellerData(req, res) {
     try {
         const { sellerId } = req.params;
-        const { cpfCnpj, name, phone, address } = req.body;
+        const { cpfCnpj, name, phone, address, addressNumber, province, postalCode, birthDate } = req.body;
 
         // Validar dados obrigatórios
         if (!cpfCnpj) {
@@ -41,7 +41,11 @@ async function completeSellerData(req, res) {
             cpfCnpj,
             name,
             phone,
-            address
+            address,
+            addressNumber,
+            province,
+            postalCode,
+            birthDate
         });
 
         if (!updateResult.success) {

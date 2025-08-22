@@ -19,7 +19,7 @@ const Seller = sequelize.define('Seller', {
     get() {
       const value = this.getDataValue('nuvemshop_info');
       if (!value || value === "") return {};
-      
+
       try {
         return JSON.parse(value);
       } catch (error) {
@@ -32,12 +32,12 @@ const Seller = sequelize.define('Seller', {
         this.setDataValue('nuvemshop_info', "{}");
         return;
       }
-      
+
       try {
-        const stringValue = typeof value === 'string' 
-          ? value 
+        const stringValue = typeof value === 'string'
+          ? value
           : JSON.stringify(value);
-        
+
         JSON.parse(stringValue);
         this.setDataValue('nuvemshop_info', stringValue);
       } catch (error) {
@@ -81,7 +81,7 @@ const Seller = sequelize.define('Seller', {
     get() {
       const value = this.getDataValue('accepted_payment_methods');
       if (!value) return ['credit_card', 'pix', 'boleto'];
-      
+
       try {
         const parsedValue = typeof value === 'string' ? JSON.parse(value) : value;
         // Garantir que é um array válido
@@ -110,40 +110,34 @@ const Seller = sequelize.define('Seller', {
   }
 });
 
-const User = require('./User');
-
-// Adicionar associação com o modelo User
-Seller.belongsTo(User, {
-  foreignKey: 'user_id',
-  as: 'user'
-});
+// Associações são definidas centralmente em models/index.js
 
 // Métodos para gerenciar formas de pagamento
-Seller.prototype.isPaymentMethodAccepted = function(method) {
+Seller.prototype.isPaymentMethodAccepted = function (method) {
   let acceptedMethods = this.accepted_payment_methods;
-  
+
   // Garantir que temos um array válido
   if (!acceptedMethods || !Array.isArray(acceptedMethods) || acceptedMethods.length === 0) {
     acceptedMethods = ['credit_card', 'pix', 'boleto'];
   }
-  
+
   return acceptedMethods.includes(method);
 };
 
-Seller.prototype.addPaymentMethod = function(method) {
+Seller.prototype.addPaymentMethod = function (method) {
   const validMethods = ['credit_card', 'pix', 'boleto'];
   if (!validMethods.includes(method)) {
     throw new Error(`Método de pagamento inválido: ${method}`);
   }
-  
+
   try {
     let currentMethods = this.accepted_payment_methods;
-    
+
     // Garantir que temos um array válido
     if (!currentMethods || !Array.isArray(currentMethods)) {
       currentMethods = ['credit_card', 'pix', 'boleto'];
     }
-    
+
     if (!currentMethods.includes(method)) {
       currentMethods.push(method);
       this.accepted_payment_methods = currentMethods;
@@ -154,24 +148,24 @@ Seller.prototype.addPaymentMethod = function(method) {
   }
 };
 
-Seller.prototype.removePaymentMethod = function(method) {
+Seller.prototype.removePaymentMethod = function (method) {
   try {
     let currentMethods = this.accepted_payment_methods;
-    
+
     // Garantir que temos um array válido
     if (!currentMethods || !Array.isArray(currentMethods)) {
       currentMethods = ['credit_card', 'pix', 'boleto'];
     }
-    
+
     // Remover o método especificado
     const updatedMethods = currentMethods.filter(m => m !== method);
-    
+
     // Garantir que não removemos todos os métodos
     if (updatedMethods.length === 0) {
       console.warn(`Tentativa de remover único método de pagamento: ${method}. Mantendo método padrão.`);
       updatedMethods.push('credit_card');
     }
-    
+
     this.accepted_payment_methods = updatedMethods;
   } catch (error) {
     console.error('Erro ao remover método de pagamento:', error.message);

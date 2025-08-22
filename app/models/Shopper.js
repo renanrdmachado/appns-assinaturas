@@ -34,7 +34,7 @@ const Shopper = sequelize.define('Shopper', {
     get() {
       const value = this.getDataValue('nuvemshop_info');
       if (!value || value === "") return {};
-      
+
       try {
         return JSON.parse(value);
       } catch (error) {
@@ -47,12 +47,12 @@ const Shopper = sequelize.define('Shopper', {
         this.setDataValue('nuvemshop_info', "{}");
         return;
       }
-      
+
       try {
-        const stringValue = typeof value === 'string' 
-          ? value 
+        const stringValue = typeof value === 'string'
+          ? value
           : JSON.stringify(value);
-        
+
         // Verificar se é um JSON válido
         JSON.parse(stringValue);
         this.setDataValue('nuvemshop_info', stringValue);
@@ -85,12 +85,6 @@ const Shopper = sequelize.define('Shopper', {
   }
 });
 
-const User = require('./User');
-
-// Adicionar associação com o modelo User
-Shopper.belongsTo(User, {
-  foreignKey: 'user_id',
-  as: 'user'
-});
+// Associações são definidas centralmente em models/index.js
 
 module.exports = Shopper;

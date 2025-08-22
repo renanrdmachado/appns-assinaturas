@@ -27,12 +27,6 @@ const User = sequelize.define('User', {
   }
 });
 
-// Definindo o relacionamento com o modelo UserData
-const UserData = require('./UserData');
-
-User.belongsTo(UserData, {
-  foreignKey: 'user_data_id',
-  as: 'userData'
-});
+// Associações são definidas centralmente em models/index.js
 
 module.exports = User;

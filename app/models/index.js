@@ -11,9 +11,7 @@ const SellerSubscription = require('./SellerSubscription');
 const ShopperSubscription = require('./ShopperSubscription');
 const UserData = require('./UserData');
 
-// Definir relacionamentos entre os modelos
-User.belongsTo(Seller, { foreignKey: 'seller_id', as: 'seller' });
-Seller.hasMany(User, { foreignKey: 'seller_id', as: 'users' });
+// Definir relacionamentos entre os modelos (centralizados neste arquivo)
 
 // Relações para SellerSubscription
 SellerSubscription.belongsTo(Seller, { foreignKey: 'seller_id', as: 'seller' });
@@ -41,7 +39,7 @@ UserData.hasMany(User, { foreignKey: 'user_data_id', as: 'users' });
 User.hasOne(Shopper, { foreignKey: 'user_id', as: 'shopper' });
 User.hasOne(Seller, { foreignKey: 'user_id', as: 'seller' });
 
-// Depois defina as associações entidades -> User 
+// Depois defina as associações entidades -> User
 Shopper.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Seller.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
