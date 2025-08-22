@@ -13,8 +13,8 @@ class PaymentValidator extends BaseValidator {
         errors.push(...this.validateRequiredFields(paymentData, requiredFields, 'pagamento'));
         
         // Validações específicas
-        if (paymentData.payable_type && !['order', 'seller_subscription'].includes(paymentData.payable_type)) {
-            errors.push("O campo 'payable_type' deve ser 'order' ou 'seller_subscription'.");
+        if (paymentData.payable_type && !['seller_subscription'].includes(paymentData.payable_type)) {
+            errors.push("O campo 'payable_type' deve ser 'seller_subscription'.");
         }
 
         if (paymentData.value && isNaN(parseFloat(paymentData.value))) {
@@ -51,8 +51,8 @@ class PaymentValidator extends BaseValidator {
 
         // Para atualizações, validamos apenas os campos que foram fornecidos
         if (paymentData.payable_type !== undefined) {
-            if (!['order', 'seller_subscription'].includes(paymentData.payable_type)) {
-                errors.push("O campo 'payable_type' deve ser 'order' ou 'seller_subscription'.");
+            if (!['seller_subscription'].includes(paymentData.payable_type)) {
+                errors.push("O campo 'payable_type' deve ser 'seller_subscription'.");
             }
         }
 
@@ -90,20 +90,12 @@ class PaymentValidator extends BaseValidator {
     }
 
     // Método específico para validar pagamentos de pedidos
-    static validateOrderPaymentData(paymentData) {
-        // Garantir que o pagamento está vinculado a um pedido
-        if (!paymentData || paymentData.payable_type !== 'order') {
-            this.throwError("O tipo de pagamento deve ser 'order' para pagamentos de pedidos.", 400);
-        }
-
-        // Validar os outros campos com o método genérico
-        return this.validatePaymentData(paymentData);
-    }
+    // Removido: não criamos pagamentos diretos de Order; apenas de subscriptions
 
     // Método específico para validar pagamentos de assinaturas de vendedores
     static validateSubscriptionPaymentData(paymentData) {
         // Garantir que o pagamento está vinculado a uma assinatura
-        if (!paymentData || paymentData.payable_type !== 'seller_subscription') {
+    if (!paymentData || paymentData.payable_type !== 'seller_subscription') {
             this.throwError("O tipo de pagamento deve ser 'seller_subscription' para pagamentos de assinaturas.", 400);
         }
 

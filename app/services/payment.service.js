@@ -1,6 +1,6 @@
 const Payment = require('../models/Payment');
-const Order = require('../models/Order');
 const SellerSubscription = require('../models/SellerSubscription');
+const ShopperSubscription = require('../models/ShopperSubscription');
 const { formatError, createError } = require('../utils/errorHandler');
 const PaymentValidator = require('../validators/payment-validator');
 
@@ -19,10 +19,10 @@ class PaymentService {
             
             // Buscar objeto relacionado (polimórfico)
             let relatedObject = null;
-            if (payment.payable_type === 'order') {
-                relatedObject = await Order.findByPk(payment.payable_id);
-            } else if (payment.payable_type === 'seller_subscription') {
+            if (payment.payable_type === 'seller_subscription') {
                 relatedObject = await SellerSubscription.findByPk(payment.payable_id);
+            } else if (payment.payable_type === 'shopper_subscription') {
+                relatedObject = await ShopperSubscription.findByPk(payment.payable_id);
             }
             
             console.log("Service / Payment: ", payment.id);
@@ -45,25 +45,24 @@ class PaymentService {
         }
     }
     
+    // Compat: listar pagamentos de um pedido resolvendo via ShopperSubscription
     async getByOrder(orderId) {
         try {
-            // Verificar se o pedido existe
-            const order = await Order.findByPk(orderId);
-            if (!order) {
-                return { 
-                    success: false, 
-                    message: 'Pedido não encontrado',
-                    status: 404
-                };
+            if (!orderId) {
+                return createError('order_id é obrigatório', 400);
             }
-            
+            // Coleta as assinaturas de shopper vinculadas ao pedido
+            const subs = await ShopperSubscription.findAll({ where: { order_id: orderId } });
+            if (!subs || subs.length === 0) {
+                return { success: true, data: [] };
+            }
+            const subIds = subs.map(s => s.id);
             const payments = await Payment.findAll({
-                where: { 
-                    payable_type: 'order',
-                    payable_id: orderId
+                where: {
+                    payable_type: 'shopper_subscription',
+                    payable_id: subIds
                 }
             });
-            
             console.log(`Service / Payments for order ${orderId}: `, payments.length);
             return { success: true, data: payments };
         } catch (error) {
@@ -99,51 +98,7 @@ class PaymentService {
         }
     }
 
-    async createForOrder(orderId, data) {
-        console.log('Payment for Order - creating...');
-        try {
-            // Verificar se o pedido existe
-            const order = await Order.findByPk(orderId);
-            if (!order) {
-                return createError('Pedido não encontrado', 404);
-            }
-            
-            // Preparar dados completos para validação
-            const paymentData = {
-                ...data,
-                payable_type: 'order',
-                payable_id: orderId
-            };
-            
-            // Validar dados do pagamento para pedido
-            try {
-                PaymentValidator.validateOrderPaymentData(paymentData);
-            } catch (validationError) {
-                return formatError(validationError);
-            }
-            
-            const payment = await Payment.create({
-                external_id: data.external_id,
-                payable_type: 'order',
-                payable_id: orderId,
-                status: data.status || 'pending',
-                value: data.value,
-                net_value: data.net_value,
-                payment_date: data.payment_date,
-                due_date: data.due_date,
-                payment_method: data.payment_method,
-                invoice_url: data.invoice_url,
-                description: data.description,
-                transaction_data: data.transaction_data
-            });
-            
-            console.log('Payment created for Order:', payment.id);
-            return { success: true, data: payment };
-        } catch (error) {
-            console.error('Erro ao criar pagamento para pedido:', error.message);
-            return formatError(error);
-        }
-    }
+    // Removido: criação de pagamento para Order
     
     async createForSellerSubscription(subscriptionId, data) {
         console.log('Payment for SellerSubscription - creating...');
@@ -178,7 +133,6 @@ class PaymentService {
                 net_value: data.net_value,
                 payment_date: data.payment_date,
                 due_date: data.due_date,
-                payment_method: data.payment_method,
                 invoice_url: data.invoice_url,
                 description: data.description,
                 transaction_data: data.transaction_data
@@ -209,14 +163,9 @@ class PaymentService {
             
             await payment.update(data);
             
-            // Se o status foi atualizado para 'confirmed', atualizar o status do objeto relacionado
+            // Se o status foi atualizado para 'confirmed', atualizar o status da assinatura do seller
             if (data.status === 'confirmed') {
-                if (payment.payable_type === 'order') {
-                    const order = await Order.findByPk(payment.payable_id);
-                    if (order) {
-                        await order.update({ status: 'active' });
-                    }
-                } else if (payment.payable_type === 'seller_subscription') {
+                if (payment.payable_type === 'seller_subscription') {
                     const subscription = await SellerSubscription.findByPk(payment.payable_id);
                     if (subscription) {
                         await subscription.update({ status: 'active' });

@@ -45,13 +45,6 @@ Seller.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Relações polimórficas para pagamentos
 // Não há suporte direto para relações polimórficas no Sequelize, então implementamos manualmente
-// Payments para Orders
-Payment.addScope('forOrder', (orderId) => ({
-  where: {
-    payable_type: 'order',
-    payable_id: orderId
-  }
-}));
 
 // Payments para SellerSubscriptions
 Payment.addScope('forSellerSubscription', (subscriptionId) => ({

@@ -249,7 +249,7 @@ class SellerSubscriptionsService {
             }
 
             // Filtrar apenas campos permitidos para atualização
-            const allowedFields = ['status', 'payment_method', 'price', 'notes'];
+            const allowedFields = ['status', 'price', 'notes'];
             const filteredData = {};
             
             allowedFields.forEach(field => {

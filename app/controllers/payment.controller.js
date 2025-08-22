@@ -47,11 +47,14 @@ class PaymentController {
     }
   }
 
-  // Criar novo pagamento para pedido
-  async storeForOrder(req, res) {
+  // Removido: criação de pagamento para pedido
+
+  // Listar pagamentos por pedido (compat via ShopperSubscription)
+  async listByOrder(req, res) {
+    const { order_id } = req.params;
+    
     try {
-      const { order_id } = req.params;
-      const result = await PaymentService.createForOrder(order_id, req.body);
+      const result = await PaymentService.getByOrder(order_id);
       
       if (!result.success) {
         return res.status(result.status || 400).json({
@@ -59,17 +62,13 @@ class PaymentController {
           message: result.message
         });
       }
-
-      return res.status(201).json({
-        success: true,
-        message: 'Pagamento criado com sucesso',
-        data: result.data
-      });
+      
+      return res.json({ success: true, data: result.data });
     } catch (error) {
-      console.error('Erro ao criar pagamento:', error);
+      console.error(`Erro ao listar pagamentos do pedido ID ${order_id}:`, error);
       return res.status(500).json({
         success: false,
-        message: 'Erro ao criar pagamento',
+        message: 'Erro ao buscar pagamentos do pedido',
         error: error.message
       });
     }
@@ -132,30 +131,7 @@ class PaymentController {
     }
   }
 
-  // Listar pagamentos por pedido
-  async listByOrder(req, res) {
-    const { order_id } = req.params;
-    
-    try {
-      const result = await PaymentService.getByOrder(order_id);
-      
-      if (!result.success) {
-        return res.status(result.status || 400).json({
-          success: false,
-          message: result.message
-        });
-      }
-      
-      return res.json({ success: true, data: result.data });
-    } catch (error) {
-      console.error(`Erro ao listar pagamentos do pedido ID ${order_id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erro ao buscar pagamentos do pedido',
-        error: error.message
-      });
-    }
-  }
+  // Removido: listagem de pagamentos por pedido
 
   // Listar pagamentos por assinatura de vendedor
   async listBySellerSubscription(req, res) {

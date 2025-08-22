@@ -8,8 +8,8 @@ router.get('/:id', PaymentController.show);
 router.put('/:id', PaymentController.update);
 
 // Rotas para pagamentos de pedidos (orders)
+// Rota de compatibilidade: listar pagamentos por Order (derivado de ShopperSubscription)
 router.get('/order/:order_id', PaymentController.listByOrder);
-router.post('/order/:order_id', PaymentController.storeForOrder);
 
 // Rotas para pagamentos de assinaturas de vendedores
 router.get('/subscription/:subscription_id', PaymentController.listBySellerSubscription);

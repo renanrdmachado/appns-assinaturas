@@ -70,10 +70,6 @@ const Order = sequelize.define('Order', {
   },
   
   // Dados de pagamento
-  payment_method: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
   billing_type: {
     type: DataTypes.STRING,
     allowNull: true

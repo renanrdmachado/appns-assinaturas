@@ -343,13 +343,7 @@ class ShopperSubscriptionService {
             // Criar assinatura no banco local usando a transação
             const subscription = await ShopperSubscription.create(subscriptionData, { transaction });
             
-            // Atualizar pedido com o ID da assinatura se necessário
-            if (!order.external_id) {
-                await order.update({ 
-                    external_id: asaasResult.data.id,
-                    status: subscriptionData.status
-                }, { transaction });
-            }
+            // Não atualizar Order com dados de assinatura; manter responsabilidade na Subscription
             
             // Confirmar a transação
             await transaction.commit();
@@ -407,13 +401,7 @@ class ShopperSubscriptionService {
                     data.status = AsaasFormatter.mapAsaasStatusToLocalStatus(asaasResult.data.status);
                 }
                 
-                // Se o pedido tiver o mesmo ID externo, atualizar o status também
-                if (subscription.order_id) {
-                    const order = await Order.findByPk(subscription.order_id);
-                    if (order && order.external_id === subscription.external_id) {
-                        await order.update({ status: data.status });
-                    }
-                }
+                // Não sincroniza status com Order; Order não é a fonte de verdade do status de assinatura
             } else {
                 console.warn(`Assinatura ID ${id} não possui ID externo no Asaas para atualização`);
             }

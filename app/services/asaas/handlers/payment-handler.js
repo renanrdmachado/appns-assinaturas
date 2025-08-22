@@ -175,7 +175,7 @@ async function createOrUpdatePaymentFromWebhook(paymentInfo) {
             net_value: paymentInfo.netValue ?? null,
             payment_date: paymentInfo.paymentDate ? new Date(paymentInfo.paymentDate) : (paymentInfo.confirmedDate ? new Date(paymentInfo.confirmedDate) : null),
             due_date: paymentInfo.dueDate ? new Date(paymentInfo.dueDate) : null,
-            payment_method: paymentInfo.billingType ?? null,
+            // payment_method removido (redundante a billingType)
             invoice_url: paymentInfo.invoiceUrl ?? null,
             description: paymentInfo.description ?? null,
             transaction_data: paymentInfo

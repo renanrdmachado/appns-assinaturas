@@ -63,10 +63,6 @@ const ShopperSubscription = sequelize.define('ShopperSubscription', {
   },
   
   // Dados de pagamento
-  payment_method: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
   billing_type: {
     type: DataTypes.STRING,
     allowNull: true

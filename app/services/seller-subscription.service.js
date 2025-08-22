@@ -765,7 +765,6 @@ class SellerSubscriptionService {
                 cycle: planData.cycle,
                 next_due_date: asaasSubscription.nextDueDate,
                 start_date: new Date(),
-                payment_method: billingInfo.billingType || 'PIX',
                 billing_type: billingInfo.billingType || 'PIX',
                 features: planData.features || {},
                 metadata: {

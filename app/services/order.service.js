@@ -35,7 +35,8 @@ class OrderService {
             }
             
             if (customerId) {
-                whereClause.customer_id = customerId;
+                // Campo correto é shopper_id
+                whereClause.shopper_id = customerId;
             }
             
             const orders = await Order.findAll({
@@ -123,7 +124,6 @@ class OrderService {
                 next_due_date: data.next_due_date,
                 external_id: data.external_id,
                 status: data.status || 'pending',
-                payment_method: data.payment_method,
                 billing_type: data.billing_type,
                 metadata: data.metadata
             });
@@ -172,7 +172,6 @@ class OrderService {
                 ...(data.next_due_date && { next_due_date: data.next_due_date }),
                 ...(data.status && { status: data.status }),
                 ...(data.external_id && { external_id: data.external_id }),
-                ...(data.payment_method && { payment_method: data.payment_method }),
                 ...(data.billing_type && { billing_type: data.billing_type }),
                 ...(data.metadata && { metadata: data.metadata })
             });

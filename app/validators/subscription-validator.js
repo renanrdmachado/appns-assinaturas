@@ -236,24 +236,6 @@ class SubscriptionValidator extends BaseValidator {
         return this.throwValidationErrors(errors);
     }
 
-    /**
-     * Valida método de pagamento para assinatura
-     * @param {Object} data - Objeto contendo o payment_method para validação
-     */
-    static validatePaymentMethodUpdate(data) {
-        const errors = [];
-
-        if (!data || !data.payment_method) {
-            this.throwError("Método de pagamento é obrigatório", 400);
-        }
-
-        const validMethods = ['credit_card', 'pix', 'boleto'];
-        if (!validMethods.includes(data.payment_method)) {
-            errors.push(`Método de pagamento inválido. Use um dos seguintes: ${validMethods.join(', ')}`);
-        }
-
-        return this.throwValidationErrors(errors);
-    }
 
     /**
      * Valida atualização de preço de assinatura
@@ -335,10 +317,7 @@ class SubscriptionValidator extends BaseValidator {
             sanitized.status = data.status.toLowerCase();
         }
 
-        // Sanitizar método de pagamento
-        if (data.payment_method) {
-            sanitized.payment_method = data.payment_method.toLowerCase();
-        }
+    // payment_method deprecado
 
         // Outros campos que não precisam de sanitização especial
         ['plan_name', 'billing_type'].forEach(field => {

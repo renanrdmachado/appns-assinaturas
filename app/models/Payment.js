@@ -46,10 +46,6 @@ const Payment = sequelize.define('Payment', {
     type: DataTypes.DATE,
     allowNull: false
   },
-  payment_method: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
   invoice_url: {
     type: DataTypes.STRING,
     allowNull: true,
