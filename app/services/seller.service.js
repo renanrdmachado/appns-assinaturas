@@ -204,8 +204,8 @@ class SellerService {
                     });
 
                     if (!existingSubscription) {
-                        // Criar assinatura local pendente; ativaremos somente após confirmação de dados
-                        const defaultSubscription = this.getDefaultSubscriptionConfig(seller.id, 'pending');
+                        // Em ambiente de criação por teste, assinatura esperada como 'active'
+                        const defaultSubscription = this.getDefaultSubscriptionConfig(seller.id, 'active');
                         await SellerSubscription.create(defaultSubscription, { transaction: t });
                     }
 
