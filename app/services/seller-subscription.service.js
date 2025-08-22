@@ -5,6 +5,7 @@ const AsaasApiClient = require('../helpers/AsaasApiClient');
 const { formatError, createError } = require('../utils/errorHandler');
 const SellerValidator = require('../validators/seller-validator');
 const AsaasCustomerService = require('./asaas/customer.service');
+const subscriptionService = require('./asaas/subscription.service');
 const sequelize = require('../config/database');
 const AsaasCardService = require('./asaas/card.service');
 const { redactSensitive } = require('../utils/redact');
