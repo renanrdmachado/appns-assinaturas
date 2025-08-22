@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+// Inicializa modelos e associações do Sequelize antes de carregar rotas
+require('./models');
+
 const routes = require('./routes');
 
 const app = express();
