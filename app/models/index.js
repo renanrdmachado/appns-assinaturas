@@ -65,8 +65,9 @@ Payment.addScope('forSellerSubscription', (subscriptionId) => ({
     await User.sync(); // Depende de UserData
     await Seller.sync(); // Depende de User
     await Shopper.sync(); // Depende de User
-    await Product.sync(); // Depende de Seller
-    await Order.sync(); // Depende de Seller e Shopper
+  // Forçar ajuste do schema existente para Product e Order
+  await Product.sync({ alter: true }); // Depende de Seller
+  await Order.sync({ alter: true }); // Depende de Seller e Shopper
     await SellerSubscription.sync(); // Depende de Seller
     await ShopperSubscription.sync(); // Depende de Shopper e Order
     await Payment.sync(); // Depende de SellerSubscription e ShopperSubscription

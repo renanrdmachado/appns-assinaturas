@@ -43,7 +43,7 @@ const Order = sequelize.define('Order', {
   // Dados da assinatura
   value: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false
+    allowNull: true
   },
   status: {
     type: DataTypes.ENUM('active', 'inactive', 'overdue', 'canceled', 'pending'),
@@ -52,12 +52,12 @@ const Order = sequelize.define('Order', {
   },
   cycle: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     comment: 'Ciclo de cobrança (MONTHLY, YEARLY, etc)'
   },
   next_due_date: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true
   },
   start_date: {
     type: DataTypes.DATE,
