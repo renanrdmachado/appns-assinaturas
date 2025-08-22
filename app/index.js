@@ -4,7 +4,9 @@ const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 
 const app = express();
-app.set('trust proxy', true); // confiar no proxy para req.ip e X-Forwarded-For
+// Confiar somente no primeiro proxy (ex.: Nginx/Load Balancer) para evitar spoof de IP
+// Evita o erro ERR_ERL_PERMISSIVE_TRUST_PROXY do express-rate-limit
+app.set('trust proxy', 1);
 const port = 10000;
 
 // Configuração do CORS
@@ -20,6 +22,8 @@ app.use(cors({
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
     max: 100, // Limite de 100 requisições por IP por janela
+    standardHeaders: true, // usa RateLimit-* headers
+    legacyHeaders: false,  // desativa X-RateLimit-* legacy
     message: { success: false, message: 'Muitas requisições, tente novamente mais tarde.' }
 });
 
