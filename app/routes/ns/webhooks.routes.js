@@ -43,6 +43,13 @@ router.delete('/:webhook_id', WebhooksController.deleteWebhook);
 router.post('/setup-lgpd', WebhooksController.setupLgpdWebhooks);
 
 /**
+ * POST /api/ns/seller/:seller_id/webhooks/setup-defaults
+ * Cria webhooks padrão (ex.: order/paid) apontando para /api/ns/events
+ * Body: { base_url: "https://meuapp.com" }
+ */
+router.post('/setup-defaults', WebhooksController.setupDefaultWebhooks);
+
+/**
  * DELETE /api/ns/seller/:seller_id/webhooks/remove-lgpd
  * Remove todos os webhooks LGPD
  */

@@ -102,6 +102,19 @@ class NsService {
                 } else {
                     console.warn('Aviso: Falha ao configurar webhooks LGPD:', webhooksResult.message);
                 }
+
+                // Configurar webhooks padrão (ex.: order/paid) via API
+                console.log('Configurando webhooks padrão (eventos NS) automaticamente...');
+                const defaultsResult = await NsWebhooksService.setupDefaultWebhooks(
+                    store.user_id,
+                    store.access_token,
+                    baseUrl
+                );
+                if (defaultsResult.success) {
+                    console.log('Webhooks padrão configurados:', defaultsResult.data);
+                } else {
+                    console.warn('Aviso: Falha ao configurar webhooks padrão:', defaultsResult.message);
+                }
             } catch (webhookError) {
                 console.warn('Aviso: Erro ao configurar webhooks LGPD:', webhookError.message);
                 // Não falhar o processo de autorização por causa dos webhooks

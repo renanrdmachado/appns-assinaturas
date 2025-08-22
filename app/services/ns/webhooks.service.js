@@ -211,6 +211,65 @@ class NsWebhooksService {
             return formatError(error);
         }
     }
+
+    /**
+     * Cria webhooks "padrão" úteis para o app via API da Nuvemshop (ex.: order/paid).
+     * Idempotente: não recria se já existir mesmo par (event,url).
+     */
+    async setupDefaultWebhooks(storeId, accessToken, baseUrl) {
+        try {
+            console.log(`Configurando webhooks padrão para loja ${storeId}`);
+
+            const normalizeApiBase = (url) => {
+                if (!url) return '';
+                let b = url.trim().replace(/\/+$/, '');
+                if (!/\/api$/i.test(b)) b = `${b}/api`;
+                return b;
+            };
+            const apiBase = normalizeApiBase(baseUrl);
+
+            // URL genérica do nosso receiver
+            const receiverUrl = `${apiBase}/ns/events`;
+
+            // Defina aqui os eventos que deseja acompanhar
+            const desired = [
+                { event: 'order/paid', url: receiverUrl },
+                { event: 'order/created', url: receiverUrl },
+                { event: 'order/updated', url: receiverUrl },
+                { event: 'app/uninstalled', url: receiverUrl },
+                { event: 'app/suspended', url: receiverUrl },
+                { event: 'app/resumed', url: receiverUrl }
+            ];
+
+            // Buscar existentes
+            const existing = await this.getWebhooks(storeId, accessToken);
+            if (!existing.success) return existing;
+
+            const already = new Set(
+                existing.data.map(w => `${w.event}::${w.url}`)
+            );
+
+            const results = [];
+            for (const hook of desired) {
+                const key = `${hook.event}::${hook.url}`;
+                if (already.has(key)) {
+                    results.push({ ...hook, status: 'exists' });
+                    continue;
+                }
+                try {
+                    const created = await this.createWebhook(storeId, accessToken, hook);
+                    results.push({ ...hook, status: created.success ? 'created' : 'error', result: created });
+                } catch (err) {
+                    results.push({ ...hook, status: 'error', error: err.message });
+                }
+            }
+
+            return { success: true, data: results };
+        } catch (error) {
+            console.error('Erro ao configurar webhooks padrão:', error.message);
+            return formatError(error);
+        }
+    }
 }
 
 module.exports = new NsWebhooksService();

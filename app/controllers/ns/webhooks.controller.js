@@ -166,6 +166,51 @@ class WebhooksController {
             return res.status(500).json(formatError(error));
         }
     }
+
+    /**
+     * Configura webhooks padrão (ex.: order/paid) via API para a loja
+     */
+    async setupDefaultWebhooks(req, res) {
+        try {
+            const { seller_id } = req.params;
+            const { base_url } = req.body;
+
+            if (!base_url) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'base_url é obrigatório (ex: https://meuapp.com ou https://meuapp.com/api)'
+                });
+            }
+
+            // Buscar informações do seller
+            const sellerResult = await SellerService.get(seller_id);
+            if (!sellerResult.success) {
+                return res.status(404).json(sellerResult);
+            }
+
+            const seller = sellerResult.data;
+
+            const result = await NsWebhooksService.setupDefaultWebhooks(
+                seller.nuvemshop_id,
+                seller.nuvemshop_api_token,
+                base_url
+            );
+
+            if (!result.success) {
+                return res.status(400).json(result);
+            }
+
+            return res.json({
+                success: true,
+                message: 'Webhooks padrão configurados',
+                data: result.data
+            });
+
+        } catch (error) {
+            console.error('Erro ao configurar webhooks padrão:', error);
+            return res.status(500).json(formatError(error));
+        }
+    }
     
     /**
      * Remove webhooks LGPD
