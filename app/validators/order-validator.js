@@ -8,14 +8,17 @@ class OrderValidator extends BaseValidator {
             this.throwError("Dados do pedido são obrigatórios", 400);
         }
 
-    // Validar campos obrigatórios (seller_id será determinado automaticamente pelos produtos)
+    // Validar campos obrigatórios (seller_id será determinado automaticamente pelo produto)
     // Importante: Order não armazena mais dados de assinatura (value, cycle, next_due_date)
-    const requiredFields = ['shopper_id', 'products', 'customer_info'];
+    const requiredFields = ['shopper_id', 'product_id', 'customer_info', 'value'];
         errors.push(...this.validateRequiredFields(orderData, requiredFields, 'pedido'));
         
         // Validações específicas
-        if (orderData.products && (!Array.isArray(orderData.products) && typeof orderData.products !== 'object')) {
-            errors.push("O campo 'products' deve ser um array ou objeto válido.");
+        if (orderData.product_id !== undefined && (orderData.product_id === '' || isNaN(orderData.product_id))) {
+            errors.push("O campo 'product_id' deve ser um ID válido.");
+        }
+        if (orderData.value !== undefined && (isNaN(orderData.value) || parseFloat(orderData.value) <= 0)) {
+            errors.push("O campo 'value' deve ser um número positivo.");
         }
 
 
@@ -38,10 +41,11 @@ class OrderValidator extends BaseValidator {
             errors.push("O campo 'shopper_id' não pode ser vazio.");
         }
 
-        if (orderData.products !== undefined && 
-            !Array.isArray(orderData.products) && 
-            typeof orderData.products !== 'object') {
-            errors.push("O campo 'products' deve ser um array ou objeto válido.");
+        if (orderData.product_id !== undefined && (orderData.product_id === '' || isNaN(orderData.product_id))) {
+            errors.push("O campo 'product_id' deve ser um ID válido.");
+        }
+        if (orderData.value !== undefined && (isNaN(orderData.value) || parseFloat(orderData.value) <= 0)) {
+            errors.push("O campo 'value' deve ser um número positivo.");
         }
 
     // Campos de assinatura foram removidos do Order; não validar aqui

@@ -36,6 +36,20 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  cycle: {
+    type: DataTypes.ENUM(
+      'WEEKLY',
+      'BIWEEKLY',
+      'MONTHLY',
+      'BIMONTHLY',
+      'QUARTERLY',
+      'SEMIANNUALLY',
+      'YEARLY'
+    ),
+    allowNull: false,
+    defaultValue: 'MONTHLY',
+    comment: 'Ciclo de cobrança do produto'
+  },
   categories: {
     type: DataTypes.JSON,
     allowNull: true

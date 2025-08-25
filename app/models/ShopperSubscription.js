@@ -15,9 +15,10 @@ const ShopperSubscription = sequelize.define('ShopperSubscription', {
     comment: 'ID do comprador que assina'
   },
   order_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    comment: 'ID do pedido que originou a assinatura'
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  unique: true,
+  comment: 'ID do pedido que originou a assinatura (1:1)'
   },
   
   // Identificação externa na plataforma de pagamento
@@ -44,9 +45,17 @@ const ShopperSubscription = sequelize.define('ShopperSubscription', {
     defaultValue: 'pending'
   },
   cycle: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM(
+      'WEEKLY',
+      'BIWEEKLY',
+      'MONTHLY',
+      'BIMONTHLY',
+      'QUARTERLY',
+      'SEMIANNUALLY',
+      'YEARLY'
+    ),
     allowNull: false,
-    comment: 'Ciclo de cobrança (MONTHLY, YEARLY, etc)'
+    comment: 'Ciclo de cobrança'
   },
   next_due_date: {
     type: DataTypes.DATE,
@@ -90,14 +99,6 @@ const ShopperSubscription = sequelize.define('ShopperSubscription', {
   // Adicionar paranoid: true para habilitar o soft delete no Sequelize
   paranoid: true,
   deletedAt: 'deleted_at'
-});
-
-const Shopper = require('./Shopper');
-
-// Adicionar associação com o modelo Shopper
-ShopperSubscription.belongsTo(Shopper, {
-  foreignKey: 'shopper_id',
-  as: 'shopper'
 });
 
 module.exports = ShopperSubscription;

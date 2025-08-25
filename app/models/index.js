@@ -2,6 +2,7 @@ const sequelize = require('../config/database');
 
 // Importar todos os modelos
 const Seller = require('./Seller');
+const Shopper = require('./Shopper');
 const User = require('./User');
 const Order = require('./Order');
 const Product = require('./Product');
@@ -30,6 +31,18 @@ Shopper.hasMany(Order, { foreignKey: 'shopper_id', as: 'orders' });
 // Relações para produtos
 Product.belongsTo(Seller, { foreignKey: 'seller_id', as: 'seller' });
 Seller.hasMany(Product, { foreignKey: 'seller_id', as: 'products' });
+
+// Order 1:1 Product
+Order.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+Product.hasOne(Order, { foreignKey: 'product_id', as: 'order' });
+
+// Order 1:1 ShopperSubscription
+ShopperSubscription.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+Order.hasOne(ShopperSubscription, { foreignKey: 'order_id', as: 'subscription' });
+
+// Relações para ShopperSubscription
+ShopperSubscription.belongsTo(Shopper, { foreignKey: 'shopper_id', as: 'shopper' });
+Shopper.hasMany(ShopperSubscription, { foreignKey: 'shopper_id', as: 'subscriptions' });
 
 // Relacionamentos com User - correção das associações
 // Defina as associações User -> entidades primeiro

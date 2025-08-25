@@ -56,45 +56,18 @@ class OrderService {
         console.log('DEBUG - Dados recebidos para criar order:', JSON.stringify(data, null, 2));
         
         try {
-            // Calcular o valor total dos produtos E determinar o seller_id automaticamente
-            let total = 0;
-            let automaticSellerId = null;
-            
-            if (!Array.isArray(data.products) || data.products.length === 0) {
-                return createError('Lista de produtos é obrigatória e deve conter ao menos um produto', 400);
+            // 1:1 - Exigir product_id e determinar seller_id automaticamente a partir do produto
+            if (!data.product_id) {
+                return createError('product_id é obrigatório', 400);
             }
-            
-            // Buscar todos os produtos pelo array de IDs
-            const productIds = data.products.map(p => typeof p === 'object' && p.product_id ? p.product_id : p);
-            console.log('DEBUG - productIds extraídos:', productIds);
-            
-            const foundProducts = await Product.findAll({ where: { id: productIds } });
-            console.log('DEBUG - foundProducts:', foundProducts.map(p => ({ id: p.id, seller_id: p.seller_id, name: p.name })));
-            
-            if (foundProducts.length !== productIds.length) {
-                return createError('Um ou mais produtos não foram encontrados', 404);
+
+            const product = await Product.findByPk(data.product_id);
+            if (!product) {
+                return createError('Produto não encontrado', 404);
             }
-            
-            // Verificar se todos os produtos pertencem ao mesmo seller
-            const sellersFromProducts = [...new Set(foundProducts.map(p => p.seller_id))];
-            if (sellersFromProducts.length > 1) {
-                return createError('Todos os produtos devem pertencer ao mesmo seller. Produtos de sellers diferentes encontrados: ' + sellersFromProducts.join(', '), 400);
-            }
-            
-            automaticSellerId = sellersFromProducts[0];
-            console.log('DEBUG - seller_id determinado automaticamente pelos produtos:', automaticSellerId);
-            
-            // Se foi passado um seller_id diferente do produto, usar o do produto e avisar
-            if (data.seller_id && data.seller_id != automaticSellerId) {
-                console.log('DEBUG - seller_id do front-end ignorado. Usando seller_id do produto:', automaticSellerId);
-            }
-            
-            // Somar os preços multiplicados pela quantidade (se houver)
-            total = foundProducts.reduce((sum, prod) => {
-                const prodInfo = data.products.find(p => (p.product_id || p) == prod.id);
-                const quantity = prodInfo && prodInfo.quantity ? parseInt(prodInfo.quantity) : 1;
-                return sum + (prod.price * quantity);
-            }, 0);
+
+            const automaticSellerId = product.seller_id;
+            console.log('DEBUG - seller_id determinado pelo produto:', automaticSellerId);
 
             // Validar dados do pedido usando o validator (agora com o seller_id correto)
             try {
@@ -109,13 +82,14 @@ class OrderService {
             console.log('DEBUG - Dados que serão enviados para Order.create:', {
                 seller_id: automaticSellerId,
                 shopper_id: data.shopper_id,
-                products: data.products
+                product_id: data.product_id
             });
 
             const order = await Order.create({
                 seller_id: automaticSellerId,  // Usar o seller_id do produto
                 shopper_id: data.shopper_id,
-                products: data.products,
+                product_id: data.product_id,
+                value: data.value,
                 customer_info: data.customer_info,
                 nuvemshop: data.nuvemshop,
                 // Dados de assinatura não são mais persistidos em Order
@@ -155,14 +129,16 @@ class OrderService {
                 return formatError(validationError);
             }
             
-            await order.update({
-                ...(data.seller_id && { seller_id: data.seller_id }),
-                ...(data.shopper_id && { shopper_id: data.shopper_id }),
-                ...(data.products && { products: data.products }),
-                ...(data.customer_info && { customer_info: data.customer_info }),
-                ...(data.nuvemshop && { nuvemshop: data.nuvemshop }),
-                ...(data.metadata && { metadata: data.metadata })
-            });
+            const updatePayload = {};
+            if (data.seller_id !== undefined) updatePayload.seller_id = data.seller_id;
+            if (data.shopper_id !== undefined) updatePayload.shopper_id = data.shopper_id;
+            if (data.product_id !== undefined) updatePayload.product_id = data.product_id;
+            if (data.value !== undefined) updatePayload.value = data.value;
+            if (data.customer_info !== undefined) updatePayload.customer_info = data.customer_info;
+            if (data.nuvemshop !== undefined) updatePayload.nuvemshop = data.nuvemshop;
+            if (data.metadata !== undefined) updatePayload.metadata = data.metadata;
+
+            await order.update(updatePayload);
             
             console.log('Order updated:', order.toJSON());
             return { success: true, data: order.toJSON() };

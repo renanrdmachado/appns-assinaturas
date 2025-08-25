@@ -288,48 +288,41 @@ class ShopperSubscriptionService {
             }
             
             // Preparar dados da assinatura
+            // Carregar o produto do pedido (1:1)
+            const product = await Product.findByPk(order.product_id);
+            if (!product) {
+                await transaction.rollback();
+                return createError('Produto do pedido não encontrado', 404);
+            }
+
             const subscriptionData = {
                 // Usar dados fornecidos ou do pedido
                 plan_name: data.plan_name || `Assinatura do Pedido #${order.id}`,
-                value: data.value, // se não vier, será calculado abaixo
-                cycle: data.cycle || 'MONTHLY',
+                value: data.value !== undefined ? data.value : order.value, // usar o valor final do pedido por padrão
+                cycle: data.cycle || product.cycle || 'MONTHLY',
                 next_due_date: data.next_due_date,
+                // permitir informar start_date e status para não acionar defaults
+                start_date: data.start_date,
+                status: data.status,
                 billing_type: data.billing_type || 'BOLETO',
                 // Armazenar os IDs de relacionamento
                 shopper_id: shopperId,
                 order_id: orderId
             };
+
+            // Propagar campos de cartão se fornecidos (para uso no formatter do Asaas)
+            if (data.creditCardToken) subscriptionData.creditCardToken = data.creditCardToken;
+            if (data.creditCard) subscriptionData.creditCard = data.creditCard;
+            if (data.creditCardHolderInfo) subscriptionData.creditCardHolderInfo = data.creditCardHolderInfo;
+            if (data.remoteIp) subscriptionData.remoteIp = data.remoteIp;
             
-            // Validar dados com o validador unificado
-            try {
-                SubscriptionValidator.validateCreateData(subscriptionData);
-            } catch (error) {
-                await transaction.rollback();
-                return formatError(error);
-            }
-            
-            console.log('Dados montados para formatação:', JSON.stringify(subscriptionData, null, 2));
+            console.log('Dados montados para cálculo/derivação:', JSON.stringify(subscriptionData, null, 2));
 
             // Se valor não foi fornecido, calcular a partir dos produtos do pedido
+            // valor já vem do order por padrão; se mesmo assim não existir, última tentativa: usar preço do produto
             if (subscriptionData.value === undefined || subscriptionData.value === null) {
-                try {
-                    const prodIds = order.products.map(p => (typeof p === 'object' && p.product_id) ? p.product_id : p);
-                    const foundProducts = await Product.findAll({ where: { id: prodIds } });
-                    if (foundProducts.length !== prodIds.length) {
-                        await transaction.rollback();
-                        return createError('Um ou mais produtos do pedido não foram encontrados para cálculo do valor', 404);
-                    }
-                    const total = foundProducts.reduce((sum, prod) => {
-                        const prodInfo = order.products.find(p => (p.product_id || p) == prod.id);
-                        const quantity = prodInfo && prodInfo.quantity ? parseInt(prodInfo.quantity) : 1;
-                        const unit = typeof prod.getSubscriptionPrice === 'function' ? prod.getSubscriptionPrice() : (prod.subscription_price || prod.price);
-                        return sum + (unit * quantity);
-                    }, 0);
-                    subscriptionData.value = total;
-                } catch (calcErr) {
-                    await transaction.rollback();
-                    return formatError(calcErr);
-                }
+                const unit = typeof product.getSubscriptionPrice === 'function' ? product.getSubscriptionPrice() : (product.subscription_price || product.price);
+                subscriptionData.value = unit;
             }
             
             // Criar padrão para data de início
@@ -341,7 +334,25 @@ class ShopperSubscriptionService {
             if (!subscriptionData.status) {
                 subscriptionData.status = 'pending';
             }
+
+            // Se não vier data de vencimento, calcular automaticamente com base no ciclo
+            if (!subscriptionData.next_due_date) {
+                try {
+                    subscriptionData.next_due_date = this.calculateNextDueDate(subscriptionData.cycle);
+                } catch (calcDueErr) {
+                    await transaction.rollback();
+                    return formatError(calcDueErr);
+                }
+            }
             
+            // Após derivar campos, validar dados com o validador unificado
+            try {
+                SubscriptionValidator.validateCreateData(subscriptionData);
+            } catch (error) {
+                await transaction.rollback();
+                return formatError(error);
+            }
+
             // Criar assinatura no Asaas
             console.log('Formatando dados para assinatura no Asaas...');
             const asaasSubscriptionData = this.formatDataForAsaasSubscription(subscriptionData, customerId, shopper, order);
@@ -664,6 +675,41 @@ class ShopperSubscriptionService {
             console.error('Erro ao atualizar status local da assinatura:', error.message);
             return formatError(error);
         }
+    }
+
+    /**
+     * Calcula a próxima data de vencimento a partir da data atual usando o ciclo informado
+     * @param {string} cycle - Ciclo da assinatura (WEEKLY, BIWEEKLY, MONTHLY, BIMONTHLY, QUARTERLY, SEMIANNUALLY, YEARLY)
+     * @param {Date} fromDate - Data base para o cálculo (padrão: agora)
+     * @returns {Date} Próxima data de vencimento
+     */
+    calculateNextDueDate(cycle = 'MONTHLY', fromDate = new Date()) {
+        const d = new Date(fromDate);
+        const up = (cycle || 'MONTHLY').toUpperCase();
+        switch (up) {
+            case 'WEEKLY':
+                d.setDate(d.getDate() + 7);
+                break;
+            case 'BIWEEKLY':
+                d.setDate(d.getDate() + 14);
+                break;
+            case 'BIMONTHLY':
+                d.setMonth(d.getMonth() + 2);
+                break;
+            case 'QUARTERLY':
+                d.setMonth(d.getMonth() + 3);
+                break;
+            case 'SEMIANNUALLY':
+                d.setMonth(d.getMonth() + 6);
+                break;
+            case 'YEARLY':
+                d.setFullYear(d.getFullYear() + 1);
+                break;
+            case 'MONTHLY':
+            default:
+                d.setMonth(d.getMonth() + 1);
+        }
+        return d;
     }
 }
 

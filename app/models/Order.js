@@ -18,18 +18,22 @@ const Order = sequelize.define('Order', {
     allowNull: false
   },
 
-  // Identificação externa na plataforma de pagamento
-  external_id: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    comment: 'ID da assinatura na plataforma de pagamento'
+  // Valor final do pedido/assinatura (inclui frete/descontos conforme regra de negócio)
+  value: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    comment: 'Valor final desta assinatura, usado ao criar a assinatura no provedor de pagamentos',
+    validate: {
+      isDecimal: true,
+      min: 0.01
+    }
   },
 
-  // Detalhes da compra - lista de produtos comprados
-  products: {
-    type: DataTypes.JSON,
+  // Detalhes da compra - um produto por pedido (1:1)
+  product_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
-    comment: 'Array de IDs ou objetos de produtos'
+    comment: 'ID do produto associado a este pedido'
   },
   customer_info: {
     type: DataTypes.JSON,
@@ -40,24 +44,11 @@ const Order = sequelize.define('Order', {
     allowNull: true
   },
 
-  // Dados da assinatura
-  value: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true
-  },
+  // Status do pedido/assinatura derivada
   status: {
     type: DataTypes.ENUM('active', 'inactive', 'overdue', 'canceled', 'pending'),
     allowNull: false,
     defaultValue: 'pending'
-  },
-  cycle: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    comment: 'Ciclo de cobrança (MONTHLY, YEARLY, etc)'
-  },
-  next_due_date: {
-    type: DataTypes.DATE,
-    allowNull: true
   },
   start_date: {
     type: DataTypes.DATE,
@@ -66,12 +57,6 @@ const Order = sequelize.define('Order', {
   },
   end_date: {
     type: DataTypes.DATE,
-    allowNull: true
-  },
-
-  // Dados de pagamento
-  billing_type: {
-    type: DataTypes.STRING,
     allowNull: true
   },
 
