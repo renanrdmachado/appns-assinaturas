@@ -6,7 +6,6 @@ const Shopper = require('./Shopper');
 const User = require('./User');
 const Order = require('./Order');
 const Product = require('./Product');
-const Shopper = require('./Shopper');
 const Payment = require('./Payment');
 const SellerSubscription = require('./SellerSubscription');
 const ShopperSubscription = require('./ShopperSubscription');
@@ -78,9 +77,9 @@ Payment.addScope('forSellerSubscription', (subscriptionId) => ({
     await User.sync(); // Depende de UserData
     await Seller.sync(); // Depende de User
     await Shopper.sync(); // Depende de User
-  // Forçar ajuste do schema existente para Product e Order
-  await Product.sync({ alter: true }); // Depende de Seller
-  await Order.sync({ alter: true }); // Depende de Seller e Shopper
+    // Forçar ajuste do schema existente para Product e Order
+    await Product.sync({ alter: true }); // Depende de Seller
+    await Order.sync({ alter: true }); // Depende de Seller e Shopper
     await SellerSubscription.sync(); // Depende de Seller
     await ShopperSubscription.sync(); // Depende de Shopper e Order
     await Payment.sync(); // Depende de SellerSubscription e ShopperSubscription
