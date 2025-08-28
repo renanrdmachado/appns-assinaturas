@@ -1,6 +1,4 @@
 const UserService = require('../../services/user.service');
-const User = require('../../models/User');
-const UserData = require('../../models/UserData');
 
 jest.mock('../../models/User', () => ({
   create: jest.fn(),

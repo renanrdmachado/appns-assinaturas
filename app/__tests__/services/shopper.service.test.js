@@ -1,89 +1,91 @@
 // Mock dos módulos do banco de dados ANTES de importar qualquer coisa
 jest.mock('../../config/database', () => ({
-  transaction: jest.fn(),
-  authenticate: jest.fn().mockResolvedValue(),
-  define: jest.fn().mockReturnValue({})
+    transaction: jest.fn(),
+    authenticate: jest.fn().mockResolvedValue(),
+    define: jest.fn().mockReturnValue({})
 }));
 
 // Mock dos validators
 jest.mock('../../validators/shopper-validator', () => ({
-  validateId: jest.fn(),
-  validateShopperData: jest.fn(),
-  validateShopperUpdateData: jest.fn(),
-  validateNuvemshopId: jest.fn()
+    validateId: jest.fn(),
+    validateShopperData: jest.fn(),
+    validateShopperUpdateData: jest.fn(),
+    validateNuvemshopId: jest.fn()
 }));
 
 // Mock dos modelos antes de importar qualquer coisa que use os modelos
 jest.mock('../../models/User', () => ({
-  findOne: jest.fn(),
-  findByPk: jest.fn(),
-  count: jest.fn(),
-  create: jest.fn(),
-  belongsTo: jest.fn(),
-  hasOne: jest.fn(),
-  hasMany: jest.fn()
+    findOne: jest.fn(),
+    findByPk: jest.fn(),
+    count: jest.fn(),
+    create: jest.fn(),
+    belongsTo: jest.fn(),
+    hasOne: jest.fn(),
+    hasMany: jest.fn()
 }));
 
 jest.mock('../../models/UserData', () => ({
-  findOne: jest.fn(),
-  findByPk: jest.fn(),
-  create: jest.fn(),
-  hasMany: jest.fn()
+    findOne: jest.fn(),
+    findByPk: jest.fn(),
+    create: jest.fn(),
+    hasMany: jest.fn()
 }));
 
-jest.mock('../../models/Seller', () => ({
-  findOne: jest.fn(),
-  findAll: jest.fn(),
-  findByPk: jest.fn(),
-  count: jest.fn(),
-  create: jest.fn(),
-  belongsTo: jest.fn()
-}));
+jest.mock('../../models/Seller', () => {
+    function Seller() { }
+    Seller.findOne = jest.fn();
+    Seller.findAll = jest.fn();
+    Seller.findByPk = jest.fn();
+    Seller.count = jest.fn();
+    Seller.create = jest.fn();
+    Seller.belongsTo = jest.fn();
+    return Seller;
+});
 
 jest.mock('../../models/Shopper', () => ({
-  findOne: jest.fn(),
-  findAll: jest.fn(),
-  findByPk: jest.fn(),
-  count: jest.fn(),
-  create: jest.fn(),
-  belongsTo: jest.fn()
+    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    count: jest.fn(),
+    create: jest.fn(),
+    belongsTo: jest.fn()
 }));
 
 jest.mock('../../models/ShopperSubscription', () => ({
-  findOne: jest.fn(),
-  count: jest.fn(),
-  belongsTo: jest.fn()
+    findOne: jest.fn(),
+    count: jest.fn(),
+    belongsTo: jest.fn()
 }));
 
 // Apenas fazemos mock do que é externo ao nosso serviço principal
 jest.mock('../../services/asaas/customer.service', () => ({
-  findByCpfCnpj: jest.fn().mockResolvedValue({ success: false }),
-  createOrUpdate: jest.fn().mockResolvedValue({ success: true, data: { id: 'asaas123' } }),
-  SHOPPER_GROUP: 'SHOPPER'
+    findByCpfCnpj: jest.fn().mockResolvedValue({ success: false }),
+    createOrUpdate: jest.fn().mockResolvedValue({ success: true, data: { id: 'asaas123' } }),
+    SHOPPER_GROUP: 'SHOPPER'
 }));
 
 // Mock apenas do validador para garantir que sempre passa
 jest.mock('../../validators/shopper-validator', () => ({
-  validateShopperData: jest.fn().mockReturnValue({ isValid: true }),
-  validateId: jest.fn().mockReturnValue({ isValid: true }),
-  validateNuvemshopId: jest.fn().mockReturnValue({ isValid: true }),
-  validateShopperUpdateData: jest.fn().mockReturnValue({ isValid: true })
+    validateShopperData: jest.fn().mockReturnValue({ isValid: true }),
+    validateId: jest.fn().mockReturnValue({ isValid: true }),
+    validateNuvemshopId: jest.fn().mockReturnValue({ isValid: true }),
+    validateShopperUpdateData: jest.fn().mockReturnValue({ isValid: true })
 }));
 
 // Mock do error handler
 jest.mock('../../utils/errorHandler', () => ({
-  formatError: jest.fn(error => ({ success: false, message: error.message })),
-  createError: jest.fn((message, code) => ({ success: false, message, code }))
+    formatError: jest.fn(error => ({ success: false, message: error.message })),
+    createError: jest.fn((message, code) => ({ success: false, message, code }))
 }));
 
 // Mock para AsaasMapper
 jest.mock('../../utils/asaas-mapper', () => ({
-  mapRawDataToCustomer: jest.fn().mockReturnValue({
-    name: 'Shopper Test',
-    cpfCnpj: '12345678901',
-    email: 'shopper@example.com'
-  }),
-  mapShopperToCustomer: jest.fn()
+    mapRawDataToCustomer: jest.fn().mockReturnValue({
+        name: 'Shopper Test',
+        cpfCnpj: '12345678901',
+        email: 'shopper@example.com'
+    }),
+    mapShopperToCustomer: jest.fn()
 }));
 
 // Agora importamos os módulos que serão usados
@@ -104,22 +106,22 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         // Mock da transação do Sequelize
         mockTransaction = {
             commit: jest.fn(),
             rollback: jest.fn()
         };
-        
+
         sequelize.transaction.mockImplementation(async (callback) => {
             return await callback(mockTransaction);
         });
-        
+
         // Mock local dos validators e services
         const ShopperValidator = require('../../validators/shopper-validator');
         const AsaasCustomerService = require('../../services/asaas/customer.service');
         const AsaasMapper = require('../../utils/asaas-mapper');
-        
+
         // Reset dos mocks
         ShopperValidator.validateId = jest.fn();
         ShopperValidator.validateShopperData = jest.fn();
@@ -128,17 +130,17 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
         AsaasCustomerService.findByCpfCnpj = jest.fn();
         AsaasCustomerService.createOrUpdate = jest.fn();
         AsaasMapper.mapShopperToCustomer = jest.fn();
-        
+
         // Mock padrão para formatError e createError
-        formatError.mockImplementation((error) => ({ 
-            success: false, 
+        formatError.mockImplementation((error) => ({
+            success: false,
             message: error.message,
-            code: error.code || 400 
+            code: error.code || 400
         }));
-        createError.mockImplementation((message, code) => ({ 
-            success: false, 
-            message, 
-            code 
+        createError.mockImplementation((message, code) => ({
+            success: false,
+            message,
+            code
         }));
     });
 
@@ -155,19 +157,24 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
         };
 
         // Setup dos mocks
-        ShopperValidator.validateShopperData.mockImplementation(() => {});
+        ShopperValidator.validateShopperData.mockImplementation(() => { });
         UserData.findOne.mockResolvedValue(null);
         AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-        AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
-            success: true, 
-            data: { id: 'asaas_123' } 
+        AsaasCustomerService.createOrUpdate.mockResolvedValue({
+            success: true,
+            data: { id: 'asaas_123' }
         });
 
         const mockUserData = { id: 1, cpfCnpj: '12345678901' };
-        const mockUser = { id: 1, email: 'joao@email.com' };
-        const mockShopper = { 
-            id: 1, 
-            name: 'João Silva', 
+        const mockUser = {
+            id: 1,
+            email: 'joao@email.com',
+            user_data_id: 1,
+            update: jest.fn().mockResolvedValue({})
+        };
+        const mockShopper = {
+            id: 1,
+            name: 'João Silva',
             user_id: 1,
             payments_customer_id: 'asaas_123'
         };
@@ -186,9 +193,9 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
         expect(result.success).toBe(true);
         expect(result.data).toEqual(mockShopperWithRelations);
-        expect(User.findOne).toHaveBeenCalledWith({ 
+        expect(User.findOne).toHaveBeenCalledWith({
             where: { email: 'joao@email.com' },
-            transaction: mockTransaction 
+            transaction: mockTransaction
         });
         expect(User.create).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -206,17 +213,17 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             cpfCnpj: '12345678901'
         };
 
-        ShopperValidator.validateShopperData.mockImplementation(() => {});
+        ShopperValidator.validateShopperData.mockImplementation(() => { });
         UserData.findOne.mockResolvedValue(null);
         AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-        AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
-            success: true, 
-            data: { id: 'asaas_123' } 
+        AsaasCustomerService.createOrUpdate.mockResolvedValue({
+            success: true,
+            data: { id: 'asaas_123' }
         });
 
         // Mock para User existente
-        const existingUser = { 
-            id: 2, 
+        const existingUser = {
+            id: 2,
             email: 'joao@email.com',
             user_data_id: null,
             update: jest.fn().mockResolvedValue({})
@@ -251,12 +258,12 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             cpfCnpj: '12345678901'
         };
 
-        ShopperValidator.validateShopperData.mockImplementation(() => {});
+        ShopperValidator.validateShopperData.mockImplementation(() => { });
         UserData.findOne.mockResolvedValue(null);
         AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-        AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
-            success: true, 
-            data: { id: 'asaas_123' } 
+        AsaasCustomerService.createOrUpdate.mockResolvedValue({
+            success: true,
+            data: { id: 'asaas_123' }
         });
 
         // Mock para UserData criado
@@ -264,8 +271,8 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
         UserData.create.mockResolvedValue(mockUserData);
 
         // Mock para User existente com Shopper já vinculado
-        const existingUser = { 
-            id: 2, 
+        const existingUser = {
+            id: 2,
             email: 'joao@email.com',
             update: jest.fn()
         };
@@ -299,7 +306,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             destroy: jest.fn().mockResolvedValue({})
         };
 
-        ShopperValidator.validateId.mockImplementation(() => {});
+        ShopperValidator.validateId.mockImplementation(() => { });
         Shopper.findByPk.mockResolvedValue(mockShopper);
         ShopperSubscription.count.mockResolvedValue(0); // Sem assinaturas
 
@@ -313,14 +320,14 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
     test('deve impedir exclusão quando shopper possui assinaturas', async () => {
         const mockShopper = { id: 1, user: { id: 1 } };
 
-        ShopperValidator.validateId.mockImplementation(() => {});
+        ShopperValidator.validateId.mockImplementation(() => { });
         Shopper.findByPk.mockResolvedValue(mockShopper);
         ShopperSubscription.count.mockResolvedValue(2); // Possui 2 assinaturas
-        
-        createError.mockReturnValue({ 
-            success: false, 
-            message: 'Não é possível excluir o cliente pois ele possui 2 assinatura(s) ativa(s)', 
-            code: 400 
+
+        createError.mockReturnValue({
+            success: false,
+            message: 'Não é possível excluir o cliente pois ele possui 2 assinatura(s) ativa(s)',
+            code: 400
         });
 
         const result = await ShopperService.delete(1);
@@ -442,14 +449,14 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 error.code = 400;
                 throw error;
             });
-            
+
             // Mock do formatError
-            formatError.mockImplementation((error) => ({ 
-                success: false, 
+            formatError.mockImplementation((error) => ({
+                success: false,
                 message: error.message,
-                code: error.code || 400 
+                code: error.code || 400
             }));
-            
+
             const result = await ShopperService.update();
 
             expect(result.success).toBe(false);
@@ -460,8 +467,8 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
     describe('getByEmail - Buscar por email', () => {
         test('deve buscar shopper pelo email com sucesso', async () => {
-            const mockShopper = { 
-                id: 1, 
+            const mockShopper = {
+                id: 1,
                 user: { id: 1, email: 'test@example.com' }
             };
 
@@ -495,8 +502,8 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
     describe('getByCpfCnpj - Buscar por CPF/CNPJ', () => {
         test('deve buscar shopper pelo CPF/CNPJ com sucesso', async () => {
-            const mockShopper = { 
-                id: 1, 
+            const mockShopper = {
+                id: 1,
                 user: {
                     id: 1,
                     userData: { id: 1, cpfCnpj: '12345678901' }
@@ -565,14 +572,14 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 error.code = 400;
                 throw error;
             });
-            
+
             // Mock do formatError
-            formatError.mockImplementation((error) => ({ 
-                success: false, 
+            formatError.mockImplementation((error) => ({
+                success: false,
                 message: error.message,
-                code: error.code || 400 
+                code: error.code || 400
             }));
-            
+
             const result = await ShopperService.getByNuvemshopId();
 
             expect(result.success).toBe(false);
@@ -591,19 +598,24 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 nuvemshop_info: { test: 'data', nested: { value: 123 } } // Objeto para ser convertido
             };
 
-            ShopperValidator.validateShopperData.mockImplementation(() => {});
+            ShopperValidator.validateShopperData.mockImplementation(() => { });
             UserData.findOne.mockResolvedValue(null);
             AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-            AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
-                success: true, 
-                data: { id: 'asaas_123' } 
+            AsaasCustomerService.createOrUpdate.mockResolvedValue({
+                success: true,
+                data: { id: 'asaas_123' }
             });
 
             const mockUserData = { id: 1, cpfCnpj: '12345678901' };
-            const mockUser = { id: 1, email: 'joao@email.com' };
-            const mockShopper = { 
-                id: 1, 
-                name: 'João Silva', 
+            const mockUser = {
+                id: 1,
+                email: 'joao@email.com',
+                user_data_id: 1,
+                update: jest.fn().mockResolvedValue({})
+            };
+            const mockShopper = {
+                id: 1,
+                name: 'João Silva',
                 user_id: 1,
                 payments_customer_id: 'asaas_123'
             };
@@ -633,11 +645,11 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 cpfCnpj: '12345678901'
             };
 
-            ShopperValidator.validateShopperData.mockImplementation(() => {});
+            ShopperValidator.validateShopperData.mockImplementation(() => { });
             UserData.findOne.mockResolvedValue(null);
-            
+
             // Mock para cliente já existir no Asaas
-            AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ 
+            AsaasCustomerService.findByCpfCnpj.mockResolvedValue({
                 success: true,
                 data: { id: 'asaas_existing_123' }
             });
@@ -669,12 +681,12 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 cpfCnpj: '12345678901'
             };
 
-            ShopperValidator.validateShopperData.mockImplementation(() => {});
+            ShopperValidator.validateShopperData.mockImplementation(() => { });
             UserData.findOne.mockResolvedValue(null);
             AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-            
+
             // Mock para falha na criação/atualização no Asaas
-            AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
+            AsaasCustomerService.createOrUpdate.mockResolvedValue({
                 success: false,
                 message: 'Erro de validação no Asaas'
             });
@@ -703,28 +715,28 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 cpfCnpj: '12345678901'
             };
 
-            ShopperValidator.validateShopperData.mockImplementation(() => {});
-            
+            ShopperValidator.validateShopperData.mockImplementation(() => { });
+
             // Mock para UserData existente
             const existingUserData = { id: 5, cpfCnpj: '12345678901' };
             UserData.findOne.mockResolvedValue(existingUserData);
-            
+
             AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-            AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
-                success: true, 
-                data: { id: 'asaas_123' } 
+            AsaasCustomerService.createOrUpdate.mockResolvedValue({
+                success: true,
+                data: { id: 'asaas_123' }
             });
 
             // Mock para User existente com user_data_id diferente
-            const existingUser = { 
-                id: 2, 
+            const existingUser = {
+                id: 2,
                 email: 'joao@email.com',
                 user_data_id: 3, // Diferente do UserData encontrado (id: 5)
                 update: jest.fn().mockResolvedValue()
             };
 
-            const mockShopper = { 
-                id: 1, 
+            const mockShopper = {
+                id: 1,
                 user_id: 2,
                 payments_customer_id: 'asaas_123'
             };
@@ -766,11 +778,11 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
             Shopper.findByPk.mockResolvedValue(mockShopper);
 
-            const updateData = { 
+            const updateData = {
                 nuvemshop_info: { test: 'data', nested: { value: 123 } }, // Objeto
                 name: 'Nome Atualizado'
             };
-            
+
             const result = await ShopperService.update(1, updateData);
 
             expect(result.success).toBe(true);
@@ -786,11 +798,11 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 user: {
                     id: 1,
                     email: 'old@email.com',
-                    userData: { 
-                        id: 1, 
+                    userData: {
+                        id: 1,
                         cpfCnpj: '12345678901',
                         mobilePhone: '11888888888',
-                        update: jest.fn().mockResolvedValue() 
+                        update: jest.fn().mockResolvedValue()
                     },
                     update: jest.fn().mockResolvedValue()
                 },
@@ -803,7 +815,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             });
 
             Shopper.findByPk.mockResolvedValue(mockShopper);
-            
+
             AsaasMapper.mapShopperToCustomer.mockReturnValue({
                 name: 'Nome Atualizado',
                 cpfCnpj: '12345678901',
@@ -816,7 +828,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 data: { id: 'asaas_new_456' } // ID diferente do atual
             });
 
-            const updateData = { 
+            const updateData = {
                 name: 'Nome Atualizado',
                 email: 'novo@email.com',
                 mobilePhone: '11999999999',
@@ -825,7 +837,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 province: 'RJ',
                 postalCode: '87654321'
             };
-            
+
             const result = await ShopperService.update(1, updateData);
 
             expect(result.success).toBe(true);
@@ -854,11 +866,11 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
             Shopper.findByPk.mockResolvedValue(mockShopper);
 
-            const updateData = { 
+            const updateData = {
                 name: 'Nome Atualizado',
                 cpfCnpj: '98765432100' // Tentativa de atualizar CPF mas userData é null
             };
-            
+
             const result = await ShopperService.update(1, updateData);
 
             expect(result.success).toBe(true);
@@ -876,24 +888,24 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 payments_status: 'ACTIVE'
             };
 
-            ShopperValidator.validateShopperData.mockImplementation(() => {});
-            
+            ShopperValidator.validateShopperData.mockImplementation(() => { });
+
             // Mock para UserData existente
             const existingUserData = { id: 5, cpfCnpj: '12345678901' };
             UserData.findOne.mockResolvedValue(existingUserData);
-            
+
             AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-            AsaasCustomerService.createOrUpdate.mockResolvedValue({ 
-                success: true, 
-                data: { id: 'asaas_123' } 
+            AsaasCustomerService.createOrUpdate.mockResolvedValue({
+                success: true,
+                data: { id: 'asaas_123' }
             });
 
             // Mock para User existente
-            const existingUser = { 
-                id: 2, 
+            const existingUser = {
+                id: 2,
                 email: 'joao@email.com',
                 user_data_id: 3, // Diferente do UserData (id: 5)
-                save: jest.fn().mockResolvedValue()
+                update: jest.fn().mockResolvedValue()
             };
 
             // Mock para Shopper existente vinculado ao User
@@ -904,7 +916,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 nuvemshop_id: 888,
                 payments_customer_id: 'asaas_old',
                 payments_status: 'PENDING',
-                save: jest.fn().mockResolvedValue()
+                update: jest.fn().mockResolvedValue()
             };
 
             const mockShopperWithRelations = {
@@ -919,16 +931,25 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             const result = await ShopperService.create(mockShopperData);
 
             expect(result.success).toBe(true);
-            
+
             // Verificar se o shopper foi atualizado
-            expect(existingShopper.save).toHaveBeenCalledWith({ transaction: mockTransaction });
+            expect(existingShopper.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    nuvemshop_id: 999,
+                    name: 'João Silva Atualizado',
+                    payments_status: 'ACTIVE'
+                }),
+                { transaction: mockTransaction }
+            );
             expect(existingShopper.name).toBe('João Silva Atualizado');
             expect(existingShopper.nuvemshop_id).toBe(999);
             expect(existingShopper.payments_status).toBe('ACTIVE');
-            
+
             // Verificar se o user_data_id foi atualizado
-            expect(existingUser.save).toHaveBeenCalledWith({ transaction: mockTransaction });
-            expect(existingUser.user_data_id).toBe(5);
+            expect(existingUser.update).toHaveBeenCalledWith(
+                { user_data_id: 5 },
+                { transaction: mockTransaction }
+            );
         });
 
         test('deve testar delete de shopper', async () => {
@@ -938,7 +959,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 destroy: jest.fn().mockResolvedValue()
             };
 
-            ShopperValidator.validateId.mockImplementation(() => {});
+            ShopperValidator.validateId.mockImplementation(() => { });
             Shopper.findByPk.mockResolvedValue(mockShopper);
             ShopperSubscription.count.mockResolvedValue(0);
 
@@ -964,7 +985,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
                 })
             };
 
-            ShopperValidator.validateId.mockImplementation(() => {});
+            ShopperValidator.validateId.mockImplementation(() => { });
             Shopper.findByPk.mockResolvedValue(mockShopper);
             ShopperSubscription.count.mockResolvedValue(0);
 
@@ -983,7 +1004,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
         test('deve tratar erro no syncWithAsaas', async () => {
             const shopperId = 1;
 
-            ShopperValidator.validateId.mockImplementation(() => {});
+            ShopperValidator.validateId.mockImplementation(() => { });
             Shopper.findByPk.mockResolvedValue(null);
 
             const result = await ShopperService.syncWithAsaas(shopperId);
@@ -1003,7 +1024,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             };
 
             Shopper.findByPk.mockResolvedValue(mockShopper);
-            
+
             const AsaasMapper = require('../../utils/asaas-mapper');
             AsaasMapper.mapShopperToCustomer = jest.fn().mockReturnValue({
                 name: 'Test Shopper',
@@ -1020,8 +1041,8 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('sincronizado com sucesso');
-            expect(mockShopper.update).toHaveBeenCalledWith({ 
-                payments_customer_id: 'asaas_123' 
+            expect(mockShopper.update).toHaveBeenCalledWith({
+                payments_customer_id: 'asaas_123'
             });
             expect(mockShopper.reload).toHaveBeenCalled();
         });
@@ -1036,7 +1057,7 @@ describe('ShopperService - Testes de Duplicação de Email', () => {
             };
 
             Shopper.findByPk.mockResolvedValue(mockShopper);
-            
+
             AsaasMapper.mapShopperToCustomer.mockReturnValue({
                 name: 'Test Shopper',
                 cpfCnpj: '12345678901'

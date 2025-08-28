@@ -6,7 +6,7 @@ jest.mock('../../models/Order', () => ({
 
 jest.mock('../../models/Product', () => ({ findByPk: jest.fn() }));
 jest.mock('../../models/Shopper', () => ({ findByPk: jest.fn() }));
-jest.mock('../../models/Seller', () => ({ findByPk: jest.fn() }));
+jest.mock('../../models/Seller', () => { function Seller(){}; Seller.findByPk = jest.fn(); return Seller; });
 
 // Mock do validator para usar implementacao real (sem mocks)
 jest.mock('../../validators/order-validator', () => jest.requireActual('../../validators/order-validator'));

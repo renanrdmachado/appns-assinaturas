@@ -1,15 +1,15 @@
 // Mock do NsApiClient antes de importar qualquer coisa
 jest.mock('../../../helpers/NsApiClient', () => ({
-  get: jest.fn(),
-  post: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn()
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn()
 }));
 
 // Mock do error handler
 jest.mock('../../../utils/errorHandler', () => ({
-  formatError: jest.fn(error => ({ success: false, message: error.message })),
-  createError: jest.fn((message, code) => ({ success: false, message, code }))
+    formatError: jest.fn(error => ({ success: false, message: error.message })),
+    createError: jest.fn((message, code) => ({ success: false, message, code }))
 }));
 
 // Agora importamos os módulos que serão usados
@@ -20,10 +20,10 @@ const { formatError, createError } = require('../../../utils/errorHandler');
 describe('NsProductsService - Testes', () => {
     // Silenciar console.error e console.log durante os testes
     let consoleErrorSpy, consoleLogSpy;
-    
+
     beforeAll(() => {
-        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
     });
 
     afterAll(() => {
@@ -33,17 +33,17 @@ describe('NsProductsService - Testes', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         // Mock padrão para formatError e createError
-        formatError.mockImplementation((error) => ({ 
-            success: false, 
+        formatError.mockImplementation((error) => ({
+            success: false,
             message: error.message,
-            code: error.code || 400 
+            code: error.code || 400
         }));
-        createError.mockImplementation((message, code) => ({ 
-            success: false, 
-            message, 
-            code 
+        createError.mockImplementation((message, code) => ({
+            success: false,
+            message,
+            code
         }));
     });
 

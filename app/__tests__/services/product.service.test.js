@@ -22,21 +22,17 @@ jest.mock('../../models/Product', () => ({
   }
 }));
 
-jest.mock('../../models/Seller', () => ({
-  findByPk: jest.fn(),
-  findOne: jest.fn(),
-  findAll: jest.fn(),
-  create: jest.fn(),
-  destroy: jest.fn(),
-  update: jest.fn(),
-  belongsTo: jest.fn(),
-  prototype: {
-    get: jest.fn(),
-    update: jest.fn(),
-    destroy: jest.fn(),
-    toJSON: jest.fn()
-  }
-}));
+jest.mock('../../models/Seller', () => {
+    function Seller() {}
+    Seller.findByPk = jest.fn();
+    Seller.findAll = jest.fn();
+    Seller.findOne = jest.fn();
+    Seller.create = jest.fn();
+    Seller.destroy = jest.fn();
+    Seller.update = jest.fn();
+    Seller.belongsTo = jest.fn();
+    return Seller;
+});
 
 // Mock do SellerService
 jest.mock('../../services/seller.service', () => ({
@@ -58,9 +54,7 @@ jest.mock('../../utils/errorHandler', () => ({
 }));
 
 const Product = require('../../models/Product');
-const Seller = require('../../models/Seller');
 const SellerService = require('../../services/seller.service');
-const { formatError, createError } = require('../../utils/errorHandler');
 const ProductService = require('../../services/product.service');
 
 describe('ProductService - Testes de Integração', () => {

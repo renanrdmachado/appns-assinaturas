@@ -1261,6 +1261,7 @@ class SellerService {
             // Não falha a criação do seller por conta da assinatura
             return {
                 success: false,
+                status: 500,
                 message: `Erro ao criar assinatura padrão: ${error.message}`,
                 data: null
             };

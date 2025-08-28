@@ -1,3 +1,21 @@
+// Primeiro: definir todos os mocks ANTES de qualquer require
+jest.mock('../../../models/Seller', () => {
+  const SellerMock = {
+    findByPk: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    // Necessário pois services adicionam métodos ao prototype
+    prototype: {}
+  };
+  return SellerMock;
+});
+jest.mock('../../../models/User', () => ({}));
+jest.mock('../../../models/UserData', () => ({ findOne: jest.fn(), create: jest.fn() }));
+jest.mock('../../../models/SellerSubscription', () => ({}));
+jest.mock('../../../services/asaas/customer.service', () => ({ createOrUpdate: jest.fn() }));
+jest.mock('../../../services/seller-subscription.service', () => ({ createSubscription: jest.fn() }));
+
+// Depois: importar módulos que usarão os mocks
 const SellerService = require('../../../services/seller.service');
 const Seller = require('../../../models/Seller');
 const User = require('../../../models/User');
@@ -5,17 +23,6 @@ const UserData = require('../../../models/UserData');
 const SellerSubscription = require('../../../models/SellerSubscription');
 const AsaasCustomerService = require('../../../services/asaas/customer.service');
 const SellerSubscriptionService = require('../../../services/seller-subscription.service');
-
-jest.mock('../../../models/Seller', () => ({
-  findByPk: jest.fn(),
-  findOne: jest.fn(),
-  create: jest.fn()
-}));
-jest.mock('../../../models/User');
-jest.mock('../../../models/UserData');
-jest.mock('../../../models/SellerSubscription');
-jest.mock('../../../services/asaas/customer.service');
-jest.mock('../../../services/seller-subscription.service');
 
 const sellerBase = { id: 1, nuvemshop_id: '6300987', app_status: 'pending', nuvemshop_info: { email: 'a@b.com', name: { pt: 'Loja' } } };
 

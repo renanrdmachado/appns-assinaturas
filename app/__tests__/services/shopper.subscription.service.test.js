@@ -28,7 +28,7 @@ jest.mock('../../utils/asaas-formatter', () => ({
   normalizeCycle: (c) => (c || 'MONTHLY').toUpperCase(),
   isValidCycle: () => true,
   formatDate: (d) => {
-    const dd = new Date(d); const y=dd.getFullYear(); const m=String(dd.getMonth()+1).padStart(2,'0'); const da=String(dd.getDate()).padStart(2,'0');
+    const dd = new Date(d); const y = dd.getFullYear(); const m = String(dd.getMonth() + 1).padStart(2, '0'); const da = String(dd.getDate()).padStart(2, '0');
     return `${y}-${m}-${da}`;
   },
   mapAsaasStatusToLocalStatus: (s) => (s === 'ACTIVE' ? 'active' : 'pending')
@@ -145,7 +145,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
 
     const res = await ShopperSubscriptionService.create(orderId, { billing_type: 'PIX' });
     expect(res.success).toBe(false);
-  expect(res.message).toMatch(/CPF\/CNPJ.*(preenchido|obrigat)/i);
+    expect(res.message).toMatch(/CPF\/CNPJ.*(preenchido|obrigat)/i);
   });
 
   test('erro quando cpfCnpj tem tamanho inválido', async () => {
@@ -200,7 +200,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     const res = await ShopperSubscriptionService.create(orderId, payload);
     expect(res.success).toBe(true);
     // nextDueDate deve estar presente na requisição
-  expect(AsaasSubscriptionService.create).toHaveBeenCalledWith(expect.objectContaining({ nextDueDate: expect.any(String), billingType: 'CREDIT_CARD', creditCardToken: 'tok_123' }));
+    expect(AsaasSubscriptionService.create).toHaveBeenCalledWith(expect.objectContaining({ nextDueDate: expect.any(String), billingType: 'CREDIT_CARD', creditCardToken: 'tok_123' }));
   });
 
   test('retorna erro quando criação no Asaas falha', async () => {
@@ -351,11 +351,11 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     const resOk = await ShopperSubscriptionService.get(1);
     expect(resOk.success).toBe(true);
 
-  // força erro interno para cobrir catch
-  const model2 = require('../../models/ShopperSubscription');
-  model2.findByPk = jest.fn().mockRejectedValue(new Error('db error'));
-  const resErr = await ShopperSubscriptionService.get(2);
-  expect(resErr.success).toBe(false);
+    // força erro interno para cobrir catch
+    const model2 = require('../../models/ShopperSubscription');
+    model2.findByPk = jest.fn().mockRejectedValue(new Error('db error'));
+    const resErr = await ShopperSubscriptionService.get(2);
+    expect(resErr.success).toBe(false);
   });
 
   test('getAll retorna lista', async () => {
@@ -365,10 +365,10 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     expect(res.success).toBe(true);
     expect(Array.isArray(res.data)).toBe(true);
 
-  // força erro interno
-  model.findAll = jest.fn().mockRejectedValue(new Error('db error'));
-  const resErr = await ShopperSubscriptionService.getAll();
-  expect(resErr.success).toBe(false);
+    // força erro interno
+    model.findAll = jest.fn().mockRejectedValue(new Error('db error'));
+    const resErr = await ShopperSubscriptionService.getAll();
+    expect(resErr.success).toBe(false);
   });
 
   test('getByShopperId valida id, 404 quando shopper não existe e retorna lista quando existe', async () => {
@@ -388,11 +388,11 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     r = await ShopperSubscriptionService.getByShopperId(7);
     expect(r.success).toBe(true);
 
-  // erro interno no findAll para cobrir catch
-  const model2 = require('../../models/ShopperSubscription');
-  model2.findAll = jest.fn().mockRejectedValue(new Error('db error'));
-  const rErr = await ShopperSubscriptionService.getByShopperId(7);
-  expect(rErr.success).toBe(false);
+    // erro interno no findAll para cobrir catch
+    const model2 = require('../../models/ShopperSubscription');
+    model2.findAll = jest.fn().mockRejectedValue(new Error('db error'));
+    const rErr = await ShopperSubscriptionService.getByShopperId(7);
+    expect(rErr.success).toBe(false);
   });
 
   test('getByOrderId valida id, 404 quando order não existe e retorna lista quando existe', async () => {
@@ -412,11 +412,11 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     r = await ShopperSubscriptionService.getByOrderId(10);
     expect(r.success).toBe(true);
 
-  // erro interno no findAll para cobrir catch
-  const model2 = require('../../models/ShopperSubscription');
-  model2.findAll = jest.fn().mockRejectedValue(new Error('db error'));
-  const rErr = await ShopperSubscriptionService.getByOrderId(10);
-  expect(rErr.success).toBe(false);
+    // erro interno no findAll para cobrir catch
+    const model2 = require('../../models/ShopperSubscription');
+    model2.findAll = jest.fn().mockRejectedValue(new Error('db error'));
+    const rErr = await ShopperSubscriptionService.getByOrderId(10);
+    expect(rErr.success).toBe(false);
   });
 
   test('getByExternalId exige id, 404 quando não encontra e retorna quando encontra', async () => {
@@ -434,11 +434,11 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     r = await ShopperSubscriptionService.getByExternalId('ok');
     expect(r.success).toBe(true);
 
-  // erro interno para cobrir catch
-  const model2 = require('../../models/ShopperSubscription');
-  model2.findOne = jest.fn().mockRejectedValue(new Error('db error'));
-  const rErr = await ShopperSubscriptionService.getByExternalId('err');
-  expect(rErr.success).toBe(false);
+    // erro interno para cobrir catch
+    const model2 = require('../../models/ShopperSubscription');
+    model2.findOne = jest.fn().mockRejectedValue(new Error('db error'));
+    const rErr = await ShopperSubscriptionService.getByExternalId('err');
+    expect(rErr.success).toBe(false);
   });
 
   test('updateStatusLocal valida id e atualiza status', async () => {
@@ -655,8 +655,8 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
       cycle: 'monthly',
       billing_type: 'PIX',
       plan_name: 'Plano X',
-  next_due_date: new Date('2025-01-05T00:00:00Z'),
-  end_date: new Date('2025-12-31T00:00:00Z'),
+      next_due_date: new Date('2025-01-05T00:00:00Z'),
+      end_date: new Date('2025-12-31T00:00:00Z'),
       discount: { value: 1, dueDateLimitDays: 5 },
       interest: { value: 2 },
       fine: { value: 3 },
@@ -675,8 +675,8 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
       maxPayments: 10,
       externalReference: 'order_subscription_10'
     });
-  expect(out.nextDueDate).toMatch(/^2025-01-05|2025-01-04/);
-  expect(out.endDate).toMatch(/^2025-12-31|2025-12-30/);
+    expect(out.nextDueDate).toMatch(/^2025-01-05|2025-01-04/);
+    expect(out.endDate).toMatch(/^2025-12-31|2025-12-30/);
   });
 
   test('delete com external_id aciona Asaas e trata erro do Asaas', async () => {

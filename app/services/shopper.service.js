@@ -198,18 +198,18 @@ class ShopperService {
                         existingShopper.payments_customer_id = data.payments_customer_id || existingShopper.payments_customer_id;
                         existingShopper.payments_status = data.payments_status || existingShopper.payments_status;
 
-                        // Salvar as alterações (update estático para compatibilidade com testes)
-                        await Shopper.update({
+                        // Atualizar via update para manter consistência
+                        await existingShopper.update({
                             nuvemshop_id: existingShopper.nuvemshop_id,
                             nuvemshop_info: existingShopper.nuvemshop_info,
                             name: existingShopper.name,
                             payments_customer_id: existingShopper.payments_customer_id,
                             payments_status: existingShopper.payments_status
-                        }, { where: { id: existingShopper.id }, transaction: t });
+                        }, { transaction: t });
 
                         // Atualizar também os dados do usuário se fornecidos
                         if (userData && user.user_data_id !== userData.id) {
-                            await User.update({ user_data_id: userData.id }, { where: { id: user.id }, transaction: t });
+                            await user.update({ user_data_id: userData.id }, { transaction: t });
                         }
 
                         // Retornar o shopper atualizado
@@ -218,7 +218,7 @@ class ShopperService {
 
                     // Se User existe mas não tem Shopper, atualizar user_data_id se necessário
                     if (userData && user.user_data_id !== userData.id) {
-                        await User.update({ user_data_id: userData.id }, { where: { id: user.id }, transaction: t });
+                        await user.update({ user_data_id: userData.id }, { transaction: t });
                     }
                 } else {
                     // Criar novo User se não existe
@@ -231,7 +231,7 @@ class ShopperService {
                 }
                 // Garante user_data_id sempre preenchido
                 if (!user.user_data_id) {
-                    await User.update({ user_data_id: userData.id }, { where: { id: user.id }, transaction: t });
+                    await user.update({ user_data_id: userData.id }, { transaction: t });
                 }
 
                 // Criar Shopper vinculado ao User (apenas se não foi atualizado um existente)
