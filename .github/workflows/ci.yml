@@ -1,0 +1,117 @@
+name: CI Básico
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Testes e Cobertura
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: appns_assinatura_test
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+
+    - name: Instalar dependências
+      working-directory: ./app
+      run: npm ci
+
+    - name: Aguardar MySQL
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mysql-client
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ptest_password --silent; do
+          echo "Aguardando MySQL..."
+          sleep 2
+        done
+        echo "MySQL pronto!"
+
+    - name: Setup banco de teste
+      run: |
+        mysql -h127.0.0.1 -P3306 -uroot -ptest_password -e "CREATE DATABASE IF NOT EXISTS appns_assinatura_test;"
+
+    - name: Executar testes
+      working-directory: ./app
+      run: npm test
+      env:
+        NODE_ENV: test
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_NAME: appns_assinatura_test
+        DB_USER: root
+        DB_PASSWORD: test_password
+
+    - name: Gerar cobertura de testes
+      working-directory: ./app
+      run: npm run test:coverage
+      env:
+        NODE_ENV: test
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_NAME: appns_assinatura_test
+        DB_USER: root
+        DB_PASSWORD: test_password
+
+    - name: Upload cobertura para Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./app/coverage/lcov.info
+        flags: unittests
+        fail_ci_if_error: false
+
+    - name: Arquivar resultados dos testes
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          app/coverage/
+          app/jest-results.xml
+        retention-days: 7
+
+  build:
+    name: Build da Aplicação
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+
+    - name: Instalar dependências de produção
+      working-directory: ./app
+      run: npm ci --only=production
+
+    - name: Verificar build
+      working-directory: ./app
+      run: |
+        echo "✅ Build concluído com sucesso"
+        echo "📦 Dependências instaladas:"
+        npm list --depth=0

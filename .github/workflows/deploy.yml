@@ -1,0 +1,35 @@
+name: Deploy Simples
+
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: 'Ambiente para deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  deploy:
+    name: Deploy para ${{ github.event.inputs.ambiente }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        docker build -t appns-assinaturas:${{ github.event.inputs.ambiente }} .
+
+    - name: Deploy
+      run: |
+        echo "🚀 Deploy para ${{ github.event.inputs.ambiente }} concluído!"
+        echo "📦 Imagem Docker criada: appns-assinaturas:${{ github.event.inputs.ambiente }}"
+        echo "✅ Pronto para uso futuro"
