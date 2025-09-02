@@ -113,5 +113,6 @@ jobs:
       working-directory: ./app
       run: |
         echo "✅ Build concluído com sucesso"
-        echo "📦 Dependências instaladas:"
-        npm list --depth=0
+        echo "� Verificando versões de runtime"
+        node -v
+        npm -v
