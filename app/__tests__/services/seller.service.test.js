@@ -63,7 +63,7 @@ jest.mock('../../models/UserData', () => ({
 }));
 
 jest.mock('../../models/Seller', () => {
-    function Seller() {}
+    function Seller() { }
     Seller.findOne = jest.fn();
     Seller.findAll = jest.fn();
     Seller.findByPk = jest.fn();
@@ -141,7 +141,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         };
 
         // Mocks de validação e checagem de duplicidade
-        SellerValidator.validateSellerData.mockImplementation(() => {});
+        SellerValidator.validateSellerData.mockImplementation(() => { });
         Seller.findOne.mockResolvedValue(null);
         UserData.findOne.mockResolvedValue(null);
 
@@ -182,7 +182,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         };
 
         // Mocks de validação e checagem de duplicidade
-        SellerValidator.validateSellerData.mockImplementation(() => {});
+        SellerValidator.validateSellerData.mockImplementation(() => { });
         Seller.findOne.mockResolvedValue(null);
         UserData.findOne.mockResolvedValue(null);
 
@@ -245,8 +245,8 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     test('detecta duplicação de nuvemshop_id', async () => {
         const data = { nuvemshop_id: 123456, email: 'x@x.com', cpfCnpj: '123' };
-        require('../../validators/seller-validator').validateSellerData.mockImplementation(() => {});
-        
+        require('../../validators/seller-validator').validateSellerData.mockImplementation(() => { });
+
         // Resetar completamente e configurar mock específico para este teste
         Seller.findOne.mockReset();
         Seller.findOne.mockResolvedValueOnce({ id: 5, nuvemshop_id: 123456 });
@@ -258,7 +258,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     test('detecta duplicação: cpfCnpj já vinculado a outro seller', async () => {
         const data = { nuvemshop_id: 123, email: 'x@x.com', cpfCnpj: '111' };
-        require('../../validators/seller-validator').validateSellerData.mockImplementation(() => {});
+        require('../../validators/seller-validator').validateSellerData.mockImplementation(() => { });
         Seller.findOne.mockResolvedValueOnce(null); // por nuvemshop_id
         const ud = { id: 2, cpfCnpj: '111' };
         const usr = { id: 3, user_data_id: 2 };
@@ -277,7 +277,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         const user = { id: 1, user_data_id: 1, destroy: jest.fn().mockResolvedValue({}) };
         const ud = { id: 1, destroy: jest.fn().mockResolvedValue({}) };
         const seller = { id: 1, user, destroy: jest.fn().mockResolvedValue({}) };
-        require('../../validators/seller-validator').validateId.mockImplementation(() => {});
+        require('../../validators/seller-validator').validateId.mockImplementation(() => { });
         Seller.findByPk.mockResolvedValue(seller);
         Shopper.count.mockResolvedValue(0);
         Seller.count.mockResolvedValue(0);
@@ -294,7 +294,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
     test('delete: mantém user quando vinculado a shopper', async () => {
         const user = { id: 1, user_data_id: 1, destroy: jest.fn() };
         const seller = { id: 1, user, destroy: jest.fn() };
-        require('../../validators/seller-validator').validateId.mockImplementation(() => {});
+        require('../../validators/seller-validator').validateId.mockImplementation(() => { });
         Seller.findByPk.mockResolvedValue(seller);
         Shopper.count.mockResolvedValue(1);
         Seller.count.mockResolvedValue(0);
@@ -306,9 +306,9 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     test('updatePaymentMethods: sucesso', async () => {
         const seller = { id: 1, accepted_payment_methods: ['credit_card'], save: jest.fn() };
-        require('../../validators/seller-validator').validateId.mockImplementation(() => {});
+        require('../../validators/seller-validator').validateId.mockImplementation(() => { });
         Seller.findByPk.mockResolvedValue(seller);
-        PaymentMethodsValidator.validatePaymentMethods.mockImplementation(() => {});
+        PaymentMethodsValidator.validatePaymentMethods.mockImplementation(() => { });
 
         const res = await SellerService.updatePaymentMethods(1, ['credit_card', 'pix']);
         expect(res.success).toBe(true);
@@ -317,9 +317,9 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     test('addPaymentMethod: sucesso', async () => {
         const seller = { id: 1, save: jest.fn(), isPaymentMethodAccepted: jest.fn().mockReturnValue(false), addPaymentMethod: jest.fn() };
-        require('../../validators/seller-validator').validateId.mockImplementation(() => {});
+        require('../../validators/seller-validator').validateId.mockImplementation(() => { });
         Seller.findByPk.mockResolvedValue(seller);
-        PaymentMethodsValidator.validateSinglePaymentMethod.mockImplementation(() => {});
+        PaymentMethodsValidator.validateSinglePaymentMethod.mockImplementation(() => { });
 
         const res = await SellerService.addPaymentMethod(1, 'boleto');
         expect(res.success).toBe(true);
@@ -328,9 +328,9 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     test('removePaymentMethod: sucesso', async () => {
         const seller = { id: 1, save: jest.fn(), isPaymentMethodAccepted: jest.fn().mockReturnValue(true), removePaymentMethod: jest.fn() };
-        require('../../validators/seller-validator').validateId.mockImplementation(() => {});
+        require('../../validators/seller-validator').validateId.mockImplementation(() => { });
         Seller.findByPk.mockResolvedValue(seller);
-        PaymentMethodsValidator.validateSinglePaymentMethod.mockImplementation(() => {});
+        PaymentMethodsValidator.validateSinglePaymentMethod.mockImplementation(() => { });
 
         const res = await SellerService.removePaymentMethod(1, 'pix');
         expect(res.success).toBe(true);
@@ -375,8 +375,8 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
     describe('update', () => {
         test('sucesso', async () => {
             const seller = { id: 1, user: { userData: {}, update: jest.fn() }, update: jest.fn(), reload: jest.fn(), toJSON: jest.fn().mockReturnValue({ id: 1 }) };
-            require('../../validators/seller-validator').validateId.mockImplementation(() => {});
-            require('../../validators/seller-validator').validateSellerUpdateData.mockImplementation(() => {});
+            require('../../validators/seller-validator').validateId.mockImplementation(() => { });
+            require('../../validators/seller-validator').validateSellerUpdateData.mockImplementation(() => { });
             Seller.findByPk.mockResolvedValue(seller);
             const res = await SellerService.update(1, { nuvemshop_info: { test: true } });
             expect(res.success).toBe(true);
@@ -384,8 +384,8 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         });
 
         test('não encontrado', async () => {
-            require('../../validators/seller-validator').validateId.mockImplementation(() => {});
-            require('../../validators/seller-validator').validateSellerUpdateData.mockImplementation(() => {});
+            require('../../validators/seller-validator').validateId.mockImplementation(() => { });
+            require('../../validators/seller-validator').validateSellerUpdateData.mockImplementation(() => { });
             Seller.findByPk.mockResolvedValue(null);
             createError.mockImplementation((m, c) => ({ success: false, message: m, code: c }));
             const res = await SellerService.update(999, {});
@@ -723,7 +723,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
     // Testes para melhorar cobertura - cenários de erro
     describe('Cenários de erro e edge cases', () => {
         test('get: erro na busca do seller', async () => {
-            SellerValidator.validateId.mockImplementation(() => {});
+            SellerValidator.validateId.mockImplementation(() => { });
             Seller.findByPk.mockRejectedValue(new Error('Database error'));
 
             const result = await SellerService.get(1);
@@ -750,7 +750,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         });
 
         test('delete: seller não encontrado', async () => {
-            SellerValidator.validateId.mockImplementation(() => {});
+            SellerValidator.validateId.mockImplementation(() => { });
             Seller.findByPk.mockResolvedValue(null);
 
             const result = await SellerService.delete(999);
@@ -759,7 +759,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         });
 
         test('delete: erro durante exclusão', async () => {
-            SellerValidator.validateId.mockImplementation(() => {});
+            SellerValidator.validateId.mockImplementation(() => { });
             const mockSeller = {
                 id: 1,
                 user_id: 1,
@@ -1025,7 +1025,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 }
             };
             Seller.findByPk.mockResolvedValue(seller);
-            
+
             const AsaasCustomerService = require('../../services/asaas/customer.service');
             AsaasCustomerService.createOrUpdate.mockResolvedValue({
                 success: true,
@@ -1048,7 +1048,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 }
             };
             Seller.findByPk.mockResolvedValue(seller);
-            
+
             const AsaasCustomerService = require('../../services/asaas/customer.service');
             AsaasCustomerService.createOrUpdate.mockResolvedValue({
                 success: false,
@@ -1068,11 +1068,11 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 accepted_payment_methods: [],
                 save: jest.fn()
             };
-            SellerValidator.validateId.mockImplementation(() => {});
+            SellerValidator.validateId.mockImplementation(() => { });
             const checkSubscriptionMiddleware = require('../../utils/subscription-validator').checkSubscriptionMiddleware;
             checkSubscriptionMiddleware.mockResolvedValue(null);
             Seller.findByPk.mockResolvedValue(seller);
-            PaymentMethodsValidator.validatePaymentMethods.mockImplementation(() => {});
+            PaymentMethodsValidator.validatePaymentMethods.mockImplementation(() => { });
 
             const result = await SellerService.updatePaymentMethods(1, []);
             expect(result.success).toBe(true);
@@ -1080,7 +1080,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         });
 
         test('updatePaymentMethods: erro na validação da assinatura', async () => {
-            SellerValidator.validateId.mockImplementation(() => {});
+            SellerValidator.validateId.mockImplementation(() => { });
             const checkSubscriptionMiddleware = require('../../utils/subscription-validator').checkSubscriptionMiddleware;
             checkSubscriptionMiddleware.mockResolvedValue({
                 success: false,
@@ -1097,18 +1097,18 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         test('delete: erro na contagem de vendedores', async () => {
             const user = { id: 1, destroy: jest.fn() };
             const seller = { id: 1, user_id: 1, destroy: jest.fn() };
-            
-            SellerValidator.validateId.mockImplementation(() => {});
+
+            SellerValidator.validateId.mockImplementation(() => { });
             Seller.findByPk.mockResolvedValue(seller);
             User.findByPk.mockResolvedValue(user);
-            
+
             // Mock da transação
             const mockTransaction = {
                 rollback: jest.fn(),
                 commit: jest.fn()
             };
             sequelize.transaction.mockImplementation((fn) => fn(mockTransaction));
-            
+
             // Simular erro durante a exclusão dentro da transação
             seller.destroy.mockRejectedValue(new Error('Database error'));
 
@@ -1124,7 +1124,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 cpf_cnpj: '12345678901',
                 birth_date: '1990-01-01',
             };
-            SellerValidator.validateSellerData.mockImplementation(() => {});
+            SellerValidator.validateSellerData.mockImplementation(() => { });
             Seller.findOne.mockResolvedValue(null);
             UserData.findOne.mockResolvedValue(null);
             UserData.create.mockResolvedValue({ id: 1, ...data });
