@@ -46,7 +46,7 @@ Shopper.hasMany(ShopperSubscription, { foreignKey: 'shopper_id', as: 'subscripti
 // Relacionamentos com User - correção das associações
 // Defina as associações User -> entidades primeiro
 User.belongsTo(UserData, { foreignKey: 'user_data_id', as: 'userData' });
-UserData.hasMany(User, { foreignKey: 'user_data_id', as: 'users' });
+UserData.hasOne(User, { foreignKey: 'user_data_id', as: 'user' });
 
 User.hasOne(Shopper, { foreignKey: 'user_id', as: 'shopper' });
 User.hasOne(Seller, { foreignKey: 'user_id', as: 'seller' });

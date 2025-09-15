@@ -93,6 +93,10 @@ jest.mock('../../services/seller-subscription.service', () => ({
     createSubscription: jest.fn()
 }));
 
+jest.mock('../../services/seller-subaccount.service', () => ({
+    create: jest.fn(),
+}));
+
 jest.mock('../../utils/subscription-validator', () => ({
     checkSubscriptionMiddleware: jest.fn().mockResolvedValue(null)
 }));
@@ -106,6 +110,7 @@ const Shopper = require('../../models/Shopper');
 const SellerSubscription = require('../../models/SellerSubscription');
 const AsaasCustomerService = require('../../services/asaas/customer.service');
 const SellerSubscriptionService = require('../../services/seller-subscription.service');
+const SellerSubAccountService = require('../../services/seller-subaccount.service');
 const { createError, formatError } = require('../../utils/errorHandler');
 const PaymentMethodsValidator = require('../../validators/payment-methods-validator');
 const SellerValidator = require('../../validators/seller-validator');
@@ -124,42 +129,118 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
         });
     });
 
-    test('cria seller com sucesso quando não há duplicação e cria assinatura default local', async () => {
+    test('create: erro na sincronização com Asaas deve fazer rollback', async () => {
         const data = {
-            nuvemshop_id: 123456,
             email: 'seller@example.com',
-            cpfCnpj: '12345678901',
+            name: 'Test Seller',
+            cpf_cnpj: '12345678901', // CPF
+            // birth_date está faltando, o que deve causar o erro
+            nuvemshop_id: 123456,
             nuvemshop_info: { storeName: 'My Store' },
             nuvemshop_api_token: 'token123'
         };
 
-        // validações/duplicidades
-        require('../../validators/seller-validator').validateSellerData.mockImplementation(() => {});
-        Seller.findOne
-            .mockResolvedValueOnce(null) // duplicação por nuvemshop_id
-            .mockResolvedValueOnce(null); // sellerWithAsaasId
+        // Mocks de validação e checagem de duplicidade
+        SellerValidator.validateSellerData.mockImplementation(() => {});
+        Seller.findOne.mockResolvedValue(null);
         UserData.findOne.mockResolvedValue(null);
-        AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-        AsaasCustomerService.createOrUpdate.mockResolvedValue({ success: true, data: { id: 'asaas_123' } });
 
-        const ud = { id: 1, cpfCnpj: '12345678901' };
-        const user = { id: 1, email: 'seller@example.com', update: jest.fn() };
-        const seller = { id: 1, nuvemshop_id: 123456, user_id: 1, payments_customer_id: 'asaas_123' };
-        const sellerWithRels = { ...seller, user: { ...user, userData: ud } };
+        // Mocks para criação de entidades locais
+        const mockUserData = { id: 1, ...data };
+        const mockUser = { id: 1, email: data.email, user_data_id: 1 };
+        const mockSeller = { id: 1, nuvemshop_id: data.nuvemshop_id, user_id: 1, update: jest.fn() };
+        UserData.create.mockResolvedValue(mockUserData);
+        User.create.mockResolvedValue(mockUser);
+        Seller.create.mockResolvedValue(mockSeller);
 
-        UserData.create.mockResolvedValue(ud);
-        User.create.mockResolvedValue(user);
-        Seller.create.mockResolvedValue(seller);
-        Seller.findByPk.mockResolvedValue(sellerWithRels);
-
-        // assinatura default
-        SellerSubscription.findOne.mockResolvedValue(null);
-        SellerSubscription.create.mockResolvedValue({ id: 10 });
+        // Mock para a criação da subconta Asaas falhar
+        const subAccountError = new Error('Data de nascimento é obrigatória para CPF.');
+        SellerSubAccountService.create.mockRejectedValue(subAccountError);
 
         const res = await SellerService.create(data);
+
+        expect(res.success).toBe(false);
+        expect(res.message).toBe('Erro ao criar vendedor e subconta: Data de nascimento é obrigatória para CPF.');
+
+        // Verifica se a transação foi usada e revertida
+        expect(sequelize.transaction).toHaveBeenCalled();
+        expect(mockTransaction.commit).not.toHaveBeenCalled();
+        expect(mockTransaction.rollback).toHaveBeenCalled();
+    });
+
+    test('cria seller e subconta com sucesso', async () => {
+        const data = {
+            email: 'seller@example.com',
+            name: 'Test Seller',
+            cpf_cnpj: '12345678901',
+            birth_date: '1990-01-01',
+            company_type: 'MEI',
+            income_value: 10000,
+            nuvemshop_id: 123456,
+            nuvemshop_info: { storeName: 'My Store' },
+            nuvemshop_api_token: 'token123'
+        };
+
+        // Mocks de validação e checagem de duplicidade
+        SellerValidator.validateSellerData.mockImplementation(() => {});
+        Seller.findOne.mockResolvedValue(null);
+        UserData.findOne.mockResolvedValue(null);
+
+        // Mocks para criação de entidades locais
+        const mockUserData = { id: 1, ...data };
+        const mockUser = { id: 1, email: data.email, user_data_id: 1 };
+        const mockSeller = { id: 1, nuvemshop_id: data.nuvemshop_id, user_id: 1, update: jest.fn() };
+        UserData.create.mockResolvedValue(mockUserData);
+        User.create.mockResolvedValue(mockUser);
+        Seller.create.mockResolvedValue(mockSeller);
+
+        // Mock para a criação da subconta Asaas
+        const subAccountResponse = {
+            success: true,
+            data: {
+                id: 'subaccount_123',
+                apiKey: 'key_123',
+                walletId: 'wallet_123'
+            }
+        };
+        SellerSubAccountService.create.mockResolvedValue(subAccountResponse);
+
+        // Mock para o findByPk que retorna o seller completo com as relações
+        const sellerWithRelations = {
+            ...mockSeller,
+            user: {
+                ...mockUser,
+                userData: mockUserData
+            },
+            toJSON: () => ({ ...mockSeller, user: { ...mockUser, userData: mockUserData } })
+        };
+        Seller.findByPk.mockResolvedValue(sellerWithRelations);
+
+        const res = await SellerService.create(data);
+
         expect(res.success).toBe(true);
-        expect(res.data).toEqual(sellerWithRels);
-        expect(SellerSubscription.create).toHaveBeenCalledWith(expect.objectContaining({ seller_id: 1 }), { transaction: mockTransaction });
+        expect(res.data).toBeDefined();
+        expect(res.data.id).toBe(mockSeller.id);
+
+        // Verifica se a transação foi usada
+        expect(sequelize.transaction).toHaveBeenCalled();
+        expect(UserData.create).toHaveBeenCalledWith(expect.any(Object), { transaction: mockTransaction });
+        expect(User.create).toHaveBeenCalledWith(expect.any(Object), { transaction: mockTransaction });
+        expect(Seller.create).toHaveBeenCalledWith(expect.any(Object), { transaction: mockTransaction });
+
+        // Verifica a chamada ao serviço de subconta
+        expect(SellerSubAccountService.create).toHaveBeenCalledWith(expect.any(Object), mockTransaction);
+
+        // Verifica se o seller local foi atualizado com os dados da subconta
+        expect(mockSeller.update).toHaveBeenCalledWith({
+            subaccount_id: subAccountResponse.data.id,
+            asaas_api_key: subAccountResponse.data.apiKey,
+            wallet_id: subAccountResponse.data.walletId
+        }, { transaction: mockTransaction });
+
+        // Verifica se a transação foi commitada
+        expect(mockTransaction.commit).toHaveBeenCalled();
+        expect(mockTransaction.rollback).not.toHaveBeenCalled();
     });
 
     test('detecta duplicação de nuvemshop_id', async () => {
@@ -695,10 +776,9 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
             SellerValidator.validateSellerData.mockImplementation(() => {
                 throw new Error('Dados inválidos');
             });
-
             const result = await SellerService.create({});
             expect(result.success).toBe(false);
-            expect(result.message).toBe('Dados inválidos');
+            expect(result.message).toBe('Erro ao criar vendedor e subconta: Dados inválidos');
         });
 
         test('updateSellerDocuments: seller não encontrado', async () => {
@@ -1039,30 +1119,25 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
         test('create: erro na sincronização com Asaas', async () => {
             const data = {
-                nuvemshop_id: '123',
-                nuvemshop_info: { name: { pt: 'Loja' } },
-                nuvemshop_api_token: 'token',
-                app_status: 'active',
-                cpfCnpj: '12345678909'
+                nuvemshop_id: 123,
+                email: 'error@test.com',
+                cpf_cnpj: '12345678901',
+                birth_date: '1990-01-01',
             };
-
             SellerValidator.validateSellerData.mockImplementation(() => {});
             Seller.findOne.mockResolvedValue(null);
             UserData.findOne.mockResolvedValue(null);
-            
-            // Simular erro no Asaas
-            const AsaasCustomerService = require('../../services/asaas/customer.service');
-            AsaasCustomerService.findByCpfCnpj.mockResolvedValue({ success: false });
-            AsaasCustomerService.createOrUpdate.mockResolvedValue({
-                success: false,
-                message: 'Erro no Asaas',
-                status: 400
-            });
-            
+            UserData.create.mockResolvedValue({ id: 1, ...data });
+            User.create.mockResolvedValue({ id: 1, email: data.email, user_data_id: 1 });
+            const mockSeller = { id: 1, nuvemshop_id: data.nuvemshop_id, user_id: 1, update: jest.fn() };
+            Seller.create.mockResolvedValue(mockSeller);
+            Seller.findByPk.mockResolvedValue(mockSeller); // Garante que o findByPk retorne um objeto com update
+            SellerSubAccountService.create.mockRejectedValue(new Error('Erro no Asaas'));
+
             const result = await SellerService.create(data);
-            // Se a sincronização com Asaas falha, o seller não é criado
+
             expect(result.success).toBe(false);
-            expect(result.message).toContain('Falha ao sincronizar com Asaas: Erro no Asaas');
+            expect(result.message).toBe('Erro ao criar vendedor e subconta: Erro no Asaas');
         });
     });
 });
