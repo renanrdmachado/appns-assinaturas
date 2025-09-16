@@ -83,6 +83,7 @@ class SellerSubAccountService {
             name: name || user.username,
             email: email || user.email,
             cpfCnpj: cpf_cnpj,
+            loginEmail: email || user.email,
             companyType: company_type,
             phone: phone || mobile_phone,
             mobilePhone: mobile_phone || phone,
@@ -92,7 +93,7 @@ class SellerSubAccountService {
             province,
             postalCode: postal_code,
             birthDate: birth_date,
-            incomeValue: income_value,
+            incomeValue: income_value
         };
 
         // Remove chaves com valores nulos ou indefinidos
