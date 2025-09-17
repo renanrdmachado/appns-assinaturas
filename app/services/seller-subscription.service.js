@@ -1,6 +1,8 @@
 require('dotenv').config();
 const SellerSubscription = require('../models/SellerSubscription');
 const Seller = require('../models/Seller');
+const User = require('../models/User');
+const UserData = require('../models/UserData');
 const AsaasApiClient = require('../helpers/AsaasApiClient');
 const { formatError, createError } = require('../utils/errorHandler');
 const SellerValidator = require('../validators/seller-validator');
@@ -1068,7 +1070,44 @@ class SellerSubscriptionService {
 
             // Verificar se o vendedor tem uma subconta no Asaas
             if (!seller.subaccount_id) {
-                return createError('Vendedor não possui uma subconta no Asaas configurada', 400);
+                console.log('Vendedor não possui uma subconta no Asaas. Tentando criar...');
+                try {
+                    // Carregar as relações necessárias para criar a subconta
+                    const sellerWithRelations = await Seller.findByPk(sellerId, {
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }
+                        ],
+                        transaction
+                    });
+
+                    if (!sellerWithRelations || !sellerWithRelations.user || !sellerWithRelations.user.userData) {
+                        return createError('Dados insuficientes para criar subconta. Relações `user` e `userData` são necessárias.', 400);
+                    }
+
+                    // Instanciar e chamar o serviço de subconta
+                    const SellerSubAccountService = require('./seller-subaccount.service');
+                    const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
+
+                    if (!subAccountResult.success) {
+                        return createError(`Falha ao criar subconta: ${subAccountResult.message}`, 400);
+                    }
+
+                    // Atualizar o seller com os dados da subconta
+                    await seller.update({
+                        subaccount_id: subAccountResult.data.id,
+                        asaas_api_key: subAccountResult.data.apiKey,
+                        wallet_id: subAccountResult.data.walletId,
+                    }, { transaction });
+
+                    console.log('Subconta criada com sucesso:', subAccountResult.data.id);
+                } catch (subaccountError) {
+                    console.error('Erro ao criar subconta:', subaccountError);
+                    return createError(`Erro ao criar subconta: ${subaccountError.message}`, 500);
+                }
             }
 
             // Verificar se o vendedor já tem assinatura existente no sistema
