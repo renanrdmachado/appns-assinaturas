@@ -7,11 +7,11 @@ const UserData = sequelize.define('UserData', {
     primaryKey: true,
     autoIncrement: true
   },
-  mobilePhone: {
+  mobile_phone: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  cpfCnpj: {
+  cpf_cnpj: {
     type: DataTypes.STRING,
     unique: true,
     allowNull: true
@@ -20,7 +20,7 @@ const UserData = sequelize.define('UserData', {
     type: DataTypes.STRING,
     allowNull: true
   },
-  addressNumber: {
+  address_number: {
     type: DataTypes.STRING,
     allowNull: true
   },
@@ -28,12 +28,20 @@ const UserData = sequelize.define('UserData', {
     type: DataTypes.STRING,
     allowNull: true
   },
-  postalCode: {
+  postal_code: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  birthDate: {
-    type: DataTypes.DATE,
+  birth_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  company_type: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  income_value: {
+    type: DataTypes.DECIMAL(10, 2),
     allowNull: true
   }
 });

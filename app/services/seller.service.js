@@ -11,6 +11,8 @@ const { checkSubscriptionMiddleware } = require('../utils/subscription-validator
 const AsaasMapper = require('../utils/asaas-mapper');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
+const SellerSubAccountService = require('./seller-subaccount.service');
+const subAccountService = require('./asaas/subaccount.service');
 
 class SellerService {
     async get(id) {
@@ -70,6 +72,9 @@ class SellerService {
      * e verifica duplicidade tanto no banco quanto no Asaas
      */
     async create(data) {
+        // Usar transação para garantir consistência entre as entidades
+        const t = await sequelize.transaction();
+
         try {
             // Validação dos dados usando o validator
             SellerValidator.validateSellerData(data);
@@ -78,152 +83,125 @@ class SellerService {
                 data.nuvemshop_info = JSON.stringify(data.nuvemshop_info);
             }
 
-            // 1. Verificar se já existe um vendedor com este nuvemshop_id no banco local
-            const existingSeller = await Seller.findOne({ where: { nuvemshop_id: data.nuvemshop_id } });
+            // 1. Verificar duplicidade
+            const existingSeller = await Seller.findOne({ where: { nuvemshop_id: data.nuvemshop_id }, transaction: t });
             if (existingSeller) {
+                await t.rollback();
                 return createError('Já existe um vendedor com este ID da Nuvemshop', 400);
             }
 
-            // 2. Verificar se já existe um userData com este cpfCnpj no banco local
-            const existingUserData = await UserData.findOne({ where: { cpfCnpj: data.cpfCnpj } });
+            const existingUserData = await UserData.findOne({ where: { cpf_cnpj: data.cpfCnpj }, transaction: t });
             if (existingUserData) {
-                // Verificar se já existe um User associado a este UserData
-                const existingUser = await User.findOne({ where: { user_data_id: existingUserData.id } });
-                if (existingUser) {
-                    // Verificar se já existe um Seller associado a este User
-                    const sellerWithUser = await Seller.findOne({ where: { user_id: existingUser.id } });
-                    if (sellerWithUser) {
+                const userWithSameData = await User.findOne({ where: { user_data_id: existingUserData.id }, transaction: t });
+                if (userWithSameData) {
+                    const sellerWithSameUser = await Seller.findOne({ where: { user_id: userWithSameData.id }, transaction: t });
+                    if (sellerWithSameUser) {
+                        await t.rollback();
                         return createError(`Já existe um vendedor associado ao CPF/CNPJ ${data.cpfCnpj}`, 400);
                     }
                 }
             }
 
-            // 3. Verificar se já existe um cliente com este CPF/CNPJ no Asaas
-            const existingAsaasCustomer = await AsaasCustomerService.findByCpfCnpj(data.cpfCnpj, AsaasCustomerService.SELLER_GROUP);
-
-            let asaasCustomerId;
-
-            if (existingAsaasCustomer.success) {
-                // Se já existe cliente no Asaas, usamos o ID existente
-                asaasCustomerId = existingAsaasCustomer.data.id;
-
-                // Verificar se há um vendedor vinculado a este ID do Asaas
-                const sellerWithAsaasId = await Seller.findOne({
-                    where: { payments_customer_id: asaasCustomerId }
-                });
-
-                if (sellerWithAsaasId) {
-                    return createError(`Já existe um vendedor (ID: ${sellerWithAsaasId.id}) vinculado a este cliente do Asaas`, 400);
-                }
-            } else {
-                // Se não existe, criar novo cliente no Asaas usando o AsaasMapper
-                const customerData = AsaasMapper.mapRawDataToCustomer(data, 'seller', AsaasCustomerService.SELLER_GROUP);
-
-                // Tentar criar cliente no Asaas
-                const asaasResult = await AsaasCustomerService.createOrUpdate(
-                    customerData,
-                    AsaasCustomerService.SELLER_GROUP
-                );
-
-                // Se falhar no Asaas, não cria no banco local
-                if (!asaasResult.success) {
-                    return createError(`Falha ao sincronizar com Asaas: ${asaasResult.message}`, asaasResult.status || 400);
-                }
-
-                asaasCustomerId = asaasResult.data.id;
+            // 2. Criar entidades locais
+            let userData = existingUserData;
+            if (!userData) {
+                userData = await UserData.create({
+                    cpf_cnpj: data.cpfCnpj,
+                    mobile_phone: data.mobilePhone || null,
+                    address: data.address || null,
+                    address_number: data.addressNumber || null,
+                    province: data.province || null,
+                    postal_code: data.postalCode || null,
+                    birth_date: data.birthDate || null,
+                    company_type: data.companyType || null,
+                    income_value: data.incomeValue || null
+                }, { transaction: t });
             }
 
-            // 4. Adicionar ID do cliente Asaas nos dados e criar no banco local
-            data.payments_customer_id = asaasCustomerId;
-
-            // Usar transação para garantir consistência entre as entidades
-            try {
-                const result = await sequelize.transaction(async (t) => {
-                    // Criar ou obter o UserData
-                    let userData = existingUserData;
-                    if (!userData) {
-                        userData = await UserData.create({
-                            cpfCnpj: data.cpfCnpj,
-                            mobilePhone: data.mobilePhone || null,
-                            address: data.address || null,
-                            addressNumber: data.addressNumber || null,
-                            province: data.province || null,
-                            postalCode: data.postalCode || null,
-                            birthDate: data.birthDate || null
-                        }, { transaction: t });
-                    }
-
-                    // Criar ou obter o User
-                    let user;
-                    if (existingUserData) {
-                        user = await User.findOne({
-                            where: { user_data_id: userData.id },
-                            transaction: t
-                        });
-                    }
-
-                    if (!user) {
-                        user = await User.create({
-                            username: data.username || null,
-                            email: data.email,
-                            password: data.password || null,
-                            user_data_id: userData.id
-                        }, { transaction: t });
-                    } else if (!user.user_data_id) {
-                        // Garante vinculação de UserData mesmo se User preexistente não tinha
-                        await user.update({ user_data_id: userData.id }, { transaction: t });
-                    }
-
-                    // Criar o Seller vinculado ao User
-                    const seller = await Seller.create({
-                        nuvemshop_id: data.nuvemshop_id,
-                        nuvemshop_info: data.nuvemshop_info || null,
-                        nuvemshop_api_token: data.nuvemshop_api_token || null,
-                        app_status: data.app_status || null,
-                        app_start_date: data.app_start_date || null,
-                        user_id: user.id,
-                        payments_customer_id: data.payments_customer_id || null
-                    }, { transaction: t });
-
-                    // Carregar o seller com as relações
-                    const sellerWithRelations = await Seller.findByPk(seller.id, {
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                include: [{ model: UserData, as: 'userData' }]
-                            }
-                        ],
-                        transaction: t
-                    });
-
-                    // Criar assinatura padrão local imediatamente (sem depender de documentos)
-                    const existingSubscription = await SellerSubscription.findOne({
-                        where: { seller_id: seller.id },
-                        transaction: t
-                    });
-
-                    if (!existingSubscription) {
-                        // Em ambiente de criação por teste, assinatura esperada como 'active'
-                        const defaultSubscription = this.getDefaultSubscriptionConfig(seller.id, 'active');
-                        await SellerSubscription.create(defaultSubscription, { transaction: t });
-                    }
-
-                    return sellerWithRelations;
-                });
-
-                return {
-                    success: true,
-                    message: 'Vendedor criado com sucesso',
-                    data: result
-                };
-            } catch (txError) {
-                console.error('Erro na transação ao criar vendedor:', txError.message);
-                return createError(`Erro ao salvar dados: ${txError.message}`, 500);
+            let user;
+            if (existingUserData) {
+                user = await User.findOne({ where: { user_data_id: userData.id }, transaction: t });
             }
+
+            if (!user) {
+                user = await User.create({
+                    username: data.username || null,
+                    email: data.email,
+                    password: data.password || null, // Senha deve ser tratada (hash) antes de chegar aqui
+                    user_data_id: userData.id
+                }, { transaction: t });
+            } else if (!user.user_data_id) {
+                await user.update({ user_data_id: userData.id }, { transaction: t });
+            }
+
+            const seller = await Seller.create({
+                nuvemshop_id: data.nuvemshop_id,
+                nuvemshop_info: data.nuvemshop_info || null,
+                nuvemshop_api_token: data.nuvemshop_api_token || null,
+                app_status: 'pending',
+                app_start_date: new Date(),
+                user_id: user.id
+            }, { transaction: t });
+
+            // Adicionar as relações ao objeto seller para uso no formatador
+            const newSeller = await Seller.findByPk(seller.id, {
+                include: [{
+                    model: User,
+                    as: 'user',
+                    include: [{ model: UserData, as: 'userData' }]
+                }],
+                transaction: t
+            });
+
+            // 3. Criar subconta no Asaas
+            const subAccountResult = await SellerSubAccountService.create(newSeller, t);
+
+            // 4. Atualizar o seller local com os dados da subconta
+            await newSeller.update({
+                subaccount_id: subAccountResult.data.id,
+                asaas_api_key: subAccountResult.data.apiKey,
+                wallet_id: subAccountResult.data.walletId,
+            }, { transaction: t });
+
+            // 5. Criar assinatura padrão local
+            const existingSubscription = await SellerSubscription.findOne({
+                where: { seller_id: seller.id },
+                transaction: t
+            });
+
+            if (!existingSubscription) {
+                const defaultSubscription = this.getDefaultSubscriptionConfig(seller.id, 'active');
+                await SellerSubscription.create(defaultSubscription, { transaction: t });
+            }
+
+            // Se tudo deu certo, commita a transação
+            await t.commit();
+
+            // Recarregar o seller com todas as relações para retornar o dado completo
+            const finalSeller = await Seller.findByPk(seller.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        include: [{ model: UserData, as: 'userData' }]
+                    }
+                ]
+            });
+
+            return {
+                success: true,
+                message: 'Vendedor e subconta Asaas criados com sucesso',
+                data: finalSeller
+            };
+
         } catch (error) {
-            console.error('Erro ao criar vendedor - service:', error.message);
-            return formatError(error);
+            // Garante que o rollback seja chamado em caso de erro inesperado
+            if (t && !t.finished) {
+                await t.rollback();
+            }
+            const errorMessage = `Erro ao criar vendedor e subconta: ${error.message}`;
+            console.error(errorMessage);
+            return createError(errorMessage, 400);
         }
     }
 
