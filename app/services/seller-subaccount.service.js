@@ -24,9 +24,39 @@ class SellerSubAccountService {
 
             const subAccountData = this.formatDataForAsaasSubAccount(seller);
 
+            // Primeiro, verificar se já existe uma subconta com este CPF
+            console.log(`DEBUG - Verificação de subconta existente: cpfCnpj=${subAccountData.cpfCnpj}`);
+            const existingSubAccount = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+
+            if (existingSubAccount.success && existingSubAccount.data) {
+                console.log(`DEBUG - Subconta existente encontrada: ${existingSubAccount.data.id}`);
+                return {
+                    success: true,
+                    data: existingSubAccount.data,
+                    message: 'Subconta existente recuperada com sucesso.'
+                };
+            }
+
+            // Se não existe, tentar criar uma nova
+            console.log(`CPF ${subAccountData.cpfCnpj} não encontrado no Asaas. Criando nova subconta...`);
             const asaasResult = await subAccountService.addSubAccount(subAccountData);
 
             if (!asaasResult.success) {
+                // Se falhou por CPF já em uso, tentar buscar novamente
+                if (asaasResult.message && asaasResult.message.includes('já está em uso')) {
+                    console.log('CPF já em uso detectado. Tentando buscar subconta existente...');
+
+                    const retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+                    if (retryResult.success && retryResult.data) {
+                        console.log(`DEBUG - Subconta existente recuperada após retry: ${retryResult.data.id}`);
+                        return {
+                            success: true,
+                            data: retryResult.data,
+                            message: 'Subconta existente recuperada após conflito de CPF.'
+                        };
+                    }
+                }
+
                 console.error('Erro ao criar subconta no Asaas:', JSON.stringify(asaasResult, null, 2));
                 // Lança o erro para que a transação externa possa fazer rollback
                 throw new Error(asaasResult.message || 'Erro desconhecido ao criar subconta no Asaas.');
