@@ -9,7 +9,6 @@ const SellerValidator = require('../validators/seller-validator');
 const AsaasCustomerService = require('./asaas/customer.service');
 const subscriptionService = require('./asaas/subscription.service');
 const sequelize = require('../config/database');
-const AsaasCardService = require('./asaas/card.service');
 const { redactSensitive } = require('../utils/redact');
 const AsaasFormatter = require('../utils/asaas-formatter');
 
@@ -127,7 +126,6 @@ class SellerSubscriptionService {
             // Normalizar/validar CPF/CNPJ vindo do billingInfo ou da loja
             const rawCpf = (billingInfo.cpfCnpj || '').toString();
             const cleanCpf = rawCpf.replace(/\D/g, '');
-            const isMaskedCpf = rawCpf.includes('*');
             const nsBusinessId = (nuvemshopInfo.business_id || '').toString().replace(/\D/g, '');
 
             // Tentar alternativas para CPF/CNPJ válido

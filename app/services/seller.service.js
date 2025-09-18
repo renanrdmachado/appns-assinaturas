@@ -267,16 +267,16 @@ class SellerService {
                             // Reutiliza UserData existente por cpfCnpj, se houver
                             let ud = null;
                             if (maybeCpf) {
-                                ud = await UserData.findOne({ where: { cpfCnpj: maybeCpf }, transaction: t });
+                                ud = await UserData.findOne({ where: { cpf_cnpj: maybeCpf }, transaction: t });
                             }
                             if (!ud) {
                                 ud = await UserData.create({
-                                    cpfCnpj: maybeCpf || null,
-                                    mobilePhone: maybePhone || null,
+                                    cpf_cnpj: maybeCpf || null,
+                                    mobile_phone: maybePhone || null,
                                     address: addr,
-                                    addressNumber: addrNumber,
+                                    address_number: addrNumber,
                                     province: province,
-                                    postalCode: cep
+                                    postal_code: cep
                                 }, { transaction: t });
                             }
                             await seller.user.update({ user_data_id: ud.id }, { transaction: t });
@@ -365,12 +365,12 @@ class SellerService {
 
                 // Atualizar UserData no tempSeller
                 if (tempSeller.user && tempSeller.user.userData) {
-                    if (data.cpfCnpj) tempSeller.user.userData.cpfCnpj = data.cpfCnpj;
-                    if (data.mobilePhone) tempSeller.user.userData.mobilePhone = data.mobilePhone;
+                    if (data.cpfCnpj) tempSeller.user.userData.cpf_cnpj = data.cpfCnpj;
+                    if (data.mobilePhone) tempSeller.user.userData.mobile_phone = data.mobilePhone;
                     if (data.address) tempSeller.user.userData.address = data.address;
-                    if (data.addressNumber) tempSeller.user.userData.addressNumber = data.addressNumber;
+                    if (data.addressNumber) tempSeller.user.userData.address_number = data.addressNumber;
                     if (data.province) tempSeller.user.userData.province = data.province;
-                    if (data.postalCode) tempSeller.user.userData.postalCode = data.postalCode;
+                    if (data.postalCode) tempSeller.user.userData.postal_code = data.postalCode;
                 }
 
                 // Atualizar User no tempSeller
@@ -413,13 +413,13 @@ class SellerService {
                             data.birthDate) {
 
                             await seller.user.userData.update({
-                                cpfCnpj: data.cpfCnpj || seller.user.userData.cpfCnpj,
-                                mobilePhone: data.mobilePhone || seller.user.userData.mobilePhone,
+                                cpf_cnpj: data.cpfCnpj || seller.user.userData.cpf_cnpj,
+                                mobile_phone: data.mobilePhone || seller.user.userData.mobile_phone,
                                 address: data.address || seller.user.userData.address,
-                                addressNumber: data.addressNumber || seller.user.userData.addressNumber,
+                                address_number: data.addressNumber || seller.user.userData.address_number,
                                 province: data.province || seller.user.userData.province,
-                                postalCode: data.postalCode || seller.user.userData.postalCode,
-                                birthDate: data.birthDate || seller.user.userData.birthDate
+                                postal_code: data.postalCode || seller.user.userData.postal_code,
+                                birth_date: data.birthDate || seller.user.userData.birth_date
                             }, { transaction: t });
                         }
                     }
@@ -600,22 +600,22 @@ class SellerService {
                     // 1. Atualizar UserData
                     if (seller.user && seller.user.userData) {
                         await seller.user.userData.update({
-                            cpfCnpj: account.cpfCnpj || seller.user.userData.cpfCnpj,
-                            mobilePhone: account.mobilePhone || seller.user.userData.mobilePhone,
+                            cpf_cnpj: account.cpfCnpj || seller.user.userData.cpf_cnpj,
+                            mobile_phone: account.mobilePhone || seller.user.userData.mobile_phone,
                             address: account.address || seller.user.userData.address,
-                            addressNumber: account.addressNumber || seller.user.userData.addressNumber,
+                            address_number: account.addressNumber || seller.user.userData.address_number,
                             province: account.province || seller.user.userData.province,
-                            postalCode: account.postalCode || seller.user.userData.postalCode
+                            postal_code: account.postalCode || seller.user.userData.postal_code
                         }, { transaction: t });
                     } else if (seller.user) {
                         // Criar UserData se não existir
                         const userData = await UserData.create({
-                            cpfCnpj: account.cpfCnpj,
-                            mobilePhone: account.mobilePhone || null,
+                            cpf_cnpj: account.cpfCnpj,
+                            mobile_phone: account.mobilePhone || null,
                             address: account.address || null,
-                            addressNumber: account.addressNumber || null,
+                            address_number: account.addressNumber || null,
                             province: account.province || null,
-                            postalCode: account.postalCode || null
+                            postal_code: account.postalCode || null
                         }, { transaction: t });
 
                         // Atualizar user_data_id no User
@@ -717,7 +717,7 @@ class SellerService {
                 return createError(`Vendedor com ID ${id} não encontrado`, 404);
             }
 
-            if (!seller.user || !seller.user.userData || !seller.user.userData.cpfCnpj) {
+            if (!seller.user || !seller.user.userData || !seller.user.userData.cpf_cnpj) {
                 return createError('CPF/CNPJ é obrigatório para sincronizar com Asaas', 400);
             }
 
@@ -1303,7 +1303,7 @@ class SellerService {
         const transaction = await sequelize.transaction();
 
         try {
-            const { cpfCnpj, name, phone, address, addressNumber, province, postalCode, birthDate } = documentData;
+            const { cpfCnpj, name, phone, address, addressNumber, province, postalCode, birthDate, incomeValue, companyType } = documentData;
 
             // Validar dados obrigatórios
             if (!cpfCnpj) {
@@ -1341,7 +1341,7 @@ class SellerService {
                 return createError('Seller não possui usuário associado para armazenar documentos', 400);
             }
             // Tentar reutilizar um UserData já existente com o mesmo CPF/CNPJ
-            const existingUserDataByCpf = await UserData.findOne({ where: { cpfCnpj }, transaction });
+            const existingUserDataByCpf = await UserData.findOne({ where: { cpf_cnpj: cpfCnpj }, transaction });
 
             if (!userData) {
                 if (existingUserDataByCpf) {
@@ -1350,29 +1350,33 @@ class SellerService {
                     await seller.user.update({ user_data_id: userData.id }, { transaction });
                     // Atualiza telefone/endereço se enviados (não quebra outros campos existentes)
                     await userData.update({
-                        mobilePhone: phone ?? userData.mobilePhone,
+                        mobile_phone: phone ?? userData.mobile_phone,
                         address: address ?? userData.address,
-                        addressNumber: addressNumber ?? userData.addressNumber,
+                        address_number: addressNumber ?? userData.address_number,
                         province: province ?? userData.province,
-                        postalCode: postalCode ?? userData.postalCode,
-                        birthDate: birthDate ?? userData.birthDate
+                        postal_code: postalCode ?? userData.postal_code,
+                        birth_date: birthDate ?? userData.birth_date,
+                        income_value: incomeValue ?? userData.income_value,
+                        company_type: companyType ?? userData.company_type
                     }, { transaction });
                 } else {
                     // Cria um novo UserData
                     userData = await UserData.create({
-                        cpfCnpj,
-                        mobilePhone: phone || null,
+                        cpf_cnpj: cpfCnpj,
+                        mobile_phone: phone || null,
                         address: address || null,
-                        addressNumber: addressNumber || null,
+                        address_number: addressNumber || null,
                         province: province || null,
-                        postalCode: postalCode || null,
-                        birthDate: birthDate || null
+                        postal_code: postalCode || null,
+                        birth_date: birthDate || null,
+                        income_value: incomeValue || null,
+                        company_type: companyType || null
                     }, { transaction });
                     await seller.user.update({ user_data_id: userData.id }, { transaction });
                 }
             } else {
                 // Já existe um UserData vinculado ao usuário
-                if (userData.cpfCnpj && userData.cpfCnpj !== cpfCnpj) {
+                if (userData.cpf_cnpj && userData.cpf_cnpj !== cpfCnpj) {
                     // Caso o CPF informado seja diferente do atual, tentar migrar para o registro já existente
                     if (existingUserDataByCpf) {
                         // Reaponta o usuário para o UserData existente com este CPF
@@ -1380,35 +1384,39 @@ class SellerService {
                         userData = existingUserDataByCpf;
                         // Atualiza telefone/endereço se enviados
                         await userData.update({
-                            mobilePhone: phone ?? userData.mobilePhone,
+                            mobile_phone: phone ?? userData.mobile_phone,
                             address: address ?? userData.address,
-                            addressNumber: addressNumber ?? userData.addressNumber,
+                            address_number: addressNumber ?? userData.address_number,
                             province: province ?? userData.province,
-                            postalCode: postalCode ?? userData.postalCode,
-                            birthDate: birthDate ?? userData.birthDate
+                            postal_code: postalCode ?? userData.postal_code,
+                            birth_date: birthDate ?? userData.birth_date
                         }, { transaction });
                     } else {
                         // Atualiza o UserData atual com o novo CPF (não existe conflito, pois não há outro com o mesmo cpfCnpj)
                         await userData.update({
-                            cpfCnpj,
-                            mobilePhone: phone ?? userData.mobilePhone,
+                            cpf_cnpj: cpfCnpj,
+                            mobile_phone: phone ?? userData.mobile_phone,
                             address: address ?? userData.address,
-                            addressNumber: addressNumber ?? userData.addressNumber,
+                            address_number: addressNumber ?? userData.address_number,
                             province: province ?? userData.province,
-                            postalCode: postalCode ?? userData.postalCode,
-                            birthDate: birthDate ?? userData.birthDate
+                            postal_code: postalCode ?? userData.postal_code,
+                            birth_date: birthDate ?? userData.birth_date,
+                            income_value: incomeValue ?? userData.income_value,
+                            company_type: companyType ?? userData.company_type
                         }, { transaction });
                     }
                 } else {
                     // Mesmo CPF ou CPF ausente no registro atual: apenas atualiza telefone/endereço
                     await userData.update({
-                        cpfCnpj: cpfCnpj || userData.cpfCnpj,
-                        mobilePhone: phone ?? userData.mobilePhone,
+                        cpf_cnpj: cpfCnpj || userData.cpf_cnpj,
+                        mobile_phone: phone ?? userData.mobile_phone,
                         address: address ?? userData.address,
-                        addressNumber: addressNumber ?? userData.addressNumber,
+                        address_number: addressNumber ?? userData.address_number,
                         province: province ?? userData.province,
-                        postalCode: postalCode ?? userData.postalCode,
-                        birthDate: birthDate ?? userData.birthDate
+                        postal_code: postalCode ?? userData.postal_code,
+                        birth_date: birthDate ?? userData.birth_date,
+                        income_value: incomeValue ?? userData.income_value,
+                        company_type: companyType ?? userData.company_type
                     }, { transaction });
                 }
             }

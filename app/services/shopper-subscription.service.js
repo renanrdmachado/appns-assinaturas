@@ -18,9 +18,9 @@ class ShopperSubscriptionService {
             if (!id) {
                 return createError('ID é obrigatório', 400);
             }
-            
+
             // Modificado para incluir dados do shopper e do pedido
-        const subscription = await ShopperSubscription.findByPk(id, {
+            const subscription = await ShopperSubscription.findByPk(id, {
                 include: [
                     {
                         model: Shopper,
@@ -33,28 +33,28 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-            },
-            { model: Order, as: 'order' }
+                    },
+                    { model: Order, as: 'order' }
                 ]
             });
-            
+
             console.log("Service / ShopperSubscription: ", subscription ? subscription.id : 'not found');
-            
+
             if (!subscription) {
                 return createError(`Assinatura com ID ${id} não encontrada`, 404);
             }
-            
+
             return { success: true, data: subscription };
         } catch (error) {
             console.error('Erro ao buscar assinatura de comprador:', error.message);
             return formatError(error);
         }
     }
-    
+
     async getAll() {
         try {
             // Modificado para incluir dados do shopper e do pedido
-        const subscriptions = await ShopperSubscription.findAll({
+            const subscriptions = await ShopperSubscription.findAll({
                 include: [
                     {
                         model: Shopper,
@@ -67,11 +67,11 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-            },
-            { model: Order, as: 'order' }
+                    },
+                    { model: Order, as: 'order' }
                 ]
             });
-            
+
             console.log("Service / All ShopperSubscriptions count: ", subscriptions.length);
             return { success: true, data: subscriptions };
         } catch (error) {
@@ -79,13 +79,13 @@ class ShopperSubscriptionService {
             return formatError(error);
         }
     }
-    
+
     async getByShopperId(shopperId) {
         try {
             if (!shopperId) {
                 return createError('ID do comprador é obrigatório', 400);
             }
-            
+
             const shopper = await Shopper.findByPk(shopperId, {
                 include: [
                     {
@@ -98,9 +98,9 @@ class ShopperSubscriptionService {
             if (!shopper) {
                 return createError('Comprador não encontrado', 404);
             }
-            
+
             // Modificado para incluir dados do shopper e do pedido
-        const subscriptions = await ShopperSubscription.findAll({
+            const subscriptions = await ShopperSubscription.findAll({
                 where: { shopper_id: shopperId },
                 include: [
                     {
@@ -114,11 +114,11 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-            },
-            { model: Order, as: 'order' }
+                    },
+                    { model: Order, as: 'order' }
                 ]
             });
-            
+
             console.log(`Service / ShopperSubscriptions for shopper ${shopperId}: `, subscriptions.length);
             return { success: true, data: subscriptions };
         } catch (error) {
@@ -126,20 +126,20 @@ class ShopperSubscriptionService {
             return formatError(error);
         }
     }
-    
+
     async getByOrderId(orderId) {
         try {
             if (!orderId) {
                 return createError('ID do pedido é obrigatório', 400);
             }
-            
+
             const order = await Order.findByPk(orderId);
             if (!order) {
                 return createError('Pedido não encontrado', 404);
             }
-            
+
             // Modificado para incluir dados do shopper e do pedido
-        const subscriptions = await ShopperSubscription.findAll({
+            const subscriptions = await ShopperSubscription.findAll({
                 where: { order_id: orderId },
                 include: [
                     {
@@ -153,11 +153,11 @@ class ShopperSubscriptionService {
                             }
                         ],
                         attributes: ['id', 'name', 'email']
-            },
-            { model: Order, as: 'order' }
+                    },
+                    { model: Order, as: 'order' }
                 ]
             });
-            
+
             console.log(`Service / ShopperSubscriptions for order ${orderId}: `, subscriptions.length);
             return { success: true, data: subscriptions };
         } catch (error) {
@@ -171,26 +171,26 @@ class ShopperSubscriptionService {
         console.log('Order ID:', orderId);
         console.log('Data recebida:', JSON.stringify(data, null, 2));
         const transaction = await sequelize.transaction();
-        
+
         try {
             // Verificar se o pedido existe
             if (!orderId) {
                 return createError('ID do pedido é obrigatório', 400);
             }
-            
+
             const order = await Order.findByPk(orderId);
-            
+
             if (!order) {
                 return createError('Pedido não encontrado', 404);
             }
-            
+
             // Extrair shopper_id do pedido
             const shopperId = order.shopper_id;
-            
+
             if (!shopperId) {
                 return createError('ID do comprador não encontrado no pedido', 400);
             }
-            
+
             // Verificar se o comprador existe
             const shopper = await Shopper.findByPk(shopperId, {
                 include: [
@@ -201,55 +201,55 @@ class ShopperSubscriptionService {
                     }
                 ]
             });
-            
+
             if (!shopper) {
                 return createError('Comprador não encontrado', 404);
             }
-            
+
             // Verificar se já existe uma assinatura para este pedido
             const existingSubscription = await ShopperSubscription.findOne({
                 where: { order_id: orderId }
             });
-            
+
             if (existingSubscription) {
                 console.log(`Assinatura já existe para o pedido ${orderId}`);
-                return { 
-                    success: false, 
+                return {
+                    success: false,
                     message: 'Já existe uma assinatura para este pedido',
                     status: 400
                 };
             }
-            
+
             // Obter ou reutilizar o cliente no Asaas se já existir
             let customerId = shopper.payments_customer_id; // Alterado de asaas_customer_id para payments_customer_id
-            
+
             if (!customerId) {
                 console.log('Comprador não possui ID de cliente no Asaas. Verificando se já existe...');
-                
+
                 // Verificar se shopper tem CPF/CNPJ
                 const cpfCnpj = shopper.user?.userData?.cpfCnpj;
                 if (!cpfCnpj) {
                     await transaction.rollback();
                     return createError('CPF/CNPJ do comprador não está preenchido. É necessário para criar assinaturas.', 400);
                 }
-                
+
                 // Validar formato do CPF/CNPJ antes de enviar para o Asaas
                 const cleanCpfCnpj = cpfCnpj.replace(/\D/g, '');
                 if (cleanCpfCnpj.length !== 11 && cleanCpfCnpj.length !== 14) {
                     await transaction.rollback();
                     return createError(`CPF/CNPJ ${cpfCnpj} tem formato inválido. Deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ).`, 400);
                 }
-                
+
                 // Verificar se já existe um cliente com este CPF/CNPJ no Asaas antes de criar um novo
                 const existingCustomer = await AsaasCustomerService.findByCpfCnpj(
                     cleanCpfCnpj,
                     AsaasCustomerService.SHOPPER_GROUP
                 );
-                
+
                 if (existingCustomer.success && existingCustomer.data) {
                     console.log(`Cliente já existe no Asaas com CPF/CNPJ ${cpfCnpj}. Reutilizando ID: ${existingCustomer.data.id}`);
                     customerId = existingCustomer.data.id;
-                    
+
                     // Atualizar shopper com o ID do cliente
                     await shopper.update({ payments_customer_id: customerId }, { transaction }); // Alterado para payments_customer_id
                     console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas existente: ${customerId}`);
@@ -267,18 +267,18 @@ class ShopperSubscriptionService {
                         externalReference: `shopper_${shopper.id}`,
                         groupName: AsaasCustomerService.SHOPPER_GROUP
                     };
-                    
+
                     console.log('Enviando dados para criar cliente no Asaas:', JSON.stringify(customerData, null, 2));
-                    
+
                     const customerResult = await AsaasCustomerService.create(customerData);
-                    
+
                     if (!customerResult.success) {
                         await transaction.rollback();
                         return createError(`Não foi possível criar cliente no Asaas: ${customerResult.message}`, 400);
                     }
-                    
+
                     customerId = customerResult.data.id;
-                    
+
                     // Atualizar shopper com o ID do cliente
                     await shopper.update({ payments_customer_id: customerId }, { transaction }); // Alterado para payments_customer_id
                     console.log(`Comprador ${shopper.id} atualizado com ID de cliente Asaas: ${customerId}`);
@@ -286,7 +286,7 @@ class ShopperSubscriptionService {
             } else {
                 console.log(`Comprador ${shopper.id} já possui ID de cliente Asaas: ${customerId}. Reutilizando...`);
             }
-            
+
             // Preparar dados da assinatura
             // Carregar o produto do pedido (1:1)
             const product = await Product.findByPk(order.product_id);
@@ -315,7 +315,7 @@ class ShopperSubscriptionService {
             if (data.creditCard) subscriptionData.creditCard = data.creditCard;
             if (data.creditCardHolderInfo) subscriptionData.creditCardHolderInfo = data.creditCardHolderInfo;
             if (data.remoteIp) subscriptionData.remoteIp = data.remoteIp;
-            
+
             console.log('Dados montados para cálculo/derivação:', JSON.stringify(subscriptionData, null, 2));
 
             // Se valor não foi fornecido, calcular a partir dos produtos do pedido
@@ -324,12 +324,12 @@ class ShopperSubscriptionService {
                 const unit = typeof product.getSubscriptionPrice === 'function' ? product.getSubscriptionPrice() : (product.subscription_price || product.price);
                 subscriptionData.value = unit;
             }
-            
+
             // Criar padrão para data de início
             if (!subscriptionData.start_date) {
                 subscriptionData.start_date = new Date();
             }
-            
+
             // Status padrão
             if (!subscriptionData.status) {
                 subscriptionData.status = 'pending';
@@ -344,7 +344,7 @@ class ShopperSubscriptionService {
                     return formatError(calcDueErr);
                 }
             }
-            
+
             // Após derivar campos, validar dados com o validador unificado
             try {
                 SubscriptionValidator.validateCreateData(subscriptionData);
@@ -356,34 +356,34 @@ class ShopperSubscriptionService {
             // Criar assinatura no Asaas
             console.log('Formatando dados para assinatura no Asaas...');
             const asaasSubscriptionData = this.formatDataForAsaasSubscription(subscriptionData, customerId, shopper, order);
-            
+
             console.log('Dados formatados para ASAAS:', JSON.stringify(redactSensitive(asaasSubscriptionData)));
             console.log('Criando assinatura no Asaas...');
             const asaasResult = await subscriptionService.create(asaasSubscriptionData);
-            
+
             // Se houver erro no Asaas, retornar o erro
             if (!asaasResult.success) {
                 console.error('Erro ao criar assinatura no Asaas:', asaasResult.message);
                 await transaction.rollback();
                 return asaasResult;
             }
-            
+
             // Atualizar dados da assinatura com o ID externo
             subscriptionData.external_id = asaasResult.data.id;
             // Sempre criar como pending, só muda para active via webhook
             subscriptionData.status = 'pending';
-            
+
             // Criar assinatura no banco local usando a transação
             const subscription = await ShopperSubscription.create(subscriptionData, { transaction });
-            
+
             // Não atualizar Order com dados de assinatura; manter responsabilidade na Subscription
-            
+
             // Confirmar a transação
             await transaction.commit();
-            
+
             console.log('ShopperSubscription created:', subscription.id);
-            return { 
-                success: true, 
+            return {
+                success: true,
                 data: subscription,
                 asaasData: asaasResult.data
             };
@@ -394,53 +394,53 @@ class ShopperSubscriptionService {
             return formatError(error);
         }
     }
-    
+
     async update(id, data) {
         try {
             if (!id) {
                 return createError('ID é obrigatório', 400);
             }
-            
+
             // Validar dados com o validador unificado
             try {
                 SubscriptionValidator.validateUpdateData(data);
             } catch (error) {
                 return formatError(error);
             }
-            
+
             const subscription = await ShopperSubscription.findByPk(id);
-            
+
             if (!subscription) {
                 return createError(`Assinatura com ID ${id} não encontrada`, 404);
             }
-            
+
             // Se tiver ID externo, atualizar no Asaas primeiro
             if (subscription.external_id) {
                 // Formatar dados para o Asaas
                 const asaasSubscriptionData = this.formatDataForAsaasUpdate(data);
-                
+
                 // Atualizar assinatura no Asaas
                 console.log(`Atualizando assinatura ID ${subscription.external_id} no Asaas...`);
                 const asaasResult = await subscriptionService.update(subscription.external_id, asaasSubscriptionData);
-                
+
                 // Se houver erro no Asaas, retornar o erro
                 if (!asaasResult.success) {
                     console.error(`Erro ao atualizar assinatura ID ${subscription.external_id} no Asaas:`, asaasResult.message);
                     return asaasResult;
                 }
-                
+
                 // Atualizar status local com base no status do Asaas
                 if (asaasResult.data && asaasResult.data.status) {
                     data.status = AsaasFormatter.mapAsaasStatusToLocalStatus(asaasResult.data.status);
                 }
-                
+
                 // Não sincroniza status com Order; Order não é a fonte de verdade do status de assinatura
             } else {
                 console.warn(`Assinatura ID ${id} não possui ID externo no Asaas para atualização`);
             }
-            
+
             await subscription.update(data);
-            
+
             console.log('ShopperSubscription updated:', subscription.id);
             return { success: true, data: subscription };
         } catch (error) {
@@ -448,25 +448,25 @@ class ShopperSubscriptionService {
             return formatError(error);
         }
     }
-    
+
     async delete(id) {
         try {
             if (!id) {
                 return createError('ID é obrigatório', 400);
             }
-            
+
             const subscription = await ShopperSubscription.findByPk(id);
-            
+
             if (!subscription) {
                 return createError(`Assinatura com ID ${id} não encontrada`, 404);
             }
-            
+
             // Se tiver ID externo, excluir no Asaas primeiro
             if (subscription.external_id) {
                 // Excluir assinatura no Asaas
                 console.log(`Excluindo assinatura ID ${subscription.external_id} no Asaas...`);
                 const asaasResult = await subscriptionService.delete(subscription.external_id);
-                
+
                 // Se houver erro no Asaas, retornar o erro
                 if (!asaasResult.success) {
                     console.error(`Erro ao excluir assinatura ID ${subscription.external_id} no Asaas:`, asaasResult.message);
@@ -475,7 +475,7 @@ class ShopperSubscriptionService {
             } else {
                 console.warn(`Assinatura ID ${id} não possui ID externo no Asaas para exclusão`);
             }
-            
+
             await subscription.destroy();
             console.log(`Assinatura com ID ${id} foi excluída com sucesso`);
             return { success: true, message: `Assinatura com ID ${id} foi excluída com sucesso` };
@@ -484,7 +484,7 @@ class ShopperSubscriptionService {
             return formatError(error);
         }
     }
-    
+
     /**
      * Formata os dados para a criação de assinatura no Asaas
      */
@@ -494,12 +494,12 @@ class ShopperSubscriptionService {
             console.error('ERRO: Nenhum customer_id válido para assinatura!');
             throw new Error('Customer ID é obrigatório para criar assinatura');
         }
-        
+
         console.log('Customer ID para assinatura:', customerId);
-        
+
         // Normalizar o ciclo para o formato que o Asaas espera
         const cycle = AsaasFormatter.normalizeCycle(data.cycle || 'MONTHLY');
-        
+
         // Mapear campos do nosso modelo para o formato esperado pelo Asaas
         const asaasData = {
             customer: customerId,                  // Campo obrigatório: ID do cliente no Asaas
@@ -508,7 +508,7 @@ class ShopperSubscriptionService {
             cycle: cycle,                          // Campo obrigatório: Ciclo de cobrança normalizado
             description: data.plan_name || `Assinatura do Pedido #${order.id}`, // Descrição
         };
-        
+
         // Formatar data de vencimento para o formato que o Asaas aceita (YYYY-MM-DD)
         if (data.next_due_date) {
             try {
@@ -520,13 +520,13 @@ class ShopperSubscriptionService {
         } else {
             throw new Error('Data de vencimento (next_due_date) é obrigatória');
         }
-        
+
         // Adicionar campos opcionais apenas se estiverem definidos
         if (data.max_payments) asaasData.maxPayments = data.max_payments;
-        
+
         // Referência externa deve ser um identificador único e consistente
         asaasData.externalReference = `order_subscription_${order.id}`;
-        
+
         // Formatar data final se existir (YYYY-MM-DD)
         if (data.end_date) {
             try {
@@ -535,21 +535,21 @@ class ShopperSubscriptionService {
                 throw new Error(`Erro ao formatar data final: ${error.message}`);
             }
         }
-        
+
         if (data.discount) asaasData.discount = data.discount;
         if (data.interest) asaasData.interest = data.interest;
         if (data.fine) asaasData.fine = data.fine;
-        
+
         // Se cartão, montar seção de cartão de forma DRY
         if ((data.billing_type || '').toUpperCase() === 'CREDIT_CARD') {
             const { composeCardSection } = require('../utils/asaas-subscription.mapper');
             const holderInfo = data.creditCardHolderInfo || (shopper?.user?.userData ? {
                 name: shopper.name,
                 email: shopper.email || shopper.user?.email,
-                cpfCnpj: shopper.user.userData.cpfCnpj,
-                mobilePhone: shopper.user.userData.mobilePhone,
+                cpfCnpj: shopper.user.userData.cpf_cnpj,
+                mobilePhone: shopper.user.userData.mobile_phone,
                 addressNumber: '0',
-                postalCode: shopper.user.userData.postalCode || '00000000'
+                postalCode: shopper.user.userData.postal_code || '00000000'
             } : undefined);
 
             Object.assign(asaasData, composeCardSection({
@@ -567,21 +567,21 @@ class ShopperSubscriptionService {
             order_id: order.id,
             shopper_id: shopper.id
         };
-        
+
         console.log('Dados completos para envio ao Asaas:', JSON.stringify(asaasData, null, 2));
-        
+
         return asaasData;
     }
-    
+
     /**
      * Formata os dados para a atualização de assinatura no Asaas
      */
     formatDataForAsaasUpdate(data) {
         // Mapear campos do nosso modelo para o formato esperado pelo Asaas
         const asaasData = {};
-        
+
         if (data.value !== undefined) asaasData.value = data.value;
-        
+
         // Formatar next_due_date para YYYY-MM-DD se fornecido
         if (data.next_due_date !== undefined) {
             try {
@@ -590,13 +590,13 @@ class ShopperSubscriptionService {
                 throw new Error(`Erro ao formatar data de vencimento: ${error.message}`);
             }
         }
-        
+
         if (data.cycle !== undefined) {
             asaasData.cycle = AsaasFormatter.normalizeCycle(data.cycle);
         }
-        
+
         if (data.plan_name !== undefined) asaasData.description = data.plan_name;
-        
+
         // Formatar end_date para YYYY-MM-DD se fornecido
         if (data.end_date !== undefined) {
             if (data.end_date === null) {
@@ -610,10 +610,10 @@ class ShopperSubscriptionService {
                 }
             }
         }
-        
+
         if (data.max_payments !== undefined) asaasData.maxPayments = data.max_payments;
         if (data.billing_type !== undefined) asaasData.billingType = data.billing_type;
-        
+
         return asaasData;
     }
 
@@ -627,7 +627,7 @@ class ShopperSubscriptionService {
             if (!externalId) {
                 return createError('ID externo é obrigatório', 400);
             }
-            
+
             const subscription = await ShopperSubscription.findOne({
                 where: { external_id: externalId },
                 include: [
@@ -645,7 +645,7 @@ class ShopperSubscriptionService {
                     }
                 ]
             });
-            
+
             if (!subscription) {
                 return {
                     success: false,
@@ -653,7 +653,7 @@ class ShopperSubscriptionService {
                     status: 404
                 };
             }
-            
+
             return { success: true, data: subscription };
         } catch (error) {
             console.error(`Erro ao buscar assinatura de shopper por ID externo ${externalId}:`, error.message);

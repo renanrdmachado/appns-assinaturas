@@ -687,13 +687,15 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
             });
 
             expect(UserData.create).toHaveBeenCalledWith(expect.objectContaining({
-                cpfCnpj: '123',
-                mobilePhone: '999',
+                cpf_cnpj: '123',
+                mobile_phone: '999',
                 address: 'Rua',
-                addressNumber: '10',
+                address_number: '10',
                 province: 'SP',
-                postalCode: '00000-000',
-                birthDate: '2000-01-01'
+                postal_code: '00000-000',
+                birth_date: '2000-01-01',
+                income_value: null,
+                company_type: null
             }), expect.any(Object));
 
             expect(AsaasCustomerService.createOrUpdate).toHaveBeenCalled();
