@@ -57,10 +57,54 @@ class SellerSubscriptionService {
                 return createError(`Seller com ID ${sellerId} não encontrado`, 404);
             }
 
+            // Verificar se o seller tem subconta, se não tiver, criar uma
+            let sellerWithRelations = seller;
+            if (!seller.subaccount_id) {
+                console.log(`Seller ${sellerId} não possui subconta. Criando subconta...`);
+                try {
+                    // Buscar seller com relações necessárias para criar subconta
+                    sellerWithRelations = await Seller.findByPk(sellerId, {
+                        include: [{
+                            model: User,
+                            as: 'user',
+                            include: [{ model: UserData, as: 'userData' }]
+                        }],
+                        transaction
+                    });
+
+                    if (!sellerWithRelations) {
+                        return createError(`Seller com ID ${sellerId} não encontrado`, 404);
+                    }
+
+                    // Criar subconta no Asaas
+                    const SellerSubAccountService = require('./seller-subaccount.service');
+                    const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
+
+                    if (subAccountResult.success) {
+                        console.log(`Subconta criada com sucesso para seller ${sellerId}: ${subAccountResult.data.id}`);
+                        // Atualizar o seller com os dados da subconta
+                        await sellerWithRelations.update({
+                            subaccount_id: subAccountResult.data.id,
+                            asaas_api_key: subAccountResult.data.apiKey,
+                            wallet_id: subAccountResult.data.walletId,
+                        }, { transaction });
+
+                        // Recarregar o seller para obter os dados atualizados
+                        sellerWithRelations = await Seller.findByPk(sellerId, { transaction });
+                    } else {
+                        console.error(`Falha ao criar subconta para seller ${sellerId}: ${subAccountResult.message}`);
+                        // Continuar sem subconta, mas logar o erro
+                    }
+                } catch (subAccountError) {
+                    console.error(`Erro ao criar subconta para seller ${sellerId}:`, subAccountError.message);
+                    // Continuar sem subconta, mas logar o erro
+                }
+            }
+
             // Definir headers de subconta (se existir) para chamadas Asaas
-            const asaasHeaders = seller.subaccount_api_key ? { access_token: seller.subaccount_api_key } : {};
-            if (seller.subaccount_api_key) {
-                const tail = seller.subaccount_api_key.slice(-4);
+            const asaasHeaders = sellerWithRelations.subaccount_api_key ? { access_token: sellerWithRelations.subaccount_api_key } : {};
+            if (sellerWithRelations.subaccount_api_key) {
+                const tail = sellerWithRelations.subaccount_api_key.slice(-4);
                 console.log('DEBUG - Usando subaccount access_token (mascarado): ****' + tail);
             } else {
                 console.log('DEBUG - Usando access_token padrão do ambiente');
@@ -1050,277 +1094,6 @@ class SellerSubscriptionService {
         }
     }
 
-    async create(sellerId, data) {
-        console.log('SellerSubscription - creating...');
-        const transaction = await sequelize.transaction();
-
-        try {
-            // Verificar se o vendedor existe
-            try {
-                SellerValidator.validateId(sellerId);
-            } catch (validationError) {
-                return formatError(validationError);
-            }
-
-            const seller = await Seller.findByPk(sellerId);
-            console.log('Seller:', seller ? seller.id : 'not found');
-            if (!seller) {
-                return createError('Vendedor não encontrado', 404);
-            }
-
-            // Verificar se o vendedor tem uma subconta no Asaas
-            if (!seller.subaccount_id) {
-                console.log('Vendedor não possui uma subconta no Asaas. Tentando criar...');
-                try {
-                    // Carregar as relações necessárias para criar a subconta
-                    const sellerWithRelations = await Seller.findByPk(sellerId, {
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                include: [{ model: UserData, as: 'userData' }]
-                            }
-                        ],
-                        transaction
-                    });
-
-                    if (!sellerWithRelations || !sellerWithRelations.user || !sellerWithRelations.user.userData) {
-                        return createError('Dados insuficientes para criar subconta. Relações `user` e `userData` são necessárias.', 400);
-                    }
-
-                    // Instanciar e chamar o serviço de subconta
-                    const SellerSubAccountService = require('./seller-subaccount.service');
-                    const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
-
-                    if (!subAccountResult.success) {
-                        return createError(`Falha ao criar subconta: ${subAccountResult.message}`, 400);
-                    }
-
-                    // Atualizar o seller com os dados da subconta
-                    await seller.update({
-                        subaccount_id: subAccountResult.data.id,
-                        asaas_api_key: subAccountResult.data.apiKey,
-                        wallet_id: subAccountResult.data.walletId,
-                    }, { transaction });
-
-                    console.log('Subconta criada com sucesso:', subAccountResult.data.id);
-                } catch (subaccountError) {
-                    console.error('Erro ao criar subconta:', subaccountError);
-                    return createError(`Erro ao criar subconta: ${subaccountError.message}`, 500);
-                }
-            }
-
-            // Verificar se o vendedor já tem assinatura existente no sistema
-            const existingSubscriptions = await SellerSubscription.findAll({
-                where: { seller_id: sellerId }
-            });
-
-            if (existingSubscriptions.length > 0) {
-                console.log(`Vendedor já tem ${existingSubscriptions.length} assinaturas cadastradas.`);
-                // Opcional: Verificar se deseja continuar ou não
-            }
-
-            // Verificar se o vendedor tem um ID de cliente no Asaas
-            if (!seller.payments_customer_id) {
-                return createError('Vendedor não possui um ID de cliente no Asaas. Execute a sincronização com Asaas primeiro.', 400);
-            }
-
-            // Verificar se o vendedor tem CPF/CNPJ cadastrado
-            if (!seller.Asaas_cpfCnpj) {
-                return createError('CPF/CNPJ do vendedor não está preenchido. É necessário para criar assinaturas.', 400);
-            }
-
-            // Verificar se o cliente existe no Asaas e tem CPF/CNPJ preenchido
-            const asaasCustomer = await AsaasCustomerService.get(seller.payments_customer_id);
-            if (!asaasCustomer.success) {
-                return createError(`Cliente não encontrado no Asaas: ${asaasCustomer.message}`, 400);
-            }
-
-            if (!asaasCustomer.data.cpfCnpj) {
-                // Tentar atualizar o cliente no Asaas com o CPF/CNPJ do vendedor
-                console.log(`Cliente ${seller.payments_customer_id} sem CPF/CNPJ no Asaas. Atualizando...`);
-                const updateResult = await AsaasCustomerService.update(seller.payments_customer_id, {
-                    cpfCnpj: seller.Asaas_cpfCnpj
-                });
-
-                if (!updateResult.success) {
-                    return createError(`Não foi possível atualizar o CPF/CNPJ do cliente no Asaas: ${updateResult.message}`, 400);
-                }
-
-                console.log(`Cliente atualizado no Asaas com CPF/CNPJ: ${seller.Asaas_cpfCnpj}`);
-            }
-
-            // DEBUG: Exibir dados completos do vendedor
-            console.log('DEBUG - Dados do vendedor:', {
-                id: seller.id,
-                nuvemshop_id: seller.nuvemshop_id,
-                payments_customer_id: seller.payments_customer_id,
-                subaccount_id: seller.subaccount_id,
-                cpfCnpj: seller.Asaas_cpfCnpj
-            });
-
-            // Validação dos dados necessários para a assinatura local
-            if (!data.cycle) {
-                console.log("Ciclo não informado na requisição, usando padrão MONTHLY");
-                data.cycle = 'MONTHLY';
-            } else {
-                // Normalizar o formato do ciclo para o formato que o Asaas espera
-                const cycleMapping = {
-                    'mensal': 'MONTHLY',
-                    'semanal': 'WEEKLY',
-                    'quinzenal': 'BIWEEKLY',
-                    'bimestral': 'BIMONTHLY',
-                    'trimestral': 'QUARTERLY',
-                    'semestral': 'SEMIANNUALLY',
-                    'anual': 'YEARLY'
-                };
-
-                if (cycleMapping[data.cycle.toLowerCase()]) {
-                    data.cycle = cycleMapping[data.cycle.toLowerCase()];
-                } else {
-                    // Converter para maiúsculas se não for um dos alias conhecidos
-                    data.cycle = data.cycle.toUpperCase();
-                }
-
-                // Validar se o ciclo está no formato aceito pelo Asaas
-                const validCycles = ['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'BIMONTHLY',
-                    'QUARTERLY', 'SEMIANNUALLY', 'YEARLY'];
-                if (!validCycles.includes(data.cycle)) {
-                    return createError(`Ciclo '${data.cycle}' inválido. Use um dos seguintes: ${validCycles.join(', ')}`, 400);
-                }
-            }
-
-            if (!data.value) {
-                return createError('Valor (value) é obrigatório para criar uma assinatura', 400);
-            }
-
-            if (!data.plan_name) {
-                return createError('Nome do plano (plan_name) é obrigatório para criar uma assinatura', 400);
-            }
-
-            if (!data.next_due_date) {
-                console.log("Data de vencimento não informada, usando data atual");
-                const currentDate = new Date();
-                currentDate.setDate(currentDate.getDate() + 1); // Próximo dia
-                data.next_due_date = currentDate.toISOString().split('T')[0];
-            }
-
-            // Verificar se já existe uma assinatura no Asaas para este vendedor
-            console.log("Verificando assinaturas existentes no Asaas para o vendedor...");
-            const externalReference = `seller_subscription_${seller.id}`;
-            const existingAsaasSubscriptions = await subscriptionService.getByExternalReference(externalReference);
-
-            let asaasResult;
-
-            if (existingAsaasSubscriptions.success &&
-                existingAsaasSubscriptions.data &&
-                existingAsaasSubscriptions.data.data &&
-                existingAsaasSubscriptions.data.data.length > 0) {
-
-                const existingSubscription = existingAsaasSubscriptions.data.data[0];
-                console.log(`Assinatura já existe no Asaas com ID ${existingSubscription.id} para o vendedor ${seller.id}`);
-
-                // Usar a assinatura existente
-                asaasResult = {
-                    success: true,
-                    data: existingSubscription,
-                    message: 'Assinatura já existente no Asaas'
-                };
-
-                // Opcionalmente, atualizar a assinatura existente
-                if (data.update_if_exists === true) {
-                    console.log(`Atualizando assinatura existente ${existingSubscription.id}...`);
-
-                    // Formatar dados para o Asaas para atualização
-                    const asaasUpdateData = this.formatDataForAsaasUpdate({
-                        value: data.value,
-                        next_due_date: data.next_due_date,
-                        cycle: data.cycle,
-                        plan_name: data.plan_name,
-                        billing_type: data.billing_type
-                    });
-
-                    // Atualizar assinatura no Asaas
-                    asaasResult = await subscriptionService.update(existingSubscription.id, asaasUpdateData);
-
-                    if (!asaasResult.success) {
-                        console.error(`Erro ao atualizar assinatura existente: ${asaasResult.message}`);
-                        return asaasResult;
-                    }
-                }
-            } else {
-                // Formatar dados para o Asaas para criação
-                const asaasSubscriptionData = this.formatDataForAsaasSubscription(data, seller);
-
-                // DEBUG: Exibir dados completos formatados para o Asaas
-                console.log('DEBUG - Dados formatados para Asaas:', asaasSubscriptionData);
-
-                // Criar assinatura no Asaas
-                console.log('Criando assinatura no Asaas...', asaasSubscriptionData);
-                asaasResult = await subscriptionService.create(asaasSubscriptionData);
-
-                // DEBUG: Exibir resposta do Asaas
-                console.log('DEBUG - Resposta do Asaas:',
-                    asaasResult.success ?
-                        { id: asaasResult.data.id, status: asaasResult.data.status } :
-                        { error: asaasResult.message });
-
-                // Se houver erro no Asaas, retornar o erro
-                if (!asaasResult.success) {
-                    console.error('Erro ao criar assinatura no Asaas:', asaasResult.message);
-                    await transaction.rollback();
-                    return asaasResult;
-                }
-            }
-
-            // Juntar o ID do vendedor com os dados da requisição
-            const subscriptionData = {
-                ...data,
-                seller_id: sellerId,
-                external_id: asaasResult.data.id, // Salvar o ID externo do Asaas
-                status: this.mapAsaasStatusToLocalStatus(asaasResult.data.status),
-                billing_type: asaasResult.data.billingType || data.billing_type || 'BOLETO',
-                cycle: asaasResult.data.cycle || data.cycle
-            };
-
-            // Criar padrão para data de início
-            if (!subscriptionData.start_date) {
-                subscriptionData.start_date = new Date();
-            }
-
-            // Status padrão
-            if (!subscriptionData.status) {
-                subscriptionData.status = 'pending';
-            }
-
-            // Criar assinatura no banco local usando a transação
-            console.log('Criando assinatura no banco local...', {
-                seller_id: subscriptionData.seller_id,
-                external_id: subscriptionData.external_id,
-                plan_name: subscriptionData.plan_name,
-                cycle: subscriptionData.cycle,
-                value: subscriptionData.value
-            });
-
-            const subscription = await SellerSubscription.create(subscriptionData, { transaction });
-
-            // Confirmar a transação
-            await transaction.commit();
-
-            console.log('SellerSubscription created:', subscription.id);
-            return {
-                success: true,
-                data: subscription,
-                asaasData: asaasResult.data
-            };
-        } catch (error) {
-            // Reverter a transação em caso de erro
-            await transaction.rollback();
-            console.error('Erro ao criar assinatura de vendedor:', error.message);
-            return formatError(error);
-        }
-    }
-
     async update(id, data) {
         try {
             if (!id) {
@@ -1785,8 +1558,8 @@ class SellerSubscriptionService {
             };
 
         } catch (err) {
-            console.error('❌ Erro no diagnóstico:', err.message);
-            return { success: false, message: err.message };
+            console.error('Erro no SellerSubscriptionService:', err.message);
+            return formatError(err);
         }
     }
 }
