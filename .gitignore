@@ -30,3 +30,8 @@ db-diagram.dbml
 
 # Optional ngrok configuration folder
 scripts/
+
+# Logs
+codealike.json
+logs/
+*.log
