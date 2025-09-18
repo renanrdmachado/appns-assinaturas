@@ -930,12 +930,21 @@ class SellerService {
      * Use este método no fluxo de autorização da Nuvemshop, antes do front chamar /app/seller/store/:id
      */
     async ensureSellerExistsFromOAuth(nuvemshop_id, storeInfo = {}, nuvemshop_api_token = null) {
+        // Usar transação para garantir consistência entre as entidades
+        const t = await sequelize.transaction();
+
         try {
-            if (!nuvemshop_id) return createError('ID da loja é obrigatório', 400);
+            if (!nuvemshop_id) {
+                await t.rollback();
+                return createError('ID da loja é obrigatório', 400);
+            }
 
             // Já existe? retorna
-            const existing = await Seller.findOne({ where: { nuvemshop_id } });
-            if (existing) return { success: true, data: existing };
+            const existing = await Seller.findOne({ where: { nuvemshop_id }, transaction: t });
+            if (existing) {
+                await t.commit();
+                return { success: true, data: existing };
+            }
 
             let parsed = storeInfo;
             if (typeof parsed === 'string') {
@@ -946,8 +955,8 @@ class SellerService {
             const email = parsed?.email || null;
 
             // Criar UserData vazio e vincular ao User criado (sem email no UserData)
-            const ud = await UserData.create({});
-            const user = await User.create({ username, email, password: null, user_data_id: ud.id });
+            const ud = await UserData.create({}, { transaction: t });
+            const user = await User.create({ username, email, password: null, user_data_id: ud.id }, { transaction: t });
 
             const seller = await Seller.create({
                 nuvemshop_id,
@@ -957,11 +966,46 @@ class SellerService {
                 app_start_date: new Date(),
                 user_id: user.id,
                 payments_customer_id: null
+            }, { transaction: t });
+
+            // Adicionar as relações ao objeto seller para uso no formatador
+            const newSeller = await Seller.findByPk(seller.id, {
+                include: [{
+                    model: User,
+                    as: 'user',
+                    include: [{ model: UserData, as: 'userData' }]
+                }],
+                transaction: t
             });
 
-            return { success: true, data: seller };
+            try {
+                // Criar subconta no Asaas se o seller não tiver uma
+                if (!newSeller.subaccount_id) {
+                    console.log(`Criando subconta para o seller ID ${seller.id} (Nuvemshop ID: ${nuvemshop_id})`);
+                    const subAccountResult = await SellerSubAccountService.create(newSeller, t);
+
+                    // Atualizar o seller local com os dados da subconta
+                    if (subAccountResult.success) {
+                        console.log(`Subconta criada com sucesso para seller ID ${seller.id}: ${subAccountResult.data.id}`);
+                        await newSeller.update({
+                            subaccount_id: subAccountResult.data.id,
+                            asaas_api_key: subAccountResult.data.apiKey,
+                            wallet_id: subAccountResult.data.walletId,
+                        }, { transaction: t });
+                    } else {
+                        console.error(`Falha ao criar subconta para seller ID ${seller.id}: ${subAccountResult.message}`);
+                    }
+                }
+            } catch (subAccountError) {
+                console.error(`Erro ao criar subconta para seller ID ${seller.id}:`, subAccountError.message);
+                // Continuamos mesmo que a criação da subconta falhe - ela poderá ser criada depois
+            }
+
+            await t.commit();
+            return { success: true, data: newSeller };
         } catch (error) {
             console.error('Erro ao garantir seller pós-OAuth:', error.message);
+            await t.rollback();
             return formatError(error);
         }
     }
