@@ -92,7 +92,8 @@ describe('SellerSubAccountService', () => {
                         cpf_cnpj: '12345678901',
                         birth_date: '1990-01-01', // adicionado data de nascimento para CPF
                         // sem phone
-                        mobile_phone: '11988888888'
+                        mobile_phone: '11988888888',
+                        income_value: 3000 // adicionado valor de renda obrigatório
                     }
                 }
             };

@@ -96,12 +96,24 @@ class SellerSubAccountService {
             incomeValue: income_value
         };
 
-        // Remove chaves com valores nulos ou indefinidos
+        // Remove apenas chaves com valores nulos ou indefinidos, exceto campos obrigatórios
+        const requiredFields = ['cpfCnpj', 'mobilePhone', 'incomeValue'];
         Object.keys(formattedData).forEach(key => {
-            if (formattedData[key] === null || formattedData[key] === undefined) {
+            if ((formattedData[key] === null || formattedData[key] === undefined) && !requiredFields.includes(key)) {
                 delete formattedData[key];
             }
         });
+
+        // Validação adicional para campos obrigatórios
+        if (!formattedData.cpfCnpj) {
+            throw new Error('CPF/CNPJ é obrigatório para criar subconta');
+        }
+        if (!formattedData.mobilePhone) {
+            throw new Error('Telefone celular é obrigatório para criar subconta');
+        }
+        if (!formattedData.incomeValue) {
+            throw new Error('Valor de renda é obrigatório para criar subconta');
+        }
 
         return formattedData;
     }
@@ -166,8 +178,6 @@ class SellerSubAccountService {
                     }
                 }
             });
-
-            console.log(`Total de vendedores com subcontas: ${sellers.length}`);
 
             // Para cada vendedor, buscar detalhes da subconta no Asaas
             const result = [];

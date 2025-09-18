@@ -75,6 +75,82 @@ class SellerSubscriptionService {
                         return createError(`Seller com ID ${sellerId} não encontrado`, 404);
                     }
 
+                    // Salvar dados do billingInfo no UserData antes de tentar criar subconta
+                    if (sellerWithRelations.user?.userData) {
+                        console.log(`Atualizando UserData do seller ${sellerId} com dados do billingInfo`);
+
+                        const updateData = {};
+
+                        // Mapear campos do billingInfo para o UserData
+                        if (billingInfo.cpfCnpj) {
+                            updateData.cpf_cnpj = billingInfo.cpfCnpj;
+                        }
+                        if (billingInfo.phone) {
+                            updateData.mobile_phone = billingInfo.phone;
+                        }
+                        if (billingInfo.creditCardHolderInfo?.incomeValue) {
+                            updateData.income_value = billingInfo.creditCardHolderInfo.incomeValue;
+                        }
+                        if (billingInfo.name) {
+                            updateData.name = billingInfo.name;
+                        }
+                        if (billingInfo.email) {
+                            updateData.email = billingInfo.email;
+                        }
+                        if (billingInfo.address) {
+                            updateData.address = billingInfo.address;
+                        }
+                        if (billingInfo.addressNumber) {
+                            updateData.address_number = billingInfo.addressNumber;
+                        }
+                        if (billingInfo.province) {
+                            updateData.province = billingInfo.province;
+                        }
+                        if (billingInfo.postalCode) {
+                            updateData.postal_code = billingInfo.postalCode;
+                        }
+                        if (billingInfo.creditCardHolderInfo?.birthDate) {
+                            updateData.birth_date = billingInfo.creditCardHolderInfo.birthDate;
+                        }
+
+                        if (Object.keys(updateData).length > 0) {
+                            await sellerWithRelations.user.userData.update(updateData, { transaction });
+                            console.log(`UserData atualizado com ${Object.keys(updateData).length} campos`);
+                        }
+                    } else {
+                        console.log(`Seller ${sellerId} não tem UserData. Criando UserData com dados do billingInfo`);
+
+                        // Criar UserData se não existir
+                        const userDataData = {
+                            cpf_cnpj: billingInfo.cpfCnpj || null,
+                            mobile_phone: billingInfo.phone || null,
+                            income_value: billingInfo.creditCardHolderInfo?.incomeValue || null,
+                            name: billingInfo.name || null,
+                            email: billingInfo.email || null,
+                            address: billingInfo.address || null,
+                            address_number: billingInfo.addressNumber || null,
+                            province: billingInfo.province || null,
+                            postal_code: billingInfo.postalCode || null,
+                            birth_date: billingInfo.creditCardHolderInfo?.birthDate || null
+                        };
+
+                        const newUserData = await UserData.create(userDataData, { transaction });
+
+                        // Vincular o UserData ao User
+                        await sellerWithRelations.user.update({ user_data_id: newUserData.id }, { transaction });
+                        console.log(`UserData criado e vinculado: ${newUserData.id}`);
+
+                        // Recarregar o seller com as relações atualizadas
+                        sellerWithRelations = await Seller.findByPk(sellerId, {
+                            include: [{
+                                model: require('../models/User'),
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }],
+                            transaction
+                        });
+                    }
+
                     // Criar subconta no Asaas
                     const SellerSubAccountService = require('./seller-subaccount.service');
                     const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);

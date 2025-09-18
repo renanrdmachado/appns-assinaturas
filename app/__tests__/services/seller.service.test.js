@@ -469,7 +469,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     describe('fluxos adicionais', () => {
         test('syncWithAsaas: sucesso', async () => {
-            Seller.findByPk.mockResolvedValue({ id: 1, user: { userData: { cpfCnpj: '123' } } });
+            Seller.findByPk.mockResolvedValue({ id: 1, user: { userData: { cpf_cnpj: '123' } } });
             AsaasMapper.mapSellerToCustomer.mockReturnValue({ name: 'Test', cpfCnpj: '123' });
             AsaasCustomerService.createOrUpdate.mockResolvedValue({ success: true, data: { id: 'cus_1' } });
             const res = await SellerService.syncWithAsaas(1);
@@ -1005,7 +1005,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 id: 1,
                 user: {
                     userData: {
-                        cpfCnpj: null
+                        cpf_cnpj: null
                     }
                 }
             };
@@ -1022,7 +1022,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 id: 1,
                 user: {
                     userData: {
-                        cpfCnpj: '12345678909'
+                        cpf_cnpj: '12345678909'
                     }
                 }
             };
@@ -1045,7 +1045,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 id: 1,
                 user: {
                     userData: {
-                        cpfCnpj: '12345678909'
+                        cpf_cnpj: '12345678909'
                     }
                 }
             };
