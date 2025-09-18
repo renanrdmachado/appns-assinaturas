@@ -227,7 +227,7 @@ class UserService {
             if (!user && cpfCnpj) {
                 // Buscar por cpfCnpj através do userData
                 const userData = await UserData.findOne({
-                    where: { cpfCnpj },
+                    where: { cpf_cnpj: cpfCnpj },
                     include: [{ model: User, as: 'user' }]
                 });
 

@@ -667,7 +667,7 @@ class SellerService {
 
             // Buscar UserData pelo CPF/CNPJ
             const userData = await UserData.findOne({
-                where: { cpfCnpj: cpfCnpj }
+                where: { cpf_cnpj: cpfCnpj }
             });
 
             if (!userData) {

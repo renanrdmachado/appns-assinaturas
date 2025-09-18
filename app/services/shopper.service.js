@@ -99,7 +99,7 @@ class ShopperService {
             }
 
             // Verificar se já existe um UserData com este CPF/CNPJ
-            let userData = await UserData.findOne({ where: { cpfCnpj: data.cpfCnpj } });
+            let userData = await UserData.findOne({ where: { cpf_cnpj: data.cpfCnpj } });
 
             // Sincronizar com o Asaas antes de criar no banco local
             let asaasCustomerId = null;
@@ -658,7 +658,7 @@ class ShopperService {
                         include: [{
                             model: UserData,
                             as: 'userData',
-                            where: { cpfCnpj: cpfCnpj }
+                            where: { cpf_cnpj: cpfCnpj }
                         }]
                     }
                 ]
