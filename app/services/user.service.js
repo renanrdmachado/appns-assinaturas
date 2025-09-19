@@ -118,24 +118,24 @@ class UserService {
                     // Se o usuário já tem um UserData, atualizamos
                     if (user.userData) {
                         await user.userData.update({
-                            cpfCnpj: data.cpfCnpj || user.userData.cpfCnpj,
-                            mobilePhone: data.mobilePhone || user.userData.mobilePhone,
+                            cpf_cnpj: data.cpfCnpj || user.userData.cpf_cnpj,
+                            mobile_phone: data.mobilePhone || user.userData.mobile_phone,
                             address: data.address || user.userData.address,
-                            addressNumber: data.addressNumber || user.userData.addressNumber,
+                            address_number: data.addressNumber || user.userData.address_number,
                             province: data.province || user.userData.province,
-                            postalCode: data.postalCode || user.userData.postalCode,
-                            birthDate: data.birthDate || user.userData.birthDate
+                            postal_code: data.postalCode || user.userData.postal_code,
+                            birth_date: data.birthDate || user.userData.birth_date
                         }, { transaction: t });
                     } else {
                         // Se não tem UserData, criamos um novo
                         const userData = await UserData.create({
-                            cpfCnpj: data.cpfCnpj || null,
-                            mobilePhone: data.mobilePhone || null,
+                            cpf_cnpj: data.cpfCnpj || null,
+                            mobile_phone: data.mobilePhone || null,
                             address: data.address || null,
-                            addressNumber: data.addressNumber || null,
+                            address_number: data.addressNumber || null,
                             province: data.province || null,
-                            postalCode: data.postalCode || null,
-                            birthDate: data.birthDate || null
+                            postal_code: data.postalCode || null,
+                            birth_date: data.birthDate || null
                         }, { transaction: t });
 
                         // Atualiza o user_data_id no usuário
@@ -227,7 +227,7 @@ class UserService {
             if (!user && cpfCnpj) {
                 // Buscar por cpfCnpj através do userData
                 const userData = await UserData.findOne({
-                    where: { cpfCnpj },
+                    where: { cpf_cnpj: cpfCnpj },
                     include: [{ model: User, as: 'user' }]
                 });
 

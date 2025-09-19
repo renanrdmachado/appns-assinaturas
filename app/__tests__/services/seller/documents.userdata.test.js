@@ -55,7 +55,7 @@ describe('Completar documentos do Seller atualiza UserData completo', () => {
     });
 
     expect(UserData.create).toHaveBeenCalledWith({
-      cpfCnpj: '123', mobilePhone: '55', address: 'Rua', addressNumber: '10', province: 'SP', postalCode: '00000-000', birthDate: '2000-01-01'
+      cpf_cnpj: '123', mobile_phone: '55', address: 'Rua', address_number: '10', province: 'SP', postal_code: '00000-000', birth_date: '2000-01-01', income_value: null, company_type: null
     }, expect.any(Object));
 
     expect(res.success).toBe(true);
@@ -73,7 +73,7 @@ describe('Completar documentos do Seller atualiza UserData completo', () => {
     });
 
     expect(ud.update).toHaveBeenCalledWith(expect.objectContaining({
-      cpfCnpj: '123', mobilePhone: '9', address: 'R', addressNumber: '20', province: 'RJ', postalCode: '11111-111', birthDate: '1999-01-01'
+      cpf_cnpj: '123', mobile_phone: '9', address: 'R', address_number: '20', province: 'RJ', postal_code: '11111-111', birth_date: '1999-01-01', income_value: undefined, company_type: undefined
     }), expect.any(Object));
   });
 });

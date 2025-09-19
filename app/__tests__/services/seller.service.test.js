@@ -469,7 +469,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
 
     describe('fluxos adicionais', () => {
         test('syncWithAsaas: sucesso', async () => {
-            Seller.findByPk.mockResolvedValue({ id: 1, user: { userData: { cpfCnpj: '123' } } });
+            Seller.findByPk.mockResolvedValue({ id: 1, user: { userData: { cpf_cnpj: '123' } } });
             AsaasMapper.mapSellerToCustomer.mockReturnValue({ name: 'Test', cpfCnpj: '123' });
             AsaasCustomerService.createOrUpdate.mockResolvedValue({ success: true, data: { id: 'cus_1' } });
             const res = await SellerService.syncWithAsaas(1);
@@ -687,13 +687,15 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
             });
 
             expect(UserData.create).toHaveBeenCalledWith(expect.objectContaining({
-                cpfCnpj: '123',
-                mobilePhone: '999',
+                cpf_cnpj: '123',
+                mobile_phone: '999',
                 address: 'Rua',
-                addressNumber: '10',
+                address_number: '10',
                 province: 'SP',
-                postalCode: '00000-000',
-                birthDate: '2000-01-01'
+                postal_code: '00000-000',
+                birth_date: '2000-01-01',
+                income_value: null,
+                company_type: null
             }), expect.any(Object));
 
             expect(AsaasCustomerService.createOrUpdate).toHaveBeenCalled();
@@ -1003,7 +1005,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 id: 1,
                 user: {
                     userData: {
-                        cpfCnpj: null
+                        cpf_cnpj: null
                     }
                 }
             };
@@ -1020,7 +1022,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 id: 1,
                 user: {
                     userData: {
-                        cpfCnpj: '12345678909'
+                        cpf_cnpj: '12345678909'
                     }
                 }
             };
@@ -1043,7 +1045,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 id: 1,
                 user: {
                     userData: {
-                        cpfCnpj: '12345678909'
+                        cpf_cnpj: '12345678909'
                     }
                 }
             };

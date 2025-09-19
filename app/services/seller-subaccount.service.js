@@ -24,9 +24,39 @@ class SellerSubAccountService {
 
             const subAccountData = this.formatDataForAsaasSubAccount(seller);
 
+            // Primeiro, verificar se já existe uma subconta com este CPF
+            console.log(`DEBUG - Verificação de subconta existente: cpfCnpj=${subAccountData.cpfCnpj}`);
+            const existingSubAccount = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+
+            if (existingSubAccount.success && existingSubAccount.data) {
+                console.log(`DEBUG - Subconta existente encontrada: ${existingSubAccount.data.id}`);
+                return {
+                    success: true,
+                    data: existingSubAccount.data,
+                    message: 'Subconta existente recuperada com sucesso.'
+                };
+            }
+
+            // Se não existe, tentar criar uma nova
+            console.log(`CPF ${subAccountData.cpfCnpj} não encontrado no Asaas. Criando nova subconta...`);
             const asaasResult = await subAccountService.addSubAccount(subAccountData);
 
             if (!asaasResult.success) {
+                // Se falhou por CPF já em uso, tentar buscar novamente
+                if (asaasResult.message && asaasResult.message.includes('já está em uso')) {
+                    console.log('CPF já em uso detectado. Tentando buscar subconta existente...');
+
+                    const retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+                    if (retryResult.success && retryResult.data) {
+                        console.log(`DEBUG - Subconta existente recuperada após retry: ${retryResult.data.id}`);
+                        return {
+                            success: true,
+                            data: retryResult.data,
+                            message: 'Subconta existente recuperada após conflito de CPF.'
+                        };
+                    }
+                }
+
                 console.error('Erro ao criar subconta no Asaas:', JSON.stringify(asaasResult, null, 2));
                 // Lança o erro para que a transação externa possa fazer rollback
                 throw new Error(asaasResult.message || 'Erro desconhecido ao criar subconta no Asaas.');
@@ -96,12 +126,24 @@ class SellerSubAccountService {
             incomeValue: income_value
         };
 
-        // Remove chaves com valores nulos ou indefinidos
+        // Remove apenas chaves com valores nulos ou indefinidos, exceto campos obrigatórios
+        const requiredFields = ['cpfCnpj', 'mobilePhone', 'incomeValue'];
         Object.keys(formattedData).forEach(key => {
-            if (formattedData[key] === null || formattedData[key] === undefined) {
+            if ((formattedData[key] === null || formattedData[key] === undefined) && !requiredFields.includes(key)) {
                 delete formattedData[key];
             }
         });
+
+        // Validação adicional para campos obrigatórios
+        if (!formattedData.cpfCnpj) {
+            throw new Error('CPF/CNPJ é obrigatório para criar subconta');
+        }
+        if (!formattedData.mobilePhone) {
+            throw new Error('Telefone celular é obrigatório para criar subconta');
+        }
+        if (!formattedData.incomeValue) {
+            throw new Error('Valor de renda é obrigatório para criar subconta');
+        }
 
         return formattedData;
     }
@@ -166,8 +208,6 @@ class SellerSubAccountService {
                     }
                 }
             });
-
-            console.log(`Total de vendedores com subcontas: ${sellers.length}`);
 
             // Para cada vendedor, buscar detalhes da subconta no Asaas
             const result = [];

@@ -100,7 +100,7 @@ describe('UserService - CRUD e buscas', () => {
 
         const r = await UserService.update(7, { username: 'new', cpfCnpj: '123' });
         expect(r.success).toBe(true);
-        expect(ud.update).toHaveBeenCalledWith(expect.objectContaining({ cpfCnpj: '123' }), expect.any(Object));
+        expect(ud.update).toHaveBeenCalledWith(expect.objectContaining({ cpf_cnpj: '123' }), expect.any(Object));
         expect(usr.update).toHaveBeenCalledWith(expect.objectContaining({ username: 'new' }), expect.any(Object));
     });
 

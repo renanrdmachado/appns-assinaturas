@@ -9,7 +9,6 @@ const SellerValidator = require('../validators/seller-validator');
 const AsaasCustomerService = require('./asaas/customer.service');
 const subscriptionService = require('./asaas/subscription.service');
 const sequelize = require('../config/database');
-const AsaasCardService = require('./asaas/card.service');
 const { redactSensitive } = require('../utils/redact');
 const AsaasFormatter = require('../utils/asaas-formatter');
 
@@ -51,16 +50,161 @@ class SellerSubscriptionService {
 
             console.log(`Criando assinatura para seller ${sellerId}`);
 
+            // Verificar se o seller já possui uma assinatura
+            const existingSubscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: sellerId,
+                    deleted_at: null
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            if (existingSubscription) {
+                // Se a assinatura estiver ativa, pendente ou overdue, não permitir nova
+                if (['active', 'pending', 'overdue'].includes(existingSubscription.status)) {
+                    console.log(`Seller ${sellerId} já possui assinatura ativa (ID: ${existingSubscription.id}, Status: ${existingSubscription.status})`);
+                    return {
+                        success: false,
+                        message: `Seller já possui assinatura ativa`,
+                        status: 400,
+                        data: existingSubscription
+                    };
+                } else {
+                    // Se estiver cancelada/expirada, a assinatura será atualizada após criação no Asaas
+                    console.log(`Seller ${sellerId} possui assinatura cancelada/expirada (ID: ${existingSubscription.id}, Status: ${existingSubscription.status}). Será atualizada após criação no Asaas...`);
+                }
+            }
+
             // Buscar seller (usando transação se fornecida)
             const seller = await Seller.findByPk(sellerId, { transaction });
             if (!seller) {
                 return createError(`Seller com ID ${sellerId} não encontrado`, 404);
             }
 
+            // Verificar se o seller tem subconta, se não tiver, criar uma
+            let sellerWithRelations = seller;
+            if (!seller.subaccount_id) {
+                console.log(`Seller ${sellerId} não possui subconta. Criando subconta...`);
+                try {
+                    // Buscar seller com relações necessárias para criar subconta
+                    sellerWithRelations = await Seller.findByPk(sellerId, {
+                        include: [{
+                            model: User,
+                            as: 'user',
+                            include: [{ model: UserData, as: 'userData' }]
+                        }],
+                        transaction
+                    });
+
+                    if (!sellerWithRelations) {
+                        return createError(`Seller com ID ${sellerId} não encontrado`, 404);
+                    }
+
+                    // Salvar dados do billingInfo no UserData antes de tentar criar subconta
+                    if (sellerWithRelations.user?.userData) {
+                        console.log(`Atualizando UserData do seller ${sellerId} com dados do billingInfo`);
+
+                        const updateData = {};
+
+                        // Mapear campos do billingInfo para o UserData
+                        if (billingInfo.cpfCnpj) {
+                            updateData.cpf_cnpj = billingInfo.cpfCnpj;
+                        }
+                        if (billingInfo.phone) {
+                            updateData.mobile_phone = billingInfo.phone;
+                        }
+                        if (billingInfo.creditCardHolderInfo?.incomeValue) {
+                            updateData.income_value = billingInfo.creditCardHolderInfo.incomeValue;
+                        }
+                        if (billingInfo.name) {
+                            updateData.name = billingInfo.name;
+                        }
+                        if (billingInfo.email) {
+                            updateData.email = billingInfo.email;
+                        }
+                        if (billingInfo.address) {
+                            updateData.address = billingInfo.address;
+                        }
+                        if (billingInfo.addressNumber) {
+                            updateData.address_number = billingInfo.addressNumber;
+                        }
+                        if (billingInfo.province) {
+                            updateData.province = billingInfo.province;
+                        }
+                        if (billingInfo.postalCode) {
+                            updateData.postal_code = billingInfo.postalCode;
+                        }
+                        if (billingInfo.creditCardHolderInfo?.birthDate) {
+                            updateData.birth_date = billingInfo.creditCardHolderInfo.birthDate;
+                        }
+
+                        if (Object.keys(updateData).length > 0) {
+                            await sellerWithRelations.user.userData.update(updateData, { transaction });
+                            console.log(`UserData atualizado com ${Object.keys(updateData).length} campos`);
+                        }
+                    } else {
+                        console.log(`Seller ${sellerId} não tem UserData. Criando UserData com dados do billingInfo`);
+
+                        // Criar UserData se não existir
+                        const userDataData = {
+                            cpf_cnpj: billingInfo.cpfCnpj || null,
+                            mobile_phone: billingInfo.phone || null,
+                            income_value: billingInfo.creditCardHolderInfo?.incomeValue || null,
+                            name: billingInfo.name || null,
+                            email: billingInfo.email || null,
+                            address: billingInfo.address || null,
+                            address_number: billingInfo.addressNumber || null,
+                            province: billingInfo.province || null,
+                            postal_code: billingInfo.postalCode || null,
+                            birth_date: billingInfo.creditCardHolderInfo?.birthDate || null
+                        };
+
+                        const newUserData = await UserData.create(userDataData, { transaction });
+
+                        // Vincular o UserData ao User
+                        await sellerWithRelations.user.update({ user_data_id: newUserData.id }, { transaction });
+                        console.log(`UserData criado e vinculado: ${newUserData.id}`);
+
+                        // Recarregar o seller com as relações atualizadas
+                        sellerWithRelations = await Seller.findByPk(sellerId, {
+                            include: [{
+                                model: require('../models/User'),
+                                as: 'user',
+                                include: [{ model: UserData, as: 'userData' }]
+                            }],
+                            transaction
+                        });
+                    }
+
+                    // Criar subconta no Asaas
+                    const SellerSubAccountService = require('./seller-subaccount.service');
+                    const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
+
+                    if (subAccountResult.success) {
+                        console.log(`Subconta criada com sucesso para seller ${sellerId}: ${subAccountResult.data.id}`);
+                        // Atualizar o seller com os dados da subconta
+                        await sellerWithRelations.update({
+                            subaccount_id: subAccountResult.data.id,
+                            asaas_api_key: subAccountResult.data.apiKey,
+                            wallet_id: subAccountResult.data.walletId,
+                        }, { transaction });
+
+                        // Recarregar o seller para obter os dados atualizados
+                        sellerWithRelations = await Seller.findByPk(sellerId, { transaction });
+                    } else {
+                        console.error(`Falha ao criar subconta para seller ${sellerId}: ${subAccountResult.message}`);
+                        // Continuar sem subconta, mas logar o erro
+                    }
+                } catch (subAccountError) {
+                    console.error(`Erro ao criar subconta para seller ${sellerId}:`, subAccountError.message);
+                    // Continuar sem subconta, mas logar o erro
+                }
+            }
+
             // Definir headers de subconta (se existir) para chamadas Asaas
-            const asaasHeaders = seller.subaccount_api_key ? { access_token: seller.subaccount_api_key } : {};
-            if (seller.subaccount_api_key) {
-                const tail = seller.subaccount_api_key.slice(-4);
+            const asaasHeaders = sellerWithRelations.subaccount_api_key ? { access_token: sellerWithRelations.subaccount_api_key } : {};
+            if (sellerWithRelations.subaccount_api_key) {
+                const tail = sellerWithRelations.subaccount_api_key.slice(-4);
                 console.log('DEBUG - Usando subaccount access_token (mascarado): ****' + tail);
             } else {
                 console.log('DEBUG - Usando access_token padrão do ambiente');
@@ -83,7 +227,6 @@ class SellerSubscriptionService {
             // Normalizar/validar CPF/CNPJ vindo do billingInfo ou da loja
             const rawCpf = (billingInfo.cpfCnpj || '').toString();
             const cleanCpf = rawCpf.replace(/\D/g, '');
-            const isMaskedCpf = rawCpf.includes('*');
             const nsBusinessId = (nuvemshopInfo.business_id || '').toString().replace(/\D/g, '');
 
             // Tentar alternativas para CPF/CNPJ válido
@@ -189,7 +332,7 @@ class SellerSubscriptionService {
                         if (!candidateCpf || !(candidateCpf.length === 11 || candidateCpf.length === 14)) {
                             return {
                                 success: false, status: 400,
-                                message: 'Customer no Asaas está deletado e não há CPF/CNPJ válido para recriação.'
+                                message: 'Customer no Asaas está removido e não há CPF/CNPJ válido para recriação.'
                             };
                         }
                         const customerData = {
@@ -759,28 +902,55 @@ class SellerSubscriptionService {
 
             console.log('Assinatura criada no Asaas:', asaasSubscription.id);
 
-            // Salvar assinatura no banco local
-            const localSubscription = await SellerSubscription.create({
-                seller_id: sellerId,
-                external_id: asaasSubscription.id,
-                plan_name: planData.plan_name,
-                value: planData.value,
-                status: 'pending', // Inicia como pending até receber confirmação via webhook
-                cycle: planData.cycle,
-                next_due_date: asaasSubscription.nextDueDate,
-                start_date: new Date(),
-                billing_type: billingInfo.billingType || 'PIX',
-                features: planData.features || {},
-                metadata: {
-                    asaas_customer_id: customerId,
-                    asaas_subscription_id: asaasSubscription.id,
-                    created_via: 'api'
-                }
-            }, { transaction });
+            // Salvar ou atualizar assinatura no banco local
+            let localSubscription;
+            if (existingSubscription && ['canceled', 'expired'].includes(existingSubscription.status)) {
+                // Atualizar assinatura existente
+                localSubscription = await existingSubscription.update({
+                    external_id: asaasSubscription.id,
+                    plan_name: planData.plan_name,
+                    value: planData.value,
+                    status: 'pending', // Resetar para pending
+                    cycle: planData.cycle,
+                    next_due_date: asaasSubscription.nextDueDate,
+                    start_date: new Date(),
+                    billing_type: billingInfo.billingType || 'PIX',
+                    features: planData.features || {},
+                    metadata: {
+                        asaas_customer_id: customerId,
+                        asaas_subscription_id: asaasSubscription.id,
+                        created_via: 'api',
+                        updated_from_status: existingSubscription.status
+                    }
+                }, { transaction });
+                console.log(`Assinatura existente ${localSubscription.id} atualizada com novo external_id: ${asaasSubscription.id}`);
+            } else {
+                // Criar nova assinatura
+                localSubscription = await SellerSubscription.create({
+                    seller_id: sellerId,
+                    external_id: asaasSubscription.id,
+                    plan_name: planData.plan_name,
+                    value: planData.value,
+                    status: 'pending', // Inicia como pending até receber confirmação via webhook
+                    cycle: planData.cycle,
+                    next_due_date: asaasSubscription.nextDueDate,
+                    start_date: new Date(),
+                    billing_type: billingInfo.billingType || 'PIX',
+                    features: planData.features || {},
+                    metadata: {
+                        asaas_customer_id: customerId,
+                        asaas_subscription_id: asaasSubscription.id,
+                        created_via: 'api'
+                    }
+                }, { transaction });
+                console.log(`Nova assinatura criada: ${localSubscription.id}`);
+            }
 
             return {
                 success: true,
-                message: 'Assinatura criada com sucesso',
+                message: existingSubscription && ['canceled', 'expired'].includes(existingSubscription.status)
+                    ? 'Assinatura renovada com sucesso'
+                    : 'Assinatura criada com sucesso',
                 data: {
                     local_subscription: localSubscription,
                     asaas_subscription: asaasSubscription
@@ -1046,277 +1216,6 @@ class SellerSubscriptionService {
             return { success: true, data: subscriptions };
         } catch (error) {
             console.error(`Erro ao buscar assinaturas para vendedor ${sellerId}:`, error.message);
-            return formatError(error);
-        }
-    }
-
-    async create(sellerId, data) {
-        console.log('SellerSubscription - creating...');
-        const transaction = await sequelize.transaction();
-
-        try {
-            // Verificar se o vendedor existe
-            try {
-                SellerValidator.validateId(sellerId);
-            } catch (validationError) {
-                return formatError(validationError);
-            }
-
-            const seller = await Seller.findByPk(sellerId);
-            console.log('Seller:', seller ? seller.id : 'not found');
-            if (!seller) {
-                return createError('Vendedor não encontrado', 404);
-            }
-
-            // Verificar se o vendedor tem uma subconta no Asaas
-            if (!seller.subaccount_id) {
-                console.log('Vendedor não possui uma subconta no Asaas. Tentando criar...');
-                try {
-                    // Carregar as relações necessárias para criar a subconta
-                    const sellerWithRelations = await Seller.findByPk(sellerId, {
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                include: [{ model: UserData, as: 'userData' }]
-                            }
-                        ],
-                        transaction
-                    });
-
-                    if (!sellerWithRelations || !sellerWithRelations.user || !sellerWithRelations.user.userData) {
-                        return createError('Dados insuficientes para criar subconta. Relações `user` e `userData` são necessárias.', 400);
-                    }
-
-                    // Instanciar e chamar o serviço de subconta
-                    const SellerSubAccountService = require('./seller-subaccount.service');
-                    const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
-
-                    if (!subAccountResult.success) {
-                        return createError(`Falha ao criar subconta: ${subAccountResult.message}`, 400);
-                    }
-
-                    // Atualizar o seller com os dados da subconta
-                    await seller.update({
-                        subaccount_id: subAccountResult.data.id,
-                        asaas_api_key: subAccountResult.data.apiKey,
-                        wallet_id: subAccountResult.data.walletId,
-                    }, { transaction });
-
-                    console.log('Subconta criada com sucesso:', subAccountResult.data.id);
-                } catch (subaccountError) {
-                    console.error('Erro ao criar subconta:', subaccountError);
-                    return createError(`Erro ao criar subconta: ${subaccountError.message}`, 500);
-                }
-            }
-
-            // Verificar se o vendedor já tem assinatura existente no sistema
-            const existingSubscriptions = await SellerSubscription.findAll({
-                where: { seller_id: sellerId }
-            });
-
-            if (existingSubscriptions.length > 0) {
-                console.log(`Vendedor já tem ${existingSubscriptions.length} assinaturas cadastradas.`);
-                // Opcional: Verificar se deseja continuar ou não
-            }
-
-            // Verificar se o vendedor tem um ID de cliente no Asaas
-            if (!seller.payments_customer_id) {
-                return createError('Vendedor não possui um ID de cliente no Asaas. Execute a sincronização com Asaas primeiro.', 400);
-            }
-
-            // Verificar se o vendedor tem CPF/CNPJ cadastrado
-            if (!seller.Asaas_cpfCnpj) {
-                return createError('CPF/CNPJ do vendedor não está preenchido. É necessário para criar assinaturas.', 400);
-            }
-
-            // Verificar se o cliente existe no Asaas e tem CPF/CNPJ preenchido
-            const asaasCustomer = await AsaasCustomerService.get(seller.payments_customer_id);
-            if (!asaasCustomer.success) {
-                return createError(`Cliente não encontrado no Asaas: ${asaasCustomer.message}`, 400);
-            }
-
-            if (!asaasCustomer.data.cpfCnpj) {
-                // Tentar atualizar o cliente no Asaas com o CPF/CNPJ do vendedor
-                console.log(`Cliente ${seller.payments_customer_id} sem CPF/CNPJ no Asaas. Atualizando...`);
-                const updateResult = await AsaasCustomerService.update(seller.payments_customer_id, {
-                    cpfCnpj: seller.Asaas_cpfCnpj
-                });
-
-                if (!updateResult.success) {
-                    return createError(`Não foi possível atualizar o CPF/CNPJ do cliente no Asaas: ${updateResult.message}`, 400);
-                }
-
-                console.log(`Cliente atualizado no Asaas com CPF/CNPJ: ${seller.Asaas_cpfCnpj}`);
-            }
-
-            // DEBUG: Exibir dados completos do vendedor
-            console.log('DEBUG - Dados do vendedor:', {
-                id: seller.id,
-                nuvemshop_id: seller.nuvemshop_id,
-                payments_customer_id: seller.payments_customer_id,
-                subaccount_id: seller.subaccount_id,
-                cpfCnpj: seller.Asaas_cpfCnpj
-            });
-
-            // Validação dos dados necessários para a assinatura local
-            if (!data.cycle) {
-                console.log("Ciclo não informado na requisição, usando padrão MONTHLY");
-                data.cycle = 'MONTHLY';
-            } else {
-                // Normalizar o formato do ciclo para o formato que o Asaas espera
-                const cycleMapping = {
-                    'mensal': 'MONTHLY',
-                    'semanal': 'WEEKLY',
-                    'quinzenal': 'BIWEEKLY',
-                    'bimestral': 'BIMONTHLY',
-                    'trimestral': 'QUARTERLY',
-                    'semestral': 'SEMIANNUALLY',
-                    'anual': 'YEARLY'
-                };
-
-                if (cycleMapping[data.cycle.toLowerCase()]) {
-                    data.cycle = cycleMapping[data.cycle.toLowerCase()];
-                } else {
-                    // Converter para maiúsculas se não for um dos alias conhecidos
-                    data.cycle = data.cycle.toUpperCase();
-                }
-
-                // Validar se o ciclo está no formato aceito pelo Asaas
-                const validCycles = ['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'BIMONTHLY',
-                    'QUARTERLY', 'SEMIANNUALLY', 'YEARLY'];
-                if (!validCycles.includes(data.cycle)) {
-                    return createError(`Ciclo '${data.cycle}' inválido. Use um dos seguintes: ${validCycles.join(', ')}`, 400);
-                }
-            }
-
-            if (!data.value) {
-                return createError('Valor (value) é obrigatório para criar uma assinatura', 400);
-            }
-
-            if (!data.plan_name) {
-                return createError('Nome do plano (plan_name) é obrigatório para criar uma assinatura', 400);
-            }
-
-            if (!data.next_due_date) {
-                console.log("Data de vencimento não informada, usando data atual");
-                const currentDate = new Date();
-                currentDate.setDate(currentDate.getDate() + 1); // Próximo dia
-                data.next_due_date = currentDate.toISOString().split('T')[0];
-            }
-
-            // Verificar se já existe uma assinatura no Asaas para este vendedor
-            console.log("Verificando assinaturas existentes no Asaas para o vendedor...");
-            const externalReference = `seller_subscription_${seller.id}`;
-            const existingAsaasSubscriptions = await subscriptionService.getByExternalReference(externalReference);
-
-            let asaasResult;
-
-            if (existingAsaasSubscriptions.success &&
-                existingAsaasSubscriptions.data &&
-                existingAsaasSubscriptions.data.data &&
-                existingAsaasSubscriptions.data.data.length > 0) {
-
-                const existingSubscription = existingAsaasSubscriptions.data.data[0];
-                console.log(`Assinatura já existe no Asaas com ID ${existingSubscription.id} para o vendedor ${seller.id}`);
-
-                // Usar a assinatura existente
-                asaasResult = {
-                    success: true,
-                    data: existingSubscription,
-                    message: 'Assinatura já existente no Asaas'
-                };
-
-                // Opcionalmente, atualizar a assinatura existente
-                if (data.update_if_exists === true) {
-                    console.log(`Atualizando assinatura existente ${existingSubscription.id}...`);
-
-                    // Formatar dados para o Asaas para atualização
-                    const asaasUpdateData = this.formatDataForAsaasUpdate({
-                        value: data.value,
-                        next_due_date: data.next_due_date,
-                        cycle: data.cycle,
-                        plan_name: data.plan_name,
-                        billing_type: data.billing_type
-                    });
-
-                    // Atualizar assinatura no Asaas
-                    asaasResult = await subscriptionService.update(existingSubscription.id, asaasUpdateData);
-
-                    if (!asaasResult.success) {
-                        console.error(`Erro ao atualizar assinatura existente: ${asaasResult.message}`);
-                        return asaasResult;
-                    }
-                }
-            } else {
-                // Formatar dados para o Asaas para criação
-                const asaasSubscriptionData = this.formatDataForAsaasSubscription(data, seller);
-
-                // DEBUG: Exibir dados completos formatados para o Asaas
-                console.log('DEBUG - Dados formatados para Asaas:', asaasSubscriptionData);
-
-                // Criar assinatura no Asaas
-                console.log('Criando assinatura no Asaas...', asaasSubscriptionData);
-                asaasResult = await subscriptionService.create(asaasSubscriptionData);
-
-                // DEBUG: Exibir resposta do Asaas
-                console.log('DEBUG - Resposta do Asaas:',
-                    asaasResult.success ?
-                        { id: asaasResult.data.id, status: asaasResult.data.status } :
-                        { error: asaasResult.message });
-
-                // Se houver erro no Asaas, retornar o erro
-                if (!asaasResult.success) {
-                    console.error('Erro ao criar assinatura no Asaas:', asaasResult.message);
-                    await transaction.rollback();
-                    return asaasResult;
-                }
-            }
-
-            // Juntar o ID do vendedor com os dados da requisição
-            const subscriptionData = {
-                ...data,
-                seller_id: sellerId,
-                external_id: asaasResult.data.id, // Salvar o ID externo do Asaas
-                status: this.mapAsaasStatusToLocalStatus(asaasResult.data.status),
-                billing_type: asaasResult.data.billingType || data.billing_type || 'BOLETO',
-                cycle: asaasResult.data.cycle || data.cycle
-            };
-
-            // Criar padrão para data de início
-            if (!subscriptionData.start_date) {
-                subscriptionData.start_date = new Date();
-            }
-
-            // Status padrão
-            if (!subscriptionData.status) {
-                subscriptionData.status = 'pending';
-            }
-
-            // Criar assinatura no banco local usando a transação
-            console.log('Criando assinatura no banco local...', {
-                seller_id: subscriptionData.seller_id,
-                external_id: subscriptionData.external_id,
-                plan_name: subscriptionData.plan_name,
-                cycle: subscriptionData.cycle,
-                value: subscriptionData.value
-            });
-
-            const subscription = await SellerSubscription.create(subscriptionData, { transaction });
-
-            // Confirmar a transação
-            await transaction.commit();
-
-            console.log('SellerSubscription created:', subscription.id);
-            return {
-                success: true,
-                data: subscription,
-                asaasData: asaasResult.data
-            };
-        } catch (error) {
-            // Reverter a transação em caso de erro
-            await transaction.rollback();
-            console.error('Erro ao criar assinatura de vendedor:', error.message);
             return formatError(error);
         }
     }
@@ -1613,24 +1512,25 @@ class SellerSubscriptionService {
             const existingSubscription = await SellerSubscription.findOne({
                 where: {
                     seller_id: sellerId,
-                    status: 'active'
+                    deleted_at: null
                 },
                 transaction
             });
 
             if (existingSubscription) {
-                await transaction.rollback();
-                return {
-                    success: false,
-                    message: 'Seller já possui assinatura ativa',
-                    status: 400
-                };
-            }
-
-            // Verificar se seller tem customer no Asaas
-            if (!seller.payments_customer_id) {
-                await transaction.rollback();
-                return createError('Seller não possui customer no Asaas. Complete os dados primeiro.', 400);
+                // Se a assinatura estiver ativa, pendente ou overdue, não permitir nova
+                if (['active', 'pending', 'overdue'].includes(existingSubscription.status)) {
+                    console.log(`Seller ${sellerId} já possui assinatura ativa (ID: ${existingSubscription.id}, Status: ${existingSubscription.status})`);
+                    return {
+                        success: false,
+                        message: `Seller já possui uma assinatura ativa`,
+                        status: 400,
+                        data: existingSubscription
+                    };
+                } else {
+                    // Se estiver cancelada/expirada, a assinatura será atualizada após criação no Asaas
+                    console.log(`Seller ${sellerId} possui assinatura cancelada/expirada (ID: ${existingSubscription.id}, Status: ${existingSubscription.status}). Será atualizada após criação no Asaas...`);
+                }
             }
 
             // Preparar dados do plano
@@ -1785,8 +1685,87 @@ class SellerSubscriptionService {
             };
 
         } catch (err) {
-            console.error('❌ Erro no diagnóstico:', err.message);
-            return { success: false, message: err.message };
+            console.error('Erro no SellerSubscriptionService:', err.message);
+            return formatError(err);
+        }
+    }
+
+    /**
+     * Busca dados completos de um seller incluindo assinatura, customer e subconta
+     * @param {number} sellerId - ID do seller
+     * @returns {Object} - Resultado da operação com dados completos
+     */
+    async getSellerCompleteData(sellerId) {
+        try {
+            const seller = await Seller.findByPk(sellerId, {
+                include: [{
+                    model: User,
+                    as: 'user',
+                    include: [{ model: UserData, as: 'userData' }]
+                }]
+            });
+
+            if (!seller) {
+                return createError(`Seller com ID ${sellerId} não encontrado`, 404);
+            }
+
+            // Buscar assinatura ativa
+            const activeSubscription = await SellerSubscription.findOne({
+                where: {
+                    seller_id: sellerId,
+                    status: ['active', 'pending', 'overdue'],
+                    deleted_at: null
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            // Buscar customer no Asaas se existir
+            let customerData = null;
+            if (seller.payments_customer_id) {
+                try {
+                    const asaasHeaders = seller.subaccount_api_key ? { access_token: seller.subaccount_api_key } : {};
+                    const AsaasCustomerService = require('./asaas/customer.service');
+                    const customerResult = await AsaasCustomerService.get(seller.payments_customer_id, asaasHeaders);
+                    if (customerResult.success) {
+                        customerData = customerResult.data;
+                    }
+                } catch (error) {
+                    console.warn(`Erro ao buscar customer ${seller.payments_customer_id}:`, error.message);
+                }
+            }
+
+            // Buscar subconta no Asaas se existir
+            let subAccountData = null;
+            if (seller.subaccount_id) {
+                try {
+                    const cpfCnpj = seller.user?.userData?.cpf_cnpj;
+                    if (cpfCnpj) {
+                        const subAccountResult = await subAccountService.getSubAccountByCpfCnpj(cpfCnpj);
+                        if (subAccountResult.success) {
+                            subAccountData = subAccountResult.data;
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`Erro ao buscar subconta ${seller.subaccount_id}:`, error.message);
+                }
+            }
+
+            return {
+                success: true,
+                data: {
+                    seller: seller,
+                    subscription: activeSubscription,
+                    customer: customerData,
+                    subaccount: subAccountData,
+                    hasActiveSubscription: !!activeSubscription,
+                    hasCustomer: !!customerData,
+                    hasSubAccount: !!subAccountData
+                }
+            };
+
+        } catch (error) {
+            console.error('Erro ao buscar dados completos do seller:', error);
+            return formatError(error);
         }
     }
 }

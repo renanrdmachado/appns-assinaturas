@@ -3,17 +3,35 @@ jest.mock('../../helpers/AsaasApiClient');
 
 // Mock consistente do modelo Seller para todos os cenários
 jest.mock('../../models/Seller', () => {
-  function Seller() {}
+  const mockSellerInstance = {
+    update: jest.fn().mockResolvedValue(true),
+    save: jest.fn().mockResolvedValue(true)
+  };
+
+  function Seller(data) {
+    Object.assign(this, data, mockSellerInstance);
+    return this;
+  }
+
   Seller.findByPk = jest.fn();
+  Seller.create = jest.fn();
+  Seller.update = jest.fn();
+  Seller.findOne = jest.fn();
+
   return Seller;
 }, { virtual: true });
+
+// Mock do SellerSubAccountService
+jest.mock('../../services/seller-subaccount.service', () => ({
+  create: jest.fn()
+}), { virtual: true });
 
 // Mocks adicionais para cobrir métodos auxiliares do serviço em uma única suíte
 jest.mock('../../models/SellerSubscription', () => ({
   findOne: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
-  create: jest.fn()
+  create: jest.fn().mockResolvedValue({ id: 1, external_id: 'sub_test' })
 }), { virtual: true });
 
 jest.mock('../../validators/seller-validator', () => ({
@@ -21,131 +39,89 @@ jest.mock('../../validators/seller-validator', () => ({
 }), { virtual: true });
 
 // Evita carregar definições reais do sequelize nos modelos User/UserData
-jest.mock('../../models/User', () => (function User() {}), { virtual: true });
-jest.mock('../../models/UserData', () => (function UserData() {}), { virtual: true });
+jest.mock('../../models/User', () => ({
+  findByPk: jest.fn(),
+  update: jest.fn()
+}), { virtual: true });
+jest.mock('../../models/UserData', () => ({
+  create: jest.fn(),
+  findByPk: jest.fn(),
+  update: jest.fn()
+}), { virtual: true });
 
 // Mock transação para fluxos que dependem dela (ex.: retryWithPaymentMethod)
 jest.mock('../../config/database', () => ({
   transaction: jest.fn(async () => ({ commit: jest.fn(), rollback: jest.fn() }))
 }), { virtual: true });
 
+// Mock do AsaasCustomerService
+jest.mock('../../services/asaas/customer.service', () => ({
+  create: jest.fn(),
+  get: jest.fn(),
+  findByCpfCnpj: jest.fn(),
+  update: jest.fn()
+}), { virtual: true });
+
 const SellerSubscriptionService = require('../../services/seller-subscription.service');
 const SellerSubscriptionModel = require('../../models/SellerSubscription');
 const Seller = require('../../models/Seller');
 const SellerValidator = require('../../validators/seller-validator');
+const SellerSubAccountService = require('../../services/seller-subaccount.service');
+const AsaasCustomerService = require('../../services/asaas/customer.service');
 
 // ========================
 // Helper functions (integradas diretamente)
 // ========================
 function planMonthly({ name = 'Plano', value = 19.9, cycle = 'MONTHLY' } = {}) {
-    return { plan_name: name, value, cycle };
+  return { plan_name: name, value, cycle };
 }
 
 function queueAsaas(mockFn, responses = []) {
-    responses.forEach((r) => mockFn.mockResolvedValueOnce(r));
+  responses.forEach((r) => mockFn.mockResolvedValueOnce(r));
 }
 
 function sellerWithCustomer({ id = 1, customerId = 'cus_1', email = 'seller@x.com', businessId = '12345678909' } = {}) {
-    return {
-        id,
-        payments_customer_id: customerId,
-        nuvemshop_info: JSON.stringify({ email, business_id: businessId }),
-        update: jest.fn()
-    };
+  return {
+    id,
+    payments_customer_id: customerId,
+    nuvemshop_info: JSON.stringify({ email, business_id: businessId }),
+    update: jest.fn().mockResolvedValue(true),
+    save: jest.fn().mockResolvedValue(true)
+  };
 }
 
 function sellerWithoutCustomer({ id = 1, email = 'seller@x.com', businessId = '12345678909' } = {}) {
-    return {
-        id,
-        payments_customer_id: null,
-        nuvemshop_info: JSON.stringify({ email, business_id: businessId }),
-        update: jest.fn()
-    };
+  return {
+    id,
+    payments_customer_id: null,
+    nuvemshop_info: JSON.stringify({ email, business_id: businessId }),
+    update: jest.fn().mockResolvedValue(true),
+    save: jest.fn().mockResolvedValue(true)
+  };
 }
 
 // ========================
 // CREDIT_CARD
 // ========================
-describe('Helper functions', () => {
-    test('planMonthly cria plano com valores padrão', () => {
-        const plan = planMonthly();
-        expect(plan).toEqual({ plan_name: 'Plano', value: 19.9, cycle: 'MONTHLY' });
-    });
-
-    test('planMonthly aceita parâmetros customizados', () => {
-        const plan = planMonthly({ name: 'Premium', value: 49.9, cycle: 'YEARLY' });
-        expect(plan).toEqual({ plan_name: 'Premium', value: 49.9, cycle: 'YEARLY' });
-    });
-
-    test('queueAsaas configura múltiplas respostas em sequência', () => {
-        const mockFn = jest.fn();
-        queueAsaas(mockFn, [{ id: 1 }, { id: 2 }, { id: 3 }]);
-        
-        expect(mockFn).toHaveBeenCalledTimes(0); // Ainda não foi chamado
-        // A função mockFn deve estar preparada com as configurações
-        expect(typeof mockFn).toBe('function');
-    });
-
-    test('queueAsaas funciona com array vazio', () => {
-        const mockFn = jest.fn();
-        queueAsaas(mockFn, []);
-        expect(mockFn).toHaveBeenCalledTimes(0);
-    });
-
-    test('sellerWithCustomer cria seller com customer ID', () => {
-        const seller = sellerWithCustomer();
-        expect(seller.id).toBe(1);
-        expect(seller.payments_customer_id).toBe('cus_1');
-        expect(JSON.parse(seller.nuvemshop_info)).toEqual({
-            email: 'seller@x.com',
-            business_id: '12345678909'
-        });
-        expect(typeof seller.update).toBe('function');
-    });
-
-    test('sellerWithCustomer aceita parâmetros customizados', () => {
-        const seller = sellerWithCustomer({ 
-            id: 99, 
-            customerId: 'cus_premium', 
-            email: 'custom@test.com', 
-            businessId: '99999999999' 
-        });
-        expect(seller.id).toBe(99);
-        expect(seller.payments_customer_id).toBe('cus_premium');
-        expect(JSON.parse(seller.nuvemshop_info)).toEqual({
-            email: 'custom@test.com',
-            business_id: '99999999999'
-        });
-    });
-
-    test('sellerWithoutCustomer cria seller sem customer ID', () => {
-        const seller = sellerWithoutCustomer();
-        expect(seller.id).toBe(1);
-        expect(seller.payments_customer_id).toBeNull();
-        expect(JSON.parse(seller.nuvemshop_info)).toEqual({
-            email: 'seller@x.com',
-            business_id: '12345678909'
-        });
-        expect(typeof seller.update).toBe('function');
-    });
-
-    test('sellerWithoutCustomer aceita parâmetros customizados', () => {
-        const seller = sellerWithoutCustomer({ 
-            id: 88, 
-            email: 'nocustomer@test.com', 
-            businessId: '88888888888' 
-        });
-        expect(seller.id).toBe(88);
-        expect(seller.payments_customer_id).toBeNull();
-        expect(JSON.parse(seller.nuvemshop_info)).toEqual({
-            email: 'nocustomer@test.com',
-            business_id: '88888888888'
-        });
-    });
-});
-
 describe('SellerSubscriptionService - CREDIT_CARD holder info', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Configurar mock do SellerSubAccountService
+    SellerSubAccountService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'sub_123', apiKey: 'api_key_123', walletId: 'wallet_123' },
+      message: 'Subconta criada com sucesso'
+    });
+    // Configurar mock do AsaasCustomerService
+    AsaasCustomerService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+    AsaasCustomerService.get.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+  });
 
   test('inclui creditCardHolderInfo quando billingType = CREDIT_CARD', async () => {
     // GET customer (sem cpf) -> PUT customer -> GET customer (com cpf) -> GET customer (pré) -> POST subscription
@@ -195,7 +171,24 @@ describe('SellerSubscriptionService - CREDIT_CARD holder info', () => {
 // PIX e BOLETO
 // ========================
 describe('SellerSubscriptionService - PIX e BOLETO', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Configurar mock do SellerSubAccountService
+    SellerSubAccountService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'sub_123', apiKey: 'api_key_123', walletId: 'wallet_123' },
+      message: 'Subconta criada com sucesso'
+    });
+    // Configurar mock do AsaasCustomerService
+    AsaasCustomerService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+    AsaasCustomerService.get.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+  });
 
   const planData = planMonthly({ name: 'Plano PIX', value: 19.9 });
 
@@ -250,7 +243,24 @@ describe('SellerSubscriptionService - PIX e BOLETO', () => {
 // CENÁRIOS EXTRAS E ERROS
 // ========================
 describe('SellerSubscriptionService - cenários extras e erros', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Configurar mock do SellerSubAccountService
+    SellerSubAccountService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'sub_123', apiKey: 'api_key_123', walletId: 'wallet_123' },
+      message: 'Subconta criada com sucesso'
+    });
+    // Configurar mock do AsaasCustomerService
+    AsaasCustomerService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+    AsaasCustomerService.get.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+  });
 
   test('retorna erro quando seller não existe', async () => {
     Seller.findByPk.mockResolvedValueOnce(null);
@@ -265,16 +275,27 @@ describe('SellerSubscriptionService - cenários extras e erros', () => {
       .mockResolvedValueOnce({ id: 'cus_x', cpfCnpj: '12345678909' })
       .mockResolvedValueOnce({ id: 'sub_x', status: 'ACTIVE' });
 
-    Seller.findByPk.mockResolvedValueOnce({ id: 1, payments_customer_id: 'cus_x', subaccount_api_key: 'sub_key_1234', nuvemshop_info: JSON.stringify({}) });
+    Seller.findByPk.mockResolvedValueOnce({
+      id: 1,
+      payments_customer_id: 'cus_x',
+      subaccount_api_key: 'sub_key_1234',
+      nuvemshop_info: JSON.stringify({}),
+      update: jest.fn().mockResolvedValue(true)
+    });
     const r = await SellerSubscriptionService.createSubscription(1, { plan_name: 'P', value: 10, cycle: 'MONTHLY' }, { billingType: 'PIX' });
     expect(r.success).toBeTruthy();
     const first = AsaasApiClient.request.mock.calls[0][0];
-    expect(first.endpoint).toMatch(/^customers\//);
+    expect(first.endpoint).toBe('subscriptions');
     expect(first.headers).toBeDefined();
   });
 
   test('falha quando creditCard mascarado é enviado', async () => {
-    Seller.findByPk.mockResolvedValueOnce({ id: 2, payments_customer_id: null, nuvemshop_info: JSON.stringify({ business_id: '12345678909' }) });
+    Seller.findByPk.mockResolvedValueOnce({
+      id: 2,
+      payments_customer_id: null,
+      nuvemshop_info: JSON.stringify({ business_id: '12345678909' }),
+      update: jest.fn().mockResolvedValue(true)
+    });
     AsaasApiClient.request.mockResolvedValueOnce({ id: 'cus_y' });
     const r = await SellerSubscriptionService.createSubscription(2, { plan_name: 'P', value: 10, cycle: 'MONTHLY' }, {
       billingType: 'CREDIT_CARD', name: 'N', email: 'e@e.com', cpfCnpj: '12345678909', phone: '1199',
@@ -286,7 +307,12 @@ describe('SellerSubscriptionService - cenários extras e erros', () => {
   });
 
   test('falha quando falta remoteIp em CREDIT_CARD', async () => {
-    Seller.findByPk.mockResolvedValueOnce({ id: 3, payments_customer_id: 'cus_3', nuvemshop_info: JSON.stringify({ business_id: '12345678909' }) });
+    Seller.findByPk.mockResolvedValue({
+      id: 3,
+      payments_customer_id: 'cus_3',
+      nuvemshop_info: JSON.stringify({ business_id: '12345678909' }),
+      update: jest.fn().mockResolvedValue(true)
+    });
     AsaasApiClient.request
       .mockResolvedValueOnce({ id: 'cus_3', cpfCnpj: 'missing' })
       .mockResolvedValueOnce({ id: 'cus_3', cpfCnpj: 'missing' });
@@ -295,11 +321,16 @@ describe('SellerSubscriptionService - cenários extras e erros', () => {
       creditCardToken: 'tok_1', postalCode: '12345678'
     });
     expect(r.success).toBe(false);
-    expect((r.message || '').toLowerCase()).toContain('atualização de cpf/cnpj');
+    expect((r.message || '').toLowerCase()).toContain('remoteip');
   });
 
   test('falha quando valor inválido (<=0)', async () => {
-    Seller.findByPk.mockResolvedValueOnce({ id: 4, payments_customer_id: 'cus_4', nuvemshop_info: JSON.stringify({ business_id: '12345678909' }) });
+    Seller.findByPk.mockResolvedValue({
+      id: 4,
+      payments_customer_id: 'cus_4',
+      nuvemshop_info: JSON.stringify({ business_id: '12345678909' }),
+      update: jest.fn().mockResolvedValue(true)
+    });
     AsaasApiClient.request.mockResolvedValueOnce({ id: 'cus_4', cpfCnpj: '12345678909' });
     const r = await SellerSubscriptionService.createSubscription(4, { plan_name: 'P', value: 0, cycle: 'MONTHLY' }, { billingType: 'PIX' });
     expect(r.success).toBe(false);
@@ -315,7 +346,12 @@ describe('SellerSubscriptionService - cenários extras e erros', () => {
       .mockResolvedValueOnce({ id: 'cus_5', cpfCnpj: '12345678909' })
       .mockResolvedValueOnce({ id: 'sub_ok', status: 'ACTIVE' });
 
-    Seller.findByPk.mockResolvedValueOnce({ id: 5, payments_customer_id: 'cus_5', nuvemshop_info: JSON.stringify({ business_id: '12345678909' }) });
+    Seller.findByPk.mockResolvedValue({
+      id: 5,
+      payments_customer_id: 'cus_5',
+      nuvemshop_info: JSON.stringify({ business_id: '12345678909' }),
+      update: jest.fn().mockResolvedValue(true)
+    });
     const r = await SellerSubscriptionService.createSubscription(5, { plan_name: 'P', value: 10, cycle: 'MONTHLY' }, { billingType: 'PIX', cpfCnpj: '12345678909' });
     expect(r.success).toBe(true);
   });
@@ -327,6 +363,21 @@ describe('SellerSubscriptionService - cenários extras e erros', () => {
 describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Configurar mock do SellerSubAccountService
+    SellerSubAccountService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'sub_123', apiKey: 'api_key_123', walletId: 'wallet_123' },
+      message: 'Subconta criada com sucesso'
+    });
+    // Configurar mock do AsaasCustomerService
+    AsaasCustomerService.create.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
+    AsaasCustomerService.get.mockResolvedValue({
+      success: true,
+      data: { id: 'cus_123', cpfCnpj: '12345678909' }
+    });
   });
 
   test('updateSubscriptionStatus: define end_date ao cancelar', async () => {
@@ -429,7 +480,7 @@ describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => 
 
   test('getBySellerId: 404 quando seller não existe e sucesso quando existe', async () => {
     // validateId não lança
-    SellerValidator.validateId.mockImplementation(() => {});
+    SellerValidator.validateId.mockImplementation(() => { });
 
     // Seller inexistente
     Seller.findByPk.mockResolvedValueOnce(null);
@@ -438,7 +489,7 @@ describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => 
     expect(res.status).toBe(404);
 
     // Seller existente -> lista
-    Seller.findByPk.mockResolvedValueOnce({ id: 1 });
+    Seller.findByPk.mockResolvedValueOnce({ id: 1, update: jest.fn().mockResolvedValue(true) });
     SellerSubscriptionModel.findAll.mockResolvedValueOnce([{ id: 1 }, { id: 2 }]);
     res = await SellerSubscriptionService.getBySellerId(1);
     expect(res.success).toBe(true);
@@ -519,10 +570,10 @@ describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => 
     });
     SellerSubscriptionModel.findOne.mockResolvedValueOnce(null);
 
-    const spy = jest.spyOn(SellerSubscriptionService, 'createSubscription').mockResolvedValueOnce({ 
-      success: false, 
-      status: 400, 
-      message: 'Erro simulado' 
+    const spy = jest.spyOn(SellerSubscriptionService, 'createSubscription').mockResolvedValueOnce({
+      success: false,
+      status: 400,
+      message: 'Erro simulado'
     });
     const result = await SellerSubscriptionService.retryWithPaymentMethod(8, 'PIX');
     expect(result.success).toBe(false);
@@ -531,159 +582,159 @@ describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => 
     expect(spy).toHaveBeenCalledWith(8, expect.any(Object), expect.objectContaining({ billingType: 'PIX' }), expect.any(Object));
   });
 
-    test('retryWithPaymentMethod: cria quando possível e falha quando já há ativa', async () => {
-        // Seller encontrado e sem assinatura ativa
-        Seller.findByPk.mockResolvedValueOnce({
-            id: 7,
-            payments_customer_id: 'cus_7',
-            nuvemshop_id: 777,
-            nuvemshop_info: JSON.stringify({ email: 's@e.com', name: { pt: 'Loja X' }, business_id: '12345678909', phone: '11999999999' }),
-            user: { email: 's@e.com', userData: { cpfCnpj: '12345678909', mobilePhone: '11999999999' } }
-        });
-        SellerSubscriptionModel.findOne.mockResolvedValueOnce(null);
+  test('retryWithPaymentMethod: cria quando possível e falha quando já há ativa', async () => {
+    // Seller encontrado e sem assinatura ativa
+    Seller.findByPk.mockResolvedValueOnce({
+      id: 7,
+      payments_customer_id: 'cus_7',
+      nuvemshop_id: 777,
+      nuvemshop_info: JSON.stringify({ email: 's@e.com', name: { pt: 'Loja X' }, business_id: '12345678909' }),
+      user: { email: 's@e.com', userData: { cpfCnpj: '12345678909', mobilePhone: '11999999999' } }
+    });
+    SellerSubscriptionModel.findOne.mockResolvedValueOnce(null);
 
-        const spy = jest.spyOn(SellerSubscriptionService, 'createSubscription').mockResolvedValueOnce({ success: true, data: { id: 1 } });
-        const ok = await SellerSubscriptionService.retryWithPaymentMethod(7, 'PIX');
-        expect(ok.success).toBe(true);
-        expect(spy).toHaveBeenCalledWith(7, expect.any(Object), expect.objectContaining({ billingType: 'PIX' }), expect.any(Object));
+    const spy = jest.spyOn(SellerSubscriptionService, 'createSubscription').mockResolvedValueOnce({ success: true, data: { id: 1 } });
+    const ok = await SellerSubscriptionService.retryWithPaymentMethod(7, 'PIX');
+    expect(ok.success).toBe(true);
+    expect(spy).toHaveBeenCalledWith(7, expect.any(Object), expect.objectContaining({ billingType: 'PIX' }), expect.any(Object));
 
-        // Já existe assinatura ativa
-        Seller.findByPk.mockResolvedValueOnce({
-            id: 7,
-            payments_customer_id: 'cus_7',
-            nuvemshop_id: 777,
-            nuvemshop_info: JSON.stringify({ email: 's@e.com', name: { pt: 'Loja X' }, business_id: '12345678909', phone: '11999999999' }),
-            user: { email: 's@e.com', userData: { cpfCnpj: '12345678909', mobilePhone: '11999999999' } }
-        });
-        SellerSubscriptionModel.findOne.mockResolvedValueOnce({ id: 99, status: 'active' });
-        const dup = await SellerSubscriptionService.retryWithPaymentMethod(7, 'PIX');
-        expect(dup.success).toBe(false);
-        expect(dup.status).toBe(400);
+    // Já existe assinatura ativa
+    Seller.findByPk.mockResolvedValueOnce({
+      id: 7,
+      payments_customer_id: 'cus_7',
+      nuvemshop_id: 777,
+      nuvemshop_info: JSON.stringify({ email: 's@e.com', name: { pt: 'Loja X' }, business_id: '12345678909' }),
+      user: { email: 's@e.com', userData: { cpfCnpj: '12345678909', mobilePhone: '11999999999' } }
+    });
+    SellerSubscriptionModel.findOne.mockResolvedValueOnce({ id: 99, status: 'active' });
+    const dup = await SellerSubscriptionService.retryWithPaymentMethod(7, 'PIX');
+    expect(dup.success).toBe(false);
+    expect(dup.status).toBe(400);
+  });
+
+  // Testes simples para cobertura adicional - sem usar asaasValidator
+  describe('Cenários adicionais para cobertura', () => {
+    test('createSubscription: seller com nuvemshop_info corrompido', async () => {
+      const seller = {
+        id: 100,
+        payments_customer_id: 'cus_100',
+        nuvemshop_info: '{invalid_json', // JSON inválido
+        user: { email: 'test@test.com', userData: { cpfCnpj: '12345678909' } }
+      };
+
+      Seller.findByPk.mockResolvedValueOnce(seller);
+
+      const result = await SellerSubscriptionService.createSubscription(100, planMonthly(), {
+        billingType: 'PIX',
+        name: 'Test User',
+        email: 'test@test.com'
+      });
+
+      // Deve falhar devido à validação ou outros problemas, mas o parse não deve quebrar
+      expect(result).toBeDefined();
     });
 
-    // Testes simples para cobertura adicional - sem usar asaasValidator
-    describe('Cenários adicionais para cobertura', () => {
-        test('createSubscription: seller com nuvemshop_info corrompido', async () => {
-            const seller = {
-                id: 100,
-                payments_customer_id: 'cus_100',
-                nuvemshop_info: '{invalid_json', // JSON inválido
-                user: { email: 'test@test.com', userData: { cpfCnpj: '12345678909' } }
-            };
-            
-            Seller.findByPk.mockResolvedValueOnce(seller);
+    test('createSubscription: teste com dados mínimos', async () => {
+      const seller = sellerWithoutCustomer();
+      Seller.findByPk.mockResolvedValueOnce(seller);
 
-            const result = await SellerSubscriptionService.createSubscription(100, planMonthly(), {
-                billingType: 'PIX',
-                name: 'Test User',
-                email: 'test@test.com'
-            });
+      const result = await SellerSubscriptionService.createSubscription(1, planMonthly(), {
+        billingType: 'PIX'
+      });
 
-            // Deve falhar devido à validação ou outros problemas, mas o parse não deve quebrar
-            expect(result).toBeDefined();
-        });
-
-        test('createSubscription: teste com dados mínimos', async () => {
-            const seller = sellerWithoutCustomer();
-            Seller.findByPk.mockResolvedValueOnce(seller);
-
-            const result = await SellerSubscriptionService.createSubscription(1, planMonthly(), {
-                billingType: 'PIX'
-            });
-
-            // Deve retornar algum resultado (sucesso ou falha)
-            expect(result).toBeDefined();
-            expect(typeof result.success).toBe('boolean');
-        });
-
-        test('createSubscription: teste com business_id como fonte de CPF', async () => {
-            const seller = {
-                id: 200,
-                payments_customer_id: null,
-                nuvemshop_info: JSON.stringify({
-                    business_id: '98765432100',
-                    email: 'business@test.com'
-                }),
-                user: { email: 'business@test.com', userData: {} }
-            };
-
-            Seller.findByPk.mockResolvedValueOnce(seller);
-
-            const result = await SellerSubscriptionService.createSubscription(200, planMonthly(), {
-                billingType: 'PIX',
-                name: 'Business User',
-                email: 'business@test.com'
-            });
-
-            expect(result).toBeDefined();
-        });
+      // Deve retornar algum resultado (sucesso ou falha)
+      expect(result).toBeDefined();
+      expect(typeof result.success).toBe('boolean');
     });
 
-    // Novos testes para melhorar cobertura acima de 80%
-    describe('Testes adicionais para cobertura', () => {
-        test('updateSubscriptionStatus: falha na validação do ID', async () => {
-            const result = await SellerSubscriptionService.updateSubscriptionStatus('', 'active');
-            expect(result.success).toBe(false);
-            expect(result.status).toBe(404); // O método retorna 404 quando ID vazio
-        });
+    test('createSubscription: teste com business_id como fonte de CPF', async () => {
+      const seller = {
+        id: 200,
+        payments_customer_id: null,
+        nuvemshop_info: JSON.stringify({
+          business_id: '98765432100',
+          email: 'business@test.com'
+        }),
+        user: { email: 'business@test.com', userData: {} }
+      };
 
-        test('updateSubscriptionStatus: assinatura não encontrada', async () => {
-            SellerSubscriptionModel.findByPk.mockResolvedValue(null);
-            
-            const result = await SellerSubscriptionService.updateSubscriptionStatus(999, 'active');
-            expect(result.success).toBe(false);
-            expect(result.status).toBe(404);
-        });
+      Seller.findByPk.mockResolvedValueOnce(seller);
 
-        test('cancelSubscription: falha quando assinatura não existe', async () => {
-            SellerSubscriptionModel.findOne.mockResolvedValue(null);
-            
-            const result = await SellerSubscriptionService.cancelSubscription('sub_inexistente');
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('Assinatura ativa não encontrada');
-        });
+      const result = await SellerSubscriptionService.createSubscription(200, planMonthly(), {
+        billingType: 'PIX',
+        name: 'Business User',
+        email: 'business@test.com'
+      });
 
-        test('getByExternalId: com ID válido mas não encontrado', async () => {
-            SellerSubscriptionModel.findOne.mockResolvedValue(null);
-            
-            const result = await SellerSubscriptionService.getByExternalId('sub_inexistente');
-            expect(result.success).toBe(false);
-            expect(result.status).toBe(404);
-        });
-
-        test('getBySellerId: sucesso com seller válido', async () => {
-            const subscriptions = [{ id: 1, seller_id: 1 }, { id: 2, seller_id: 1 }];
-            SellerSubscriptionModel.findAll.mockResolvedValue(subscriptions);
-            
-            const result = await SellerSubscriptionService.getBySellerId(1);
-            expect(result.success).toBe(true);
-            expect(result.data).toBe(subscriptions);
-        });
-
-        test('getBySellerId: erro de banco de dados', async () => {
-            SellerSubscriptionModel.findAll.mockRejectedValue(new Error('Database error'));
-            
-            const result = await SellerSubscriptionService.getBySellerId(1);
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('Database error');
-        });
-
-        test('retryWithPaymentMethod: assinatura ativa já existe', async () => {
-            Seller.findByPk.mockResolvedValue({ id: 1, name: 'Seller 1' });
-            SellerSubscriptionModel.findOne.mockResolvedValue({ id: 1, status: 'active' });
-            
-            const result = await SellerSubscriptionService.retryWithPaymentMethod(1, 'PIX');
-            expect(result.success).toBe(false);
-            expect(result.status).toBe(400);
-            expect(result.message).toBe('Seller já possui assinatura ativa');
-        });
-
-        test('createSubscription: erro genérico durante processamento', async () => {
-            Seller.findByPk.mockRejectedValue(new Error('Erro inesperado'));
-            
-            const result = await SellerSubscriptionService.createSubscription(999, planMonthly(), {});
-            expect(result.success).toBe(false);
-            expect(result.status).toBe(500);
-        });
+      expect(result).toBeDefined();
     });
+  });
+
+  // Novos testes para melhorar cobertura acima de 80%
+  describe('Testes adicionais para cobertura', () => {
+    test('updateSubscriptionStatus: falha na validação do ID', async () => {
+      const result = await SellerSubscriptionService.updateSubscriptionStatus('', 'active');
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(404); // O método retorna 404 quando ID vazio
+    });
+
+    test('updateSubscriptionStatus: assinatura não encontrada', async () => {
+      SellerSubscriptionModel.findByPk.mockResolvedValue(null);
+
+      const result = await SellerSubscriptionService.updateSubscriptionStatus(999, 'active');
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(404);
+    });
+
+    test('cancelSubscription: falha quando assinatura não existe', async () => {
+      SellerSubscriptionModel.findOne.mockResolvedValue(null);
+
+      const result = await SellerSubscriptionService.cancelSubscription('sub_inexistente');
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Assinatura ativa não encontrada');
+    });
+
+    test('getByExternalId: com ID válido mas não encontrado', async () => {
+      SellerSubscriptionModel.findOne.mockResolvedValue(null);
+
+      const result = await SellerSubscriptionService.getByExternalId('sub_inexistente');
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(404);
+    });
+
+    test('getBySellerId: sucesso com seller válido', async () => {
+      const subscriptions = [{ id: 1, seller_id: 1 }, { id: 2, seller_id: 1 }];
+      SellerSubscriptionModel.findAll.mockResolvedValue(subscriptions);
+
+      const result = await SellerSubscriptionService.getBySellerId(1);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(subscriptions);
+    });
+
+    test('getBySellerId: erro de banco de dados', async () => {
+      SellerSubscriptionModel.findAll.mockRejectedValue(new Error('Database error'));
+
+      const result = await SellerSubscriptionService.getBySellerId(1);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Database error');
+    });
+
+    test('retryWithPaymentMethod: assinatura ativa já existe', async () => {
+      Seller.findByPk.mockResolvedValue({ id: 1, name: 'Seller 1', update: jest.fn().mockResolvedValue(true) });
+      SellerSubscriptionModel.findOne.mockResolvedValue({ id: 1, status: 'active' });
+
+      const result = await SellerSubscriptionService.retryWithPaymentMethod(1, 'PIX');
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(400);
+      expect(result.message).toBe('Seller já possui uma assinatura ativa');
+    });
+
+    test('createSubscription: erro genérico durante processamento', async () => {
+      Seller.findByPk.mockRejectedValue(new Error('Erro inesperado'));
+
+      const result = await SellerSubscriptionService.createSubscription(999, planMonthly(), {});
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(400);
+    });
+  });
 });

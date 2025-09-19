@@ -12,17 +12,17 @@ const SellerSubscription = sequelize.define('SellerSubscription', {
   seller_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-  unique: true,
+    unique: true,
     comment: 'ID do vendedor que assina o SaaS'
   },
-  
+
   // Identificação externa na plataforma de pagamento
   external_id: {
     type: DataTypes.STRING,
     allowNull: true,
     comment: 'ID da assinatura na plataforma de pagamento'
   },
-  
+
   // Dados da assinatura
   plan_name: {
     type: DataTypes.STRING,
@@ -57,13 +57,13 @@ const SellerSubscription = sequelize.define('SellerSubscription', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  
+
   // Dados de pagamento
   billing_type: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  
+
   // Metadados e informações adicionais
   features: {
     type: DataTypes.JSON,
@@ -75,7 +75,7 @@ const SellerSubscription = sequelize.define('SellerSubscription', {
     allowNull: true,
     comment: 'Dados adicionais sobre a assinatura'
   },
-  
+
   // Campo para soft delete
   deleted_at: {
     type: DataTypes.DATE,

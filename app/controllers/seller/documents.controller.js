@@ -127,13 +127,13 @@ async function checkSellerStatus(req, res) {
                 subscription_external_id: subscription?.external_id || null,
                 // Expor userData para o front decidir exibição de captura de cartão
                 userData: userData ? {
-                    cpfCnpj: userData.cpfCnpj || null,
-                    mobilePhone: userData.mobilePhone || null,
+                    cpfCnpj: userData.cpf_cnpj || null,
+                    mobilePhone: userData.mobile_phone || null,
                     address: userData.address || null,
-                    addressNumber: userData.addressNumber || null,
+                    addressNumber: userData.address_number || null,
                     province: userData.province || null,
-                    postalCode: userData.postalCode || null,
-                    birthDate: userData.birthDate || null
+                    postalCode: userData.postal_code || null,
+                    birthDate: userData.birth_date || null
                 } : null,
                 // Conveniência: cpfCnpj também no topo
                 cpfCnpj: effectiveCpfCnpj

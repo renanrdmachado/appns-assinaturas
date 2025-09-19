@@ -147,6 +147,12 @@ describe('SellerSubAccountService', () => {
                 mobilePhone: '11999999999'
             });
 
+            // Mock para getSubAccountByCpfCnpj - deve retornar que não existe subconta
+            subAccountService.getSubAccountByCpfCnpj.mockResolvedValue({
+                success: false,
+                data: null
+            });
+
             subAccountService.addSubAccount.mockResolvedValue(mockSubAccountResponse);
 
             try {
@@ -199,6 +205,12 @@ describe('SellerSubAccountService', () => {
                 cpfCnpj: '12345678901'
             });
 
+            // Mock para getSubAccountByCpfCnpj - deve retornar que não existe subconta
+            subAccountService.getSubAccountByCpfCnpj.mockResolvedValue({
+                success: false,
+                data: null
+            });
+
             subAccountService.addSubAccount.mockResolvedValue(mockErrorResponse);
 
             try {
@@ -241,6 +253,12 @@ describe('SellerSubAccountService', () => {
                 name: 'Loja Test',
                 email: 'loja@example.com',
                 cpfCnpj: '12345678901'
+            });
+
+            // Mock para getSubAccountByCpfCnpj - deve retornar que não existe subconta
+            subAccountService.getSubAccountByCpfCnpj.mockResolvedValue({
+                success: false,
+                data: null
             });
 
             const mockError = new Error('Falha na conexão');

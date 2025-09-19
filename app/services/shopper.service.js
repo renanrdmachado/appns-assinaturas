@@ -99,7 +99,7 @@ class ShopperService {
             }
 
             // Verificar se já existe um UserData com este CPF/CNPJ
-            let userData = await UserData.findOne({ where: { cpfCnpj: data.cpfCnpj } });
+            let userData = await UserData.findOne({ where: { cpf_cnpj: data.cpfCnpj } });
 
             // Sincronizar com o Asaas antes de criar no banco local
             let asaasCustomerId = null;
@@ -336,12 +336,12 @@ class ShopperService {
 
                     // Atualizar o userData no tempShopper
                     if (tempShopper.user && tempShopper.user.userData) {
-                        if (data.cpfCnpj) tempShopper.user.userData.cpfCnpj = data.cpfCnpj;
-                        if (data.mobilePhone) tempShopper.user.userData.mobilePhone = data.mobilePhone;
+                        if (data.cpfCnpj) tempShopper.user.userData.cpf_cnpj = data.cpfCnpj;
+                        if (data.mobilePhone) tempShopper.user.userData.mobile_phone = data.mobilePhone;
                         if (data.address) tempShopper.user.userData.address = data.address;
-                        if (data.addressNumber) tempShopper.user.userData.addressNumber = data.addressNumber;
+                        if (data.addressNumber) tempShopper.user.userData.address_number = data.addressNumber;
                         if (data.province) tempShopper.user.userData.province = data.province;
-                        if (data.postalCode) tempShopper.user.userData.postalCode = data.postalCode;
+                        if (data.postalCode) tempShopper.user.userData.postal_code = data.postalCode;
                     }
 
                     // Mapear para o formato do Asaas
@@ -376,13 +376,13 @@ class ShopperService {
                         data.birthDate) {
 
                         await shopper.user.userData.update({
-                            cpfCnpj: data.cpfCnpj || shopper.user.userData.cpfCnpj,
-                            mobilePhone: data.mobilePhone || shopper.user.userData.mobilePhone,
+                            cpf_cnpj: data.cpfCnpj || shopper.user.userData.cpf_cnpj,
+                            mobile_phone: data.mobilePhone || shopper.user.userData.mobile_phone,
                             address: data.address || shopper.user.userData.address,
-                            addressNumber: data.addressNumber || shopper.user.userData.addressNumber,
+                            address_number: data.addressNumber || shopper.user.userData.address_number,
                             province: data.province || shopper.user.userData.province,
-                            postalCode: data.postalCode || shopper.user.userData.postalCode,
-                            birthDate: data.birthDate || shopper.user.userData.birthDate
+                            postal_code: data.postalCode || shopper.user.userData.postal_code,
+                            birth_date: data.birthDate || shopper.user.userData.birth_date
                         }, { transaction: t });
                     }
                 }
@@ -658,7 +658,7 @@ class ShopperService {
                         include: [{
                             model: UserData,
                             as: 'userData',
-                            where: { cpfCnpj: cpfCnpj }
+                            where: { cpf_cnpj: cpfCnpj }
                         }]
                     }
                 ]
