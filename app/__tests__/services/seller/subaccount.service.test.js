@@ -62,6 +62,10 @@ describe('SellerSubAccountService', () => {
     // Reset dos mocks antes de cada teste
     beforeEach(() => {
         jest.clearAllMocks();
+        // Definições padrão para evitar valores undefined em caminhos não configurados explicitamente pelo teste
+        Seller.findAll.mockResolvedValue([]); // Evita erro "sellers is not iterable" quando não configurado
+        Seller.findByPk.mockResolvedValue(null); // Comportamento neutro (seller não encontrado) a ser sobrescrito pelos testes
+        subAccountService.getSubAccountByCpfCnpj.mockResolvedValue(null); // Padrão: nenhuma subconta encontrada, sobrescrito quando necessário
     });
 
     describe('create', () => {
@@ -364,6 +368,8 @@ describe('SellerSubAccountService', () => {
 
             SellerValidator.validateId.mockReturnValue(true);
             Seller.findByPk.mockResolvedValue(seller);
+            // O service considera qualquer valor "truthy" retornado como subconta (não exige { success, data })
+            // portanto retornamos diretamente o objeto da subconta.
             subAccountService.getSubAccountByCpfCnpj.mockResolvedValue(subaccountData);
 
             // Act
@@ -411,6 +417,7 @@ describe('SellerSubAccountService', () => {
             const subaccountData2 = { id: 'sub_456', name: 'Loja 2' };
 
             Seller.findAll.mockResolvedValue(sellers);
+            // Similar ao teste anterior, retornamos diretamente os objetos de subconta.
             subAccountService.getSubAccountByCpfCnpj
                 .mockResolvedValueOnce(subaccountData1)
                 .mockResolvedValueOnce(subaccountData2);
