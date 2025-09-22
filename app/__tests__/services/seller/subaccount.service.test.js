@@ -69,36 +69,36 @@ describe('SellerSubAccountService', () => {
             // Arrange
             const transaction = { commit: jest.fn(), rollback: jest.fn() };
 
-            // Act & Assert
-            await expect(SellerSubAccountService.create(null, transaction))
-                .rejects
-                .toThrow('Objeto de vendedor inválido fornecido.');
+            // Act
+            const result = await SellerSubAccountService.create(null, transaction);
 
+            // Assert
+            expect(result.success).toBe(false);
+            expect(result.message).toBe('Objeto de vendedor inválido fornecido.');
             expect(subAccountService.addSubAccount).not.toHaveBeenCalled();
         });
 
-        test('deve retornar erro quando seller já possui subconta', async () => {
+        test('deve retornar sucesso quando seller já possui subconta', async () => {
             // Arrange
             const seller = {
                 id: 1,
                 name: 'Loja Test',
                 subaccount_id: 'sub_abc123', // já tem uma subconta
-                email: 'loja@example.com'
+                subaccount_api_key: 'api_key_123',
+                subaccount_wallet_id: 'wallet_123',
+                email: 'loja@example.com',
+                update: jest.fn()
             };
             const transaction = { commit: jest.fn(), rollback: jest.fn() };
-
-            createError.mockReturnValue({
-                success: false,
-                message: `Vendedor já possui uma subconta associada (ID: ${seller.subaccount_id})`,
-                status: 400
-            });
 
             // Act
             const result = await SellerSubAccountService.create(seller, transaction);
 
             // Assert
-            expect(result.success).toBe(false);
-            expect(result.message).toContain('Vendedor já possui uma subconta associada');
+            expect(result.success).toBe(true);
+            expect(result.data.id).toBe('sub_abc123');
+            expect(result.data.apiKey).toBe('api_key_123');
+            expect(result.data.walletId).toBe('wallet_123');
             expect(subAccountService.addSubAccount).not.toHaveBeenCalled();
         });
 
@@ -172,7 +172,7 @@ describe('SellerSubAccountService', () => {
             }
         });
 
-        test('deve lançar erro quando a API Asaas falha', async () => {
+        test('deve retornar erro e registrar debug quando a API Asaas falha', async () => {
             // Arrange
             const seller = {
                 id: 1,
@@ -214,14 +214,16 @@ describe('SellerSubAccountService', () => {
             subAccountService.addSubAccount.mockResolvedValue(mockErrorResponse);
 
             try {
-                // Act & Assert
-                await expect(SellerSubAccountService.create(seller, transaction))
-                    .rejects
-                    .toThrow('Erro desconhecido ao criar subconta no Asaas.');
+                // Act
+                const result = await SellerSubAccountService.create(seller, transaction);
 
+                // Assert
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Erro desconhecido ao criar subconta no Asaas.');
                 expect(SellerSubAccountService.formatDataForAsaasSubAccount).toHaveBeenCalledWith(seller);
                 expect(subAccountService.addSubAccount).toHaveBeenCalled();
-                expect(seller.update).not.toHaveBeenCalled();
+                // Agora o serviço registra _subaccount_debug no seller mesmo em falha
+                expect(seller.update).toHaveBeenCalled();
             } finally {
                 // Restaurar o método original
                 SellerSubAccountService.formatDataForAsaasSubAccount = originalMethod;
@@ -265,11 +267,12 @@ describe('SellerSubAccountService', () => {
             subAccountService.addSubAccount.mockRejectedValue(mockError);
 
             try {
-                // Act & Assert
-                await expect(SellerSubAccountService.create(seller, transaction))
-                    .rejects
-                    .toEqual(mockError);
+                // Act
+                const result = await SellerSubAccountService.create(seller, transaction);
 
+                // Assert
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Falha na conexão');
                 expect(SellerSubAccountService.formatDataForAsaasSubAccount).toHaveBeenCalledWith(seller);
                 expect(subAccountService.addSubAccount).toHaveBeenCalled();
             } finally {
@@ -349,8 +352,8 @@ describe('SellerSubAccountService', () => {
                 name: 'Loja Test',
                 subaccount_id: 'sub_abc123',
                 Asaas_cpfCnpj: '12345678901',
-                asaas_api_key: 'api_key_123',
-                wallet_id: 'wallet_123'
+                subaccount_api_key: 'api_key_123',
+                subaccount_wallet_id: 'wallet_123'
             };
 
             const subaccountData = {

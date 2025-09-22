@@ -27,12 +27,27 @@ jest.mock('../../services/seller-subaccount.service', () => ({
 }), { virtual: true });
 
 // Mocks adicionais para cobrir métodos auxiliares do serviço em uma única suíte
-jest.mock('../../models/SellerSubscription', () => ({
-  findOne: jest.fn(),
-  findAll: jest.fn(),
-  findByPk: jest.fn(),
-  create: jest.fn().mockResolvedValue({ id: 1, external_id: 'sub_test' })
-}), { virtual: true });
+jest.mock('../../models/SellerSubscription', () => {
+  const mockSubscriptionInstance = {
+    update: jest.fn().mockResolvedValue({ id: 1, external_id: 'sub_test' }),
+    destroy: jest.fn().mockResolvedValue(true),
+    save: jest.fn().mockResolvedValue(true)
+  };
+
+  function SellerSubscription(data) {
+    Object.assign(this, data, mockSubscriptionInstance);
+    return this;
+  }
+
+  SellerSubscription.findOne = jest.fn();
+  SellerSubscription.findAll = jest.fn();
+  SellerSubscription.findByPk = jest.fn();
+  SellerSubscription.create = jest.fn().mockImplementation((data) => {
+    return Promise.resolve(Object.assign({}, data, mockSubscriptionInstance, { id: 1 }));
+  });
+
+  return SellerSubscription;
+}, { virtual: true });
 
 jest.mock('../../validators/seller-validator', () => ({
   validateId: jest.fn()
@@ -40,14 +55,27 @@ jest.mock('../../validators/seller-validator', () => ({
 
 // Evita carregar definições reais do sequelize nos modelos User/UserData
 jest.mock('../../models/User', () => ({
-  findByPk: jest.fn(),
+  findByPk: jest.fn().mockResolvedValue({ id: 1, update: jest.fn(), user_data_id: null }),
   update: jest.fn()
 }), { virtual: true });
-jest.mock('../../models/UserData', () => ({
-  create: jest.fn(),
-  findByPk: jest.fn(),
-  update: jest.fn()
-}), { virtual: true });
+jest.mock('../../models/UserData', () => {
+  const dataStore = new Map();
+  let idSeq = 1;
+  return {
+    create: jest.fn(async (payload) => {
+      const id = idSeq++;
+      const record = { id, ...payload, update: jest.fn(async (u) => Object.assign(record, u)) };
+      dataStore.set(id, record);
+      return record;
+    }),
+    findByPk: jest.fn(async (id) => dataStore.get(id) || null),
+    findOne: jest.fn(async ({ where }) => {
+      const values = Array.from(dataStore.values());
+      return values.find(v => !where.cpf_cnpj || v.cpf_cnpj === where.cpf_cnpj) || null;
+    }),
+    update: jest.fn()
+  };
+}, { virtual: true });
 
 // Mock transação para fluxos que dependem dela (ex.: retryWithPaymentMethod)
 jest.mock('../../config/database', () => ({
@@ -716,7 +744,7 @@ describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => 
 
       const result = await SellerSubscriptionService.getBySellerId(1);
       expect(result.success).toBe(false);
-      expect(result.message).toBe('Database error');
+      expect(result.message).toBe('Erro interno do servidor');
     });
 
     test('retryWithPaymentMethod: assinatura ativa já existe', async () => {
@@ -730,7 +758,9 @@ describe('SellerSubscriptionService - métodos auxiliares e CRUD legado', () => 
     });
 
     test('createSubscription: erro genérico durante processamento', async () => {
-      Seller.findByPk.mockRejectedValue(new Error('Erro inesperado'));
+      // Restaurar comportamento padrão do mock e depois configurar rejeição
+      Seller.findByPk.mockRestore();
+      Seller.findByPk = jest.fn().mockRejectedValueOnce(new Error('Erro inesperado'));
 
       const result = await SellerSubscriptionService.createSubscription(999, planMonthly(), {});
       expect(result.success).toBe(false);

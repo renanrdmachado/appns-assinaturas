@@ -8,8 +8,8 @@ jest.mock('../../../helpers/NsApiClient', () => ({
 
 // Mock do error handler
 jest.mock('../../../utils/errorHandler', () => ({
-    formatError: jest.fn(error => ({ success: false, message: error.message })),
-    createError: jest.fn((message, code) => ({ success: false, message, code }))
+    formatError: jest.fn(),
+    createError: jest.fn()
 }));
 
 // Agora importamos os módulos que serão usados
@@ -34,11 +34,11 @@ describe('NsProductsService - Testes', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Mock padrão para formatError e createError
+        // Configurar mocks padrão
         formatError.mockImplementation((error) => ({
             success: false,
-            message: error.message,
-            code: error.code || 400
+            message: error.message || 'Erro interno do servidor',
+            code: 500
         }));
         createError.mockImplementation((message, code) => ({
             success: false,
@@ -571,13 +571,15 @@ describe('NsProductsService - Testes', () => {
 
             NsProductsService.getProducts = jest.fn().mockResolvedValue({
                 success: false,
-                message: 'Erro na busca'
+                message: 'Erro na busca',
+                code: 500
             });
 
             const result = await NsProductsService.syncProduct(storeId, accessToken, mockProduct);
 
             expect(result.success).toBe(false);
             expect(result.message).toBe('Erro na busca');
+            expect(result.code).toBe(500);
         });
 
         test('deve tratar erro de validação da Nuvemshop (422)', async () => {
@@ -597,6 +599,7 @@ describe('NsProductsService - Testes', () => {
                 }
             };
 
+            // Mock createProduct para rejeitar com erro de validação
             NsProductsService.createProduct = jest.fn().mockRejectedValue(nsValidationError);
 
             const result = await NsProductsService.syncProduct(storeId, accessToken, mockProduct);

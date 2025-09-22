@@ -15,11 +15,51 @@ class SellerSubAccountService {
     async create(seller, transaction) {
         try {
             if (!seller || !seller.id) {
-                throw new Error('Objeto de vendedor inválido fornecido.');
+                throw createError('Objeto de vendedor inválido fornecido.', 400);
             }
 
+            console.log(`DEBUG - Iniciando criação de subconta para seller ${seller.id}`);
+
             if (seller.subaccount_id) {
-                return createError(`Vendedor já possui uma subconta associada (ID: ${seller.subaccount_id})`, 400);
+                console.log(`DEBUG - Seller ${seller.id} já possui subconta: ${seller.subaccount_id}`);
+                console.log(`DEBUG - Verificação de dados: apiKey=${seller.subaccount_api_key ? 'presente' : 'ausente'}, walletId=${seller.subaccount_wallet_id ? 'presente' : 'ausente'}`);
+
+                // Se tem subaccount_id mas faltam dados, tentar recuperar
+                if (!seller.subaccount_api_key || !seller.subaccount_wallet_id) {
+                    console.log('DEBUG - Subconta existe mas dados estão incompletos. Tentando recuperar da API...');
+
+                    const subAccountData = this.formatDataForAsaasSubAccount(seller);
+                    const existingSubAccount = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+
+                    if (existingSubAccount.success && existingSubAccount.data) {
+                        console.log(`DEBUG - Dados recuperados da subconta existente: ${existingSubAccount.data.id}`);
+
+                        // Atualizar o seller com os dados completos
+                        await seller.update({
+                            subaccount_api_key: existingSubAccount.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_wallet_id: existingSubAccount.data.walletId || seller.subaccount_wallet_id || null,
+                        }, { transaction });
+
+                        return {
+                            success: true,
+                            data: existingSubAccount.data,
+                            message: 'Dados da subconta existente atualizados com sucesso.'
+                        };
+                    } else {
+                        console.warn('WARN - Não foi possível recuperar dados da subconta existente');
+                        // Continuar com os dados que temos
+                    }
+                }
+
+                return {
+                    success: true,
+                    data: {
+                        id: seller.subaccount_id,
+                        apiKey: seller.subaccount_api_key,
+                        walletId: seller.subaccount_wallet_id
+                    },
+                    message: 'Seller já possui subconta associada.'
+                };
             }
 
             const subAccountData = this.formatDataForAsaasSubAccount(seller);
@@ -30,10 +70,19 @@ class SellerSubAccountService {
 
             if (existingSubAccount.success && existingSubAccount.data) {
                 console.log(`DEBUG - Subconta existente encontrada: ${existingSubAccount.data.id}`);
+                console.log(`DEBUG - Dados da subconta existente: apiKey=${existingSubAccount.data.apiKey ? 'presente' : 'ausente'}, walletId=${existingSubAccount.data.walletId ? 'presente' : 'ausente'}`);
+
+                // Atualizar o seller com os dados da subconta existente
+                await seller.update({
+                    subaccount_id: existingSubAccount.data.id,
+                    subaccount_api_key: existingSubAccount.data.apiKey || seller.subaccount_api_key || null,
+                    subaccount_wallet_id: existingSubAccount.data.walletId || seller.subaccount_wallet_id || null,
+                }, { transaction });
+
                 return {
                     success: true,
                     data: existingSubAccount.data,
-                    message: 'Subconta existente recuperada com sucesso.'
+                    message: 'Subconta existente vinculada com sucesso.'
                 };
             }
 
@@ -42,25 +91,96 @@ class SellerSubAccountService {
             const asaasResult = await subAccountService.addSubAccount(subAccountData);
 
             if (!asaasResult.success) {
-                // Se falhou por CPF já em uso, tentar buscar novamente
+                // Se falhou por CPF já em uso, tentar buscar novamente com múltiplas tentativas
                 if (asaasResult.message && asaasResult.message.includes('já está em uso')) {
-                    console.log('CPF já em uso detectado. Tentando buscar subconta existente...');
+                    console.log('CPF já em uso detectado. Tentando múltiplas recuperações de subconta existente...');
 
-                    const retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+                    // TENTATIVA 1: Buscar novamente imediatamente
+                    let retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
                     if (retryResult.success && retryResult.data) {
-                        console.log(`DEBUG - Subconta existente recuperada após retry: ${retryResult.data.id}`);
+                        console.log(`DEBUG - Subconta existente recuperada na tentativa 1: ${retryResult.data.id}`);
+                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${retryResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
+
+                        // Atualizar o seller com os dados da subconta recuperada
+                        await seller.update({
+                            subaccount_id: retryResult.data.id,
+                            subaccount_api_key: retryResult.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
+                        }, { transaction });
+
                         return {
                             success: true,
                             data: retryResult.data,
-                            message: 'Subconta existente recuperada após conflito de CPF.'
+                            message: 'Subconta existente recuperada e vinculada após conflito de CPF (tentativa 1).'
                         };
                     }
+
+                    // TENTATIVA 2: Aguardar 1s e tentar novamente
+                    console.log('Tentativa 1 falhou. Aguardando 1s e tentando novamente...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+                    if (retryResult.success && retryResult.data) {
+                        console.log(`DEBUG - Subconta existente recuperada na tentativa 2: ${retryResult.data.id}`);
+                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${retryResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
+
+                        // Atualizar o seller com os dados da subconta recuperada
+                        await seller.update({
+                            subaccount_id: retryResult.data.id,
+                            subaccount_api_key: retryResult.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
+                        }, { transaction });
+
+                        return {
+                            success: true,
+                            data: retryResult.data,
+                            message: 'Subconta existente recuperada e vinculada após conflito de CPF (tentativa 2).'
+                        };
+                    }
+
+                    // TENTATIVA 3: Aguardar mais 2s e tentar novamente
+                    console.log('Tentativa 2 falhou. Aguardando 2s e tentando novamente...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+                    if (retryResult.success && retryResult.data) {
+                        console.log(`DEBUG - Subconta existente recuperada na tentativa 3: ${retryResult.data.id}`);
+                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${retryResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
+
+                        // Atualizar o seller com os dados da subconta recuperada
+                        await seller.update({
+                            subaccount_id: retryResult.data.id,
+                            subaccount_api_key: retryResult.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
+                        }, { transaction });
+
+                        return {
+                            success: true,
+                            data: retryResult.data,
+                            message: 'Subconta existente recuperada e vinculada após conflito de CPF (tentativa 3).'
+                        };
+                    }
+
+                    // Se todas as tentativas falharam
+                    console.error('ERRO CRÍTICO: Todas as tentativas de recuperação de subconta falharam');
+                    console.error('Resultado final do Asaas:', JSON.stringify(asaasResult, null, 2));
+                    throw createError(`CPF ${subAccountData.cpfCnpj} já está em uso mas não foi possível recuperar a subconta existente após múltiplas tentativas.`, 409);
                 }
 
                 console.error('Erro ao criar subconta no Asaas:', JSON.stringify(asaasResult, null, 2));
                 // Lança o erro para que a transação externa possa fazer rollback
-                throw new Error(asaasResult.message || 'Erro desconhecido ao criar subconta no Asaas.');
+                throw createError(asaasResult.message || 'Erro desconhecido ao criar subconta no Asaas.', asaasResult.status || 500);
             }
+
+            // Se criou com sucesso, atualizar o seller
+            console.log(`DEBUG - Nova subconta criada: ${asaasResult.data.id}`);
+            console.log(`DEBUG - Dados da nova subconta: apiKey=${asaasResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${asaasResult.data.walletId ? 'presente' : 'ausente'}`);
+
+            await seller.update({
+                subaccount_id: asaasResult.data.id,
+                subaccount_api_key: asaasResult.data.apiKey || seller.subaccount_api_key || null,
+                subaccount_wallet_id: asaasResult.data.walletId || seller.subaccount_wallet_id || null,
+            }, { transaction });
 
             return {
                 success: true,
@@ -69,8 +189,26 @@ class SellerSubAccountService {
             };
         } catch (error) {
             console.error('Erro interno no SellerSubAccountService.create:', error.message);
-            // Re-lança o erro para garantir que a transação externa falhe
-            throw error;
+            console.error('Stack trace:', error.stack);
+
+            // Registrar diagnóstico mínimo no seller (em nuvemshop_info) para futura reconciliação
+            try {
+                const info = seller.nuvemshop_info || {};
+                info._subaccount_debug = {
+                    lastError: error.message,
+                    ts: new Date().toISOString()
+                };
+                await seller.update({ nuvemshop_info: info });
+            } catch (metaErr) {
+                console.warn('WARN - Falha ao registrar _subaccount_debug:', metaErr.message);
+            }
+
+            // Se conflito de CPF, devolver objeto indicando conflito para camada superior decidir continuar
+            const isConflict = error.message && error.message.includes('CPF') && error.message.includes('já está em uso');
+            const errObj = createError(error.message || 'Erro interno ao criar subconta', isConflict ? 409 : 500);
+            errObj.conflict = isConflict;
+            errObj.raw = { message: error.message, stack: error.stack };
+            return errObj;
         }
     }
 
@@ -81,7 +219,7 @@ class SellerSubAccountService {
      */
     formatDataForAsaasSubAccount(seller) {
         if (!seller || !seller.user || !seller.user.userData) {
-            throw new Error('Dados insuficientes para formatar para o Asaas. Relações `user` e `userData` são necessárias.');
+            throw createError('Dados insuficientes para formatar para o Asaas. Relações `user` e `userData` são necessárias.', 400);
         }
 
         const { user } = seller;
@@ -106,7 +244,7 @@ class SellerSubAccountService {
         // Validação de CPF/CNPJ
         const isPerson = cpf_cnpj && cpf_cnpj.length <= 11;
         if (isPerson && !birth_date) {
-            throw new Error('Data de nascimento é obrigatória para CPF.');
+            throw createError('Data de nascimento é obrigatória para CPF.', 400);
         }
 
         const formattedData = {
@@ -136,13 +274,13 @@ class SellerSubAccountService {
 
         // Validação adicional para campos obrigatórios
         if (!formattedData.cpfCnpj) {
-            throw new Error('CPF/CNPJ é obrigatório para criar subconta');
+            throw createError('CPF/CNPJ é obrigatório para criar subconta', 400);
         }
         if (!formattedData.mobilePhone) {
-            throw new Error('Telefone celular é obrigatório para criar subconta');
+            throw createError('Telefone celular é obrigatório para criar subconta', 400);
         }
         if (!formattedData.incomeValue) {
-            throw new Error('Valor de renda é obrigatório para criar subconta');
+            throw createError('Valor de renda é obrigatório para criar subconta', 400);
         }
 
         return formattedData;

@@ -8,7 +8,8 @@ jest.mock('../../../models/Seller', () => {
 
 jest.mock('../../../utils/errorHandler', () => ({
     formatError: jest.fn(),
-    createError: jest.fn()
+    // Retorna um Error real para que o toThrow funcione corretamente
+    createError: jest.fn((message) => new Error(message))
 }));
 
 // Importando o serviço que será testado

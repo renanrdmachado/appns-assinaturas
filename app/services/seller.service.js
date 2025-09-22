@@ -30,6 +30,7 @@ class SellerService {
             return { success: true, data: seller };
         } catch (error) {
             console.error('Erro ao buscar vendedor:', error.message);
+            // Usar formatError que agora trata erros de banco adequadamente
             return formatError(error);
         }
     }
@@ -63,6 +64,7 @@ class SellerService {
             return { success: true, data: sellers };
         } catch (error) {
             console.error('Erro ao buscar vendedores:', error.message);
+            // Usar formatError que agora trata erros de banco adequadamente
             return formatError(error);
         }
     }
@@ -159,8 +161,8 @@ class SellerService {
             // 4. Atualizar o seller local com os dados da subconta
             await newSeller.update({
                 subaccount_id: subAccountResult.data.id,
-                asaas_api_key: subAccountResult.data.apiKey,
-                wallet_id: subAccountResult.data.walletId,
+                subaccount_api_key: subAccountResult.data.apiKey || null,
+                subaccount_wallet_id: subAccountResult.data.walletId || null,
             }, { transaction: t });
 
             // 5. Criar assinatura padrão local
@@ -461,7 +463,8 @@ class SellerService {
                 });
             } catch (txError) {
                 console.error('Erro na transação ao atualizar vendedor:', txError.message);
-                return createError(`Erro ao atualizar dados: ${txError.message}`, 500);
+                // Não expor detalhes internos do erro de transação
+                return createError('Erro interno do servidor ao atualizar vendedor', 500);
             }
         } catch (error) {
             console.error('Erro ao atualizar vendedor:', error.message);
@@ -540,10 +543,12 @@ class SellerService {
                 };
             } catch (txError) {
                 console.error('Erro na transação ao excluir vendedor:', txError.message);
-                return createError(`Erro ao excluir dados: ${txError.message}`, 500);
+                // Usar formatError para tratar erros de banco adequadamente
+                return formatError(txError);
             }
         } catch (error) {
             console.error('Erro ao excluir vendedor:', error.message);
+            // Usar formatError que agora trata erros de banco adequadamente
             return formatError(error);
         }
     }
@@ -651,7 +656,8 @@ class SellerService {
                 };
             } catch (txError) {
                 console.error('Erro na transação ao salvar subconta:', txError.message);
-                return createError(`Erro ao salvar subconta: ${txError.message}`, 500);
+                // Não expor detalhes internos do erro de transação
+                return createError('Erro interno do servidor ao salvar subconta', 500);
             }
         } catch (error) {
             console.error('Erro ao salvar informações da subconta:', error.message);
@@ -664,11 +670,17 @@ class SellerService {
             if (!cpfCnpj) {
                 return createError('CPF/CNPJ é obrigatório', 400);
             }
+            // Normalizar para apenas dígitos e permitir busca tanto pelo formato cru quanto armazenado
+            const digits = String(cpfCnpj).replace(/\D/g, '');
+            const whereClause = digits ? { cpf_cnpj: digits } : { cpf_cnpj: cpfCnpj };
 
-            // Buscar UserData pelo CPF/CNPJ
-            const userData = await UserData.findOne({
-                where: { cpf_cnpj: cpfCnpj }
-            });
+            // Buscar UserData pelo CPF/CNPJ (primeira tentativa com dígitos)
+            let userData = await UserData.findOne({ where: whereClause });
+
+            // Se não encontrou e havia dígitos, tentar novamente com valor original (caso salvo formatado)
+            if (!userData && digits && digits !== cpfCnpj) {
+                userData = await UserData.findOne({ where: { cpf_cnpj: cpfCnpj } });
+            }
 
             if (!userData) {
                 return { success: true, data: null };

@@ -6,7 +6,7 @@ jest.mock('../../models/Order', () => ({
 
 jest.mock('../../models/Product', () => ({ findByPk: jest.fn() }));
 jest.mock('../../models/Shopper', () => ({ findByPk: jest.fn() }));
-jest.mock('../../models/Seller', () => { function Seller(){}; Seller.findByPk = jest.fn(); return Seller; });
+jest.mock('../../models/Seller', () => { function Seller() { }; Seller.findByPk = jest.fn(); return Seller; });
 
 // Mock do validator para usar implementacao real (sem mocks)
 jest.mock('../../validators/order-validator', () => jest.requireActual('../../validators/order-validator'));
@@ -219,14 +219,16 @@ describe('OrderService - cobertura adicional', () => {
     Order.create.mockRejectedValue(new Error('db error'));
     const res = await OrderService.create({ shopper_id: 7, product_id: 10, value: 99.9, customer_info: {} });
     expect(res.success).toBe(false);
-    expect(res.message).toMatch(/db error/i);
+    expect(res.message).toBe('Erro interno do servidor');
+    expect(res.status).toBe(500);
   });
 
   test('getAll retorna erro quando findAll lança exceção', async () => {
     Order.findAll.mockRejectedValue(new Error('db down'));
     const res = await OrderService.getAll();
     expect(res.success).toBe(false);
-    expect(res.message).toMatch(/db down/i);
+    expect(res.message).toBe('Erro interno do servidor');
+    expect(res.status).toBe(500);
   });
 
   test('delete retorna erro quando destroy lança exceção', async () => {
@@ -234,14 +236,16 @@ describe('OrderService - cobertura adicional', () => {
     Order.findByPk.mockResolvedValue({ id: 3, destroy });
     const res = await OrderService.delete(3);
     expect(res.success).toBe(false);
-    expect(res.message).toMatch(/cannot delete/i);
+    expect(res.message).toBe('Erro interno do servidor');
+    expect(res.status).toBe(500);
   });
 
   test('get retorna erro quando findByPk lança exceção', async () => {
     Order.findByPk.mockRejectedValue(new Error('db get error'));
     const res = await OrderService.get(1);
     expect(res.success).toBe(false);
-    expect(res.message).toMatch(/db get error/i);
+    expect(res.message).toBe('Erro interno do servidor');
+    expect(res.status).toBe(500);
   });
 
   test('update retorna erro quando update lança exceção', async () => {
@@ -249,13 +253,15 @@ describe('OrderService - cobertura adicional', () => {
     Order.findByPk.mockResolvedValue(existing);
     const res = await OrderService.update(1, { value: 10 });
     expect(res.success).toBe(false);
-    expect(res.message).toMatch(/upd fail/i);
+    expect(res.message).toBe('Erro interno do servidor');
+    expect(res.status).toBe(500);
   });
 
   test('delete retorna erro quando findByPk lança exceção', async () => {
     Order.findByPk.mockRejectedValue(new Error('db find error'));
     const res = await OrderService.delete(3);
     expect(res.success).toBe(false);
-    expect(res.message).toMatch(/db find error/i);
+    expect(res.message).toBe('Erro interno do servidor');
+    expect(res.status).toBe(500);
   });
 });

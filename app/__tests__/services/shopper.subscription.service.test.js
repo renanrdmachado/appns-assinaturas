@@ -288,7 +288,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
       svc.calculateNextDueDate = jest.fn(() => { throw new Error('calc error'); });
       const res = await svc.create(orderId, { billing_type: 'PIX' });
       expect(res.success).toBe(false);
-      expect(res.message || '').toMatch(/calc error/i);
+      expect(res.message || '').toMatch(/Erro interno do servidor/i);
     } finally {
       svc.calculateNextDueDate = orig;
     }
@@ -306,7 +306,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
       SubscriptionValidator.validateCreateData = jest.fn(() => { throw new Error('invalid create'); });
       const res = await ShopperSubscriptionService.create(orderId, { billing_type: 'PIX' });
       expect(res.success).toBe(false);
-      expect(res.message || '').toMatch(/invalid create/i);
+      expect(res.message || '').toMatch(/Erro interno do servidor/i);
     } finally {
       SubscriptionValidator.validateCreateData = orig;
     }

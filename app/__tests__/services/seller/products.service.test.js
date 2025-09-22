@@ -1,20 +1,20 @@
 // Mock do NsApiClient antes de importar qualquer coisa
 jest.mock('../../../helpers/NsApiClient', () => ({
-  get: jest.fn(),
-  post: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn()
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn()
 }));
 
 // Mock do error handler
 jest.mock('../../../utils/errorHandler', () => ({
-  formatError: jest.fn(error => ({ success: false, message: error.message })),
-  createError: jest.fn((message, code) => ({ success: false, message, code }))
+    formatError: jest.fn(error => ({ success: false, message: error.message })),
+    createError: jest.fn((message, code) => ({ success: false, message, code }))
 }));
 
 // Mock do subscription validator
 jest.mock('../../../utils/subscription-validator', () => ({
-  checkSubscriptionMiddleware: jest.fn(() => Promise.resolve({ success: true }))
+    checkSubscriptionMiddleware: jest.fn(() => Promise.resolve({ success: true }))
 }));
 
 // Agora importamos os módulos que serão usados
@@ -26,10 +26,10 @@ const { checkSubscriptionMiddleware } = require('../../../utils/subscription-val
 describe('SellerProductsService - Testes', () => {
     // Silenciar console.error e console.log durante os testes
     let consoleErrorSpy, consoleLogSpy;
-    
+
     beforeAll(() => {
-        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
     });
 
     afterAll(() => {
@@ -39,17 +39,17 @@ describe('SellerProductsService - Testes', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         // Mock padrão para formatError e createError
-        formatError.mockImplementation((error) => ({ 
-            success: false, 
-            message: error.message,
-            code: error.code || 400 
+        formatError.mockImplementation((error) => ({
+            success: false,
+            message: error.message || 'Erro interno do servidor',
+            code: 500
         }));
-        createError.mockImplementation((message, code) => ({ 
-            success: false, 
-            message, 
-            code 
+        createError.mockImplementation((message, code) => ({
+            success: false,
+            message,
+            code
         }));
 
         // Mock padrão para subscription validator (assinatura válida)
@@ -61,7 +61,7 @@ describe('SellerProductsService - Testes', () => {
         it('deve listar produtos com sucesso', async () => {
             const mockProducts = [
                 { id: 1, name: 'Produto 1' },
-                { id:2, name: 'Produto 2' }
+                { id: 2, name: 'Produto 2' }
             ];
 
             NsApiClient.get.mockResolvedValue(mockProducts);
@@ -112,7 +112,7 @@ describe('SellerProductsService - Testes', () => {
             expect(result).toEqual({
                 success: false,
                 message: 'Erro de API',
-                code: 400
+                code: 500
             });
         });
     });
@@ -156,7 +156,7 @@ describe('SellerProductsService - Testes', () => {
             expect(result).toEqual({
                 success: false,
                 message: 'Produto não encontrado',
-                code: 400
+                code: 500
             });
         });
     });
@@ -215,7 +215,7 @@ describe('SellerProductsService - Testes', () => {
             expect(result).toEqual({
                 success: false,
                 message: 'Erro ao criar produto',
-                code: 400
+                code: 500
             });
         });
     });
@@ -274,7 +274,7 @@ describe('SellerProductsService - Testes', () => {
             expect(result).toEqual({
                 success: false,
                 message: 'Erro ao atualizar produto',
-                code: 400
+                code: 500
             });
         });
     });
@@ -317,7 +317,7 @@ describe('SellerProductsService - Testes', () => {
             expect(result).toEqual({
                 success: false,
                 message: 'Erro ao excluir produto',
-                code: 400
+                code: 500
             });
         });
     });
@@ -364,7 +364,7 @@ describe('SellerProductsService - Testes', () => {
             expect(result).toEqual({
                 success: false,
                 message: 'Erro ao buscar variantes',
-                code: 400
+                code: 500
             });
         });
     });
