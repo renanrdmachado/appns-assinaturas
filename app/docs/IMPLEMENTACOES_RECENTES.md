@@ -2,6 +2,29 @@
 
 ## 📋 Resumo das Melhorias Implementadas
 
+### 🆕 **Sistema de Divisão de Receitas (Split) - Janeiro 2025**
+- ✅ **Split obrigatório** para todas as assinaturas de shopper
+- ✅ Validação de carteira do seller (`subaccount_wallet_id`)
+- ✅ Dois modos de cálculo:
+  - Taxa fixa (padrão: R$ 2,00 via `AS_SPLIT_SYSTEM_FIXED`)
+  - Taxa percentual (via `AS_SPLIT_SYSTEM_PERCENT`, sobrescreve taxa fixa)
+- ✅ Arquitetura SOLID: novo serviço `SplitCalculatorService` isolado
+- ✅ **31 novos testes** cobrindo todos os cenários de split
+- ✅ Integração completa com API Asaas para transferência automática de valores
+- ✅ Documentação completa em `docs/REVENUE_SPLIT_IMPLEMENTATION.md`
+- ✅ Bloqueio automático de assinaturas se seller não tiver carteira
+- ✅ Validações de valor mínimo e percentual máximo
+- ✅ **421 testes passando** (390 existentes + 31 novos)
+
+**Arquivos Criados/Modificados**:
+- `services/split-calculator.service.js` (novo)
+- `__tests__/services/split-calculator.service.test.js` (novo)
+- `services/shopper-subscription.service.js` (refatorado)
+- `docs/REVENUE_SPLIT_IMPLEMENTATION.md` (novo)
+- `.env` (adicionadas `AS_SPLIT_SYSTEM_FIXED` e `AS_SPLIT_SYSTEM_PERCENT`)
+
+---
+
 ### 1. **Atualização do Modelo Product**
 - ✅ Adicionado campo `subscription_price` (preço para assinatura)
 - ✅ Adicionado campo `tags` (tags dos produtos)

@@ -1,6 +1,7 @@
 jest.mock('../../models/Order', () => ({ findByPk: jest.fn() }));
 jest.mock('../../models/Product', () => ({ findByPk: jest.fn() }));
 jest.mock('../../models/Shopper', () => ({ findByPk: jest.fn() }));
+jest.mock('../../models/Seller', () => ({ findByPk: jest.fn() }));
 jest.mock('../../models/User', () => ({}));
 jest.mock('../../models/UserData', () => ({}));
 jest.mock('../../models/ShopperSubscription', () => ({
@@ -37,18 +38,26 @@ jest.mock('../../utils/asaas-formatter', () => ({
 const Order = require('../../models/Order');
 const Product = require('../../models/Product');
 const Shopper = require('../../models/Shopper');
+const Seller = require('../../models/Seller');
 const ShopperSubscription = require('../../models/ShopperSubscription');
 const AsaasSubscriptionService = require('../../services/asaas/subscription.service');
 const ShopperSubscriptionService = require('../../services/shopper-subscription.service');
 
 describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Mock padrão do Seller com wallet configurada
+    Seller.findByPk.mockResolvedValue({
+      id: 1,
+      subaccount_wallet_id: '7b3b92a0-4d11-4e22-a3f4-3bd76abc11ff'
+    });
+  });
 
   test('create usa order.value como value e product.cycle como ciclo', async () => {
     const orderId = 10;
     const shopperId = 7;
 
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 3, shopper_id: shopperId, value: 123.45 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 3, shopper_id: shopperId, seller_id: 1, value: 123.45 });
     Product.findByPk.mockResolvedValue({ id: 3, cycle: 'MONTHLY', price: 99.9 });
     Shopper.findByPk.mockResolvedValue({
       id: shopperId,
@@ -83,7 +92,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     const orderId = 11;
     const shopperId = 8;
 
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 4, shopper_id: shopperId, value: 50 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 4, shopper_id: shopperId, seller_id: 1, value: 50 });
     Product.findByPk.mockResolvedValue({ id: 4, cycle: 'YEARLY', price: 99.9 });
     Shopper.findByPk.mockResolvedValue({
       id: shopperId,
@@ -117,7 +126,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     const AsaasCustomerService = require('../../services/asaas/customer.service');
     AsaasCustomerService.findByCpfCnpj.mockResolvedValueOnce({ success: true, data: { id: 'cus_reuse' } });
 
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 5, shopper_id: shopperId, value: 75 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 5, shopper_id: shopperId, seller_id: 1, value: 75 });
     Product.findByPk.mockResolvedValue({ id: 5, cycle: 'QUARTERLY' });
     const update = jest.fn();
     Shopper.findByPk.mockResolvedValue({
@@ -138,7 +147,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('erro quando cpfCnpj ausente', async () => {
     const orderId = 13;
     const shopperId = 10;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 6, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 6, shopper_id: shopperId, seller_id: 1, value: 10 });
     Product.findByPk.mockResolvedValue({ id: 6, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, name: 'C', user: { userData: {} }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -151,7 +160,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('erro quando cpfCnpj tem tamanho inválido', async () => {
     const orderId = 14;
     const shopperId = 11;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 7, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 7, shopper_id: shopperId, seller_id: 1, value: 10 });
     Product.findByPk.mockResolvedValue({ id: 7, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, name: 'C', user: { userData: { cpfCnpj: '123' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -164,7 +173,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('bloqueia criação se já existir assinatura para o pedido', async () => {
     const orderId = 15;
     const shopperId = 12;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 8, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 8, shopper_id: shopperId, seller_id: 1, value: 10 });
     Product.findByPk.mockResolvedValue({ id: 8, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue({ id: 999 });
@@ -184,7 +193,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('inclui nextDueDate derivada e aceita CREDIT_CARD com token', async () => {
     const orderId = 16;
     const shopperId = 13;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 9, shopper_id: shopperId, value: 45 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 9, shopper_id: shopperId, seller_id: 1, value: 45 });
     Product.findByPk.mockResolvedValue({ id: 9, cycle: 'BIMONTHLY' });
     Shopper.findByPk.mockResolvedValue({
       id: shopperId,
@@ -206,7 +215,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('retorna erro quando criação no Asaas falha', async () => {
     const orderId = 17;
     const shopperId = 14;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 10, shopper_id: shopperId, value: 60 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 10, shopper_id: shopperId, seller_id: 1, value: 60 });
     Product.findByPk.mockResolvedValue({ id: 10, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -221,7 +230,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('retorna erro quando criação de cliente no Asaas falha', async () => {
     const orderId = 18;
     const shopperId = 15;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 11, shopper_id: shopperId, value: 60 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 11, shopper_id: shopperId, seller_id: 1, value: 60 });
     Product.findByPk.mockResolvedValue({ id: 11, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -236,7 +245,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create usa fallback de preço do produto quando order.value ausente (subscription_price)', async () => {
     const orderId = 19;
     const shopperId = 16;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 12, shopper_id: shopperId, value: undefined });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 12, shopper_id: shopperId, seller_id: 1, value: undefined });
     Product.findByPk.mockResolvedValue({ id: 12, cycle: 'MONTHLY', subscription_price: 33.33 });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -253,7 +262,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create usa getSubscriptionPrice quando disponível', async () => {
     const orderId = 20;
     const shopperId = 17;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 13, shopper_id: shopperId, value: null });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 13, shopper_id: shopperId, seller_id: 1, value: null });
     Product.findByPk.mockResolvedValue({ id: 13, cycle: 'MONTHLY', getSubscriptionPrice: () => 44.44 });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -269,7 +278,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create retorna 404 quando produto do pedido não encontrado', async () => {
     const orderId = 21;
     const shopperId = 18;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 999, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 999, shopper_id: shopperId, seller_id: 1, value: 10 });
     Product.findByPk.mockResolvedValue(null);
     const res = await ShopperSubscriptionService.create(orderId, { billing_type: 'PIX' });
     expect(res.success).toBe(false);
@@ -279,7 +288,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create retorna erro quando cálculo de next_due_date falha', async () => {
     const orderId = 24;
     const shopperId = 40;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 99, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 99, shopper_id: shopperId, seller_id: 1, value: 10 });
     Product.findByPk.mockResolvedValue({ id: 99, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     const svc = ShopperSubscriptionService;
@@ -297,7 +306,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create retorna erro quando validação de dados falha', async () => {
     const orderId = 25;
     const shopperId = 41;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 100, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 100, shopper_id: shopperId, seller_id: 1, value: 10 });
     Product.findByPk.mockResolvedValue({ id: 100, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     const SubscriptionValidator = require('../../validators/subscription-validator');
@@ -320,7 +329,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
 
   test('create retorna erro 400 quando order não tem shopper_id', async () => {
     const orderId = 22;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 30, shopper_id: null, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 30, shopper_id: null, seller_id: 1, value: 10 });
     const res = await ShopperSubscriptionService.create(orderId, { billing_type: 'PIX' });
     expect(res.success).toBe(false);
     expect(res.status).toBe(400);
@@ -329,7 +338,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create retorna 404 quando shopper não encontrado', async () => {
     const orderId = 23;
     const shopperId = 31;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 30, shopper_id: shopperId, value: 10 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 30, shopper_id: shopperId, seller_id: 1, value: 10 });
     Shopper.findByPk.mockResolvedValue(null);
     const res = await ShopperSubscriptionService.create(orderId, { billing_type: 'PIX' });
     expect(res.success).toBe(false);
@@ -715,7 +724,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create captura erro interno ao criar no banco', async () => {
     const orderId = 26;
     const shopperId = 50;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 200, shopper_id: shopperId, value: 30 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 200, shopper_id: shopperId, seller_id: 1, value: 30 });
     Product.findByPk.mockResolvedValue({ id: 200, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     const AsaasSubscription = require('../../services/asaas/subscription.service');
@@ -753,7 +762,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
     const fixedDue = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000); // futuro
     const fixedStart = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
 
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 300, shopper_id: shopperId, value: 88 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 300, shopper_id: shopperId, seller_id: 1, value: 88 });
     Product.findByPk.mockResolvedValue({ id: 300, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, user: { userData: { cpfCnpj: '12345678901' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);
@@ -772,7 +781,7 @@ describe('ShopperSubscriptionService - usa value do Order e ciclo do Produto', (
   test('create com CREDIT_CARD e dados explícitos de cartão', async () => {
     const orderId = 28;
     const shopperId = 61;
-    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 301, shopper_id: shopperId, value: 120 });
+    Order.findByPk.mockResolvedValue({ id: orderId, product_id: 301, shopper_id: shopperId, seller_id: 1, value: 120 });
     Product.findByPk.mockResolvedValue({ id: 301, cycle: 'MONTHLY' });
     Shopper.findByPk.mockResolvedValue({ id: shopperId, name: 'N', email: 'n@e.com', user: { email: 'n@e.com', userData: { cpfCnpj: '12345678901', postalCode: '01001000' } }, update: jest.fn() });
     ShopperSubscription.findOne.mockResolvedValue(null);

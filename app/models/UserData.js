@@ -14,7 +14,20 @@ const UserData = sequelize.define('UserData', {
   cpf_cnpj: {
     type: DataTypes.STRING,
     unique: true,
-    allowNull: true
+    allowNull: true,
+    get() {
+      return this.getDataValue('cpf_cnpj');
+    }
+  },
+  // Alias camelCase para compatibilidade
+  cpfCnpj: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return this.getDataValue('cpf_cnpj');
+    },
+    set(value) {
+      this.setDataValue('cpf_cnpj', value);
+    }
   },
   address: {
     type: DataTypes.STRING,

@@ -11,6 +11,7 @@ const SubscriptionValidator = require('../validators/subscription-validator'); /
 const sequelize = require('../config/database');
 const { redactSensitive } = require('../utils/redact');
 const Product = require('../models/Product');
+const SplitCalculatorService = require('./split-calculator.service');
 
 class ShopperSubscriptionService {
     async get(id) {
@@ -316,6 +317,16 @@ class ShopperSubscriptionService {
             if (data.creditCardHolderInfo) subscriptionData.creditCardHolderInfo = data.creditCardHolderInfo;
             if (data.remoteIp) subscriptionData.remoteIp = data.remoteIp;
 
+            // SPLIT OBRIGATÓRIO: Buscar seller e validar carteira antes de prosseguir
+            const Seller = require('../models/Seller');
+
+            const seller = await Seller.findByPk(order.seller_id);
+            const sellerValidation = SplitCalculatorService.validateSellerForSplit(seller);
+            if (!sellerValidation.success) {
+                await transaction.rollback();
+                return sellerValidation.error;
+            }
+
             console.log('Dados montados para cálculo/derivação:', JSON.stringify(subscriptionData, null, 2));
 
             // Se valor não foi fornecido, calcular a partir dos produtos do pedido
@@ -356,6 +367,19 @@ class ShopperSubscriptionService {
             // Criar assinatura no Asaas
             console.log('Formatando dados para assinatura no Asaas...');
             const asaasSubscriptionData = this.formatDataForAsaasSubscription(subscriptionData, customerId, shopper, order);
+
+            // APLICAR SPLIT: Calcular taxa do sistema e restante para seller usando SplitCalculatorService
+            const splitResult = SplitCalculatorService.calculateSplit(
+                parseFloat(subscriptionData.value),
+                seller.subaccount_wallet_id
+            );
+
+            if (!splitResult.success) {
+                await transaction.rollback();
+                return splitResult.error;
+            }
+
+            asaasSubscriptionData.split = splitResult.split;
 
             console.log('Dados formatados para ASAAS:', JSON.stringify(redactSensitive(asaasSubscriptionData)));
             console.log('Criando assinatura no Asaas...');
