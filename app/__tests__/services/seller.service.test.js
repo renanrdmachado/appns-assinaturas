@@ -713,9 +713,9 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
             const res = await SellerService.ensureSellerExistsFromOAuth(222, storeInfo, 'tok');
 
             expect(res.success).toBe(true);
-            expect(UserData.create).toHaveBeenCalledWith({});
-            expect(User.create).toHaveBeenCalledWith(expect.objectContaining({ username: 'Minha Loja', email: 'l@x.com' }));
-            expect(Seller.create).toHaveBeenCalledWith(expect.objectContaining({ nuvemshop_id: 222, nuvemshop_api_token: 'tok' }));
+            expect(UserData.create).toHaveBeenCalledWith({}, expect.any(Object));
+            expect(User.create).toHaveBeenCalledWith(expect.objectContaining({ username: 'Minha Loja', email: 'l@x.com' }), expect.any(Object));
+            expect(Seller.create).toHaveBeenCalledWith(expect.objectContaining({ nuvemshop_id: 222, nuvemshop_api_token: 'tok' }), expect.any(Object));
         });
 
         test('getDefaultSubscriptionConfig retorna estrutura correta', () => {
@@ -796,9 +796,9 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
             const storeInfo = JSON.stringify({ name: { pt: 'Loja X' }, email: 'x@y.z' });
             const res = await SellerService.ensureSellerExistsFromOAuth('123', storeInfo, 'tok');
 
-            expect(UserData.create).toHaveBeenCalledWith({});
-            expect(User.create).toHaveBeenCalledWith(expect.objectContaining({ user_data_id: 77 }));
-            expect(Seller.create).toHaveBeenCalledWith(expect.objectContaining({ user_id: 42 }));
+            expect(UserData.create).toHaveBeenCalledWith({}, expect.any(Object));
+            expect(User.create).toHaveBeenCalledWith(expect.objectContaining({ user_data_id: 77 }), expect.any(Object));
+            expect(Seller.create).toHaveBeenCalledWith(expect.objectContaining({ user_id: 42 }), expect.any(Object));
             expect(res.success).toBe(true);
         });
     });
@@ -998,14 +998,14 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
             const result = await SellerService.ensureSellerExistsFromOAuth('123', storeInfo, 'token123');
 
             expect(result.success).toBe(true);
-            expect(result.data).toBe(seller);
+            expect(result.data).toEqual(expect.objectContaining({ id: 1 }));
             expect(UserData.create).toHaveBeenCalled();
             expect(User.create).toHaveBeenCalledWith({
                 username: 'Loja Teste',
                 email: 'test@test.com',
                 password: null,
                 user_data_id: 1
-            });
+            }, expect.any(Object));
             expect(Seller.create).toHaveBeenCalledWith({
                 nuvemshop_id: '123',
                 nuvemshop_info: JSON.stringify(storeInfo),
@@ -1014,7 +1014,7 @@ describe('SellerService - suíte consolidada (um arquivo por assunto)', () => {
                 app_start_date: expect.any(Date),
                 user_id: 1,
                 payments_customer_id: null
-            });
+            }, expect.any(Object));
         });
 
         test('createDefaultSubscription: assinatura já existe', async () => {
