@@ -41,6 +41,10 @@ const UserData = sequelize.define('UserData', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  city: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   postal_code: {
     type: DataTypes.STRING,
     allowNull: true

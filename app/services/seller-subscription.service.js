@@ -144,6 +144,9 @@ class SellerSubscriptionService {
                 if (billingInfo.province) {
                     updateData.province = billingInfo.province;
                 }
+                if (billingInfo.creditCardHolderInfo?.city) {
+                    updateData.city = billingInfo.creditCardHolderInfo.city;
+                }
                 if (billingInfo.postalCode) {
                     updateData.postal_code = billingInfo.postalCode;
                 }
@@ -176,6 +179,7 @@ class SellerSubscriptionService {
                     address: billingInfo.address || null,
                     address_number: billingInfo.addressNumber || null,
                     province: billingInfo.province || null,
+                    city: billingInfo.creditCardHolderInfo?.city || null,
                     postal_code: billingInfo.postalCode || null,
                     birth_date: billingInfo.creditCardHolderInfo?.birthDate || null
                 };
