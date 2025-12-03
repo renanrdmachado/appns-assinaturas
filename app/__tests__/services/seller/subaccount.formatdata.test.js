@@ -15,100 +15,85 @@ jest.mock('../../../utils/errorHandler', () => ({
 // Importando o serviço que será testado
 const SellerSubAccountService = require('../../../services/seller-subaccount.service');
 
-describe('SellerSubAccountService', () => {
-    describe('formatDataForAsaasSubAccount', () => {
-        test('deve formatar os dados do vendedor corretamente', () => {
-            // Arrange
-            const seller = {
+describe('SellerSubAccountService - formatDataForAsaasSubAccount', () => {
+    let service;
+    let mockDataProvider;
+    let seller;
+
+    beforeEach(() => {
+        service = require('../../../services/seller-subaccount.service');
+
+        // Mock seller with complete user and userData
+        seller = {
+            id: 1,
+            user: {
                 id: 1,
-                name: 'Loja Test',
-                email: 'loja@example.com',
-                user: {
-                    name: 'Usuario Test',
-                    email: 'usuario@example.com',
-                    userData: {
-                        name: 'Nome Completo',
-                        cpf_cnpj: '12345678901',
-                        phone: '11999999999',
-                        mobile_phone: '11988888888',
-                        address: 'Rua Teste',
-                        address_number: '123',
-                        complement: 'Apto 45',
-                        province: 'Centro',
-                        city: 'São Paulo',
-                        state: 'SP',
-                        postal_code: '01234567',
-                        birth_date: '1990-01-01',
-                        income_value: 5000
-                    }
+                username: 'testuser',
+                email: 'test@example.com',
+                userData: {
+                    name: 'Teste Silva',
+                    email: 'test@example.com',
+                    cpf_cnpj: '12345678901',
+                    company_type: 'PERSON',
+                    phone: '1133334444',
+                    mobile_phone: '11999999999',
+                    address: 'Rua Teste',
+                    address_number: '123',
+                    complement: 'Apt 456',
+                    province: 'SP',
+                    city: 'São Paulo',
+                    postal_code: '01310100',
+                    birth_date: '1990-01-01',
+                    income_value: 5000
                 }
-            };
+            }
+        };
+    });
 
-            // Act
-            const result = SellerSubAccountService.formatDataForAsaasSubAccount(seller);
+    test('deve formatar dados corretamente com city como campo separado', () => {
+        const result = service.formatDataForAsaasSubAccount(seller);
 
-            // Assert
-            expect(result).toMatchObject({
-                name: seller.user.userData.name,
-                email: seller.user.email,
-                cpfCnpj: seller.user.userData.cpf_cnpj,
-                phone: seller.user.userData.phone,
-                mobilePhone: seller.user.userData.mobile_phone,
-                address: seller.user.userData.address,
-                addressNumber: seller.user.userData.address_number,
-                complement: seller.user.userData.complement,
-                province: seller.user.userData.province,
-                postalCode: seller.user.userData.postal_code,
-                birthDate: seller.user.userData.birth_date,
-                incomeValue: seller.user.userData.income_value
-            });
-        });
+        expect(result).toHaveProperty('province', 'SP');
+        expect(result).toHaveProperty('city', 'São Paulo');
+        expect(result.province).not.toBe(result.city);
+    });
 
-        test('deve lançar erro quando dados insuficientes', () => {
-            // Arrange
-            const seller = {
-                id: 1,
-                name: 'Loja Test',
-                email: 'loja@example.com'
-                // sem user e userData
-            };
+    test('deve lançar erro quando city está faltando', () => {
+        seller.user.userData.city = undefined;
 
-            // Act & Assert
-            expect(() => {
-                SellerSubAccountService.formatDataForAsaasSubAccount(seller);
-            }).toThrow('Dados insuficientes para formatar para o Asaas. Relações `user` e `userData` são necessárias.');
-        });
+        expect(() => {
+            service.formatDataForAsaasSubAccount(seller);
+        }).toThrow('Cidade é obrigatória para criar subconta');
+    });
 
-        test('deve usar valores alternativos quando disponíveis', () => {
-            // Arrange
-            const seller = {
-                id: 1,
-                name: 'Loja Test',
-                email: 'loja@example.com',
-                user: {
-                    username: 'usuario_test',
-                    email: 'usuario@example.com',
-                    userData: {
-                        // sem name
-                        cpf_cnpj: '12345678901',
-                        birth_date: '1990-01-01', // adicionado data de nascimento para CPF
-                        // sem phone
-                        mobile_phone: '11988888888',
-                        income_value: 3000 // adicionado valor de renda obrigatório
-                    }
-                }
-            };
+    test('deve lançar erro quando CPF/CNPJ está faltando', () => {
+        seller.user.userData.cpf_cnpj = undefined;
 
-            // Act
-            const result = SellerSubAccountService.formatDataForAsaasSubAccount(seller);
+        expect(() => {
+            service.formatDataForAsaasSubAccount(seller);
+        }).toThrow('CPF/CNPJ é obrigatório para criar subconta');
+    });
 
-            // Assert
-            expect(result).toMatchObject({
-                name: seller.user.username,
-                email: seller.user.email,
-                cpfCnpj: seller.user.userData.cpf_cnpj,
-                mobilePhone: seller.user.userData.mobile_phone
-            });
-        });
+    test('deve lançar erro quando mobile_phone está faltando', () => {
+        seller.user.userData.mobile_phone = undefined;
+        seller.user.userData.phone = undefined; // phone também não deve ser usado como fallback
+
+        expect(() => {
+            service.formatDataForAsaasSubAccount(seller);
+        }).toThrow('Telefone celular é obrigatório para criar subconta');
+    });
+
+    test('deve lançar erro quando income_value está faltando', () => {
+        seller.user.userData.income_value = undefined;
+
+        expect(() => {
+            service.formatDataForAsaasSubAccount(seller);
+        }).toThrow('Valor de renda é obrigatório para criar subconta');
+    });
+
+    test('deve lançar erro quando dados insuficientes', () => {
+        expect(() => {
+            service.formatDataForAsaasSubAccount({});
+        }).toThrow('Dados insuficientes para formatar para o Asaas');
     });
 });
