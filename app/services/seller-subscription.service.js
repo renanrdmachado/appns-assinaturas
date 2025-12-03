@@ -417,7 +417,7 @@ class SellerSubscriptionService {
                 customerId = customerResult.data.id;
 
                 // Salvar customer_id no seller
-                await seller.update({ payments_customer_id: customerId });
+                await seller.update({ payments_customer_id: customerId }, { transaction });
                 console.log(`Customer criado para seller ${sellerId}: ${customerId}`);
             } else {
                 // Customer já existe: garantir que o cpfCnpj no Asaas corresponde ao da requisição.
@@ -461,7 +461,7 @@ class SellerSubscriptionService {
                             return createError(`Falha ao recriar customer: ${created.message}`, created.status || 400);
                         }
                         customerId = created.data.id;
-                        await seller.update({ payments_customer_id: customerId });
+                        await seller.update({ payments_customer_id: customerId }, { transaction });
                         console.log(`DEBUG - Customer recriado: ${customerId}`);
 
                         // CASO 2: CPF/CNPJ no Asaas está ausente ou difere do CPF/CNPJ válido da requisição -> Atualizar
