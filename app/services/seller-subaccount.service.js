@@ -238,8 +238,7 @@ class SellerSubAccountService {
             province,
             postal_code,
             birth_date,
-            income_value,
-            city
+            income_value
         } = userData;
 
         // Validação de CPF/CNPJ
@@ -260,14 +259,13 @@ class SellerSubAccountService {
             addressNumber: address_number,
             complement,
             province,
-            city,
             postalCode: postal_code,
             birthDate: birth_date,
             incomeValue: income_value
         };
 
         // Remove apenas chaves com valores nulos ou indefinidos, exceto campos obrigatórios
-        const requiredFields = ['cpfCnpj', 'mobilePhone', 'incomeValue', 'city'];
+        const requiredFields = ['cpfCnpj', 'mobilePhone', 'incomeValue'];
         Object.keys(formattedData).forEach(key => {
             if ((formattedData[key] === null || formattedData[key] === undefined) && !requiredFields.includes(key)) {
                 delete formattedData[key];
@@ -283,9 +281,6 @@ class SellerSubAccountService {
         }
         if (!formattedData.incomeValue) {
             throw createError('Valor de renda é obrigatório para criar subconta', 400);
-        }
-        if (!formattedData.city) {
-            throw createError('Cidade é obrigatória para criar subconta', 400);
         }
 
         return formattedData;

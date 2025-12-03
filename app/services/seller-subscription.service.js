@@ -135,20 +135,20 @@ class SellerSubscriptionService {
                 if (billingInfo.email) {
                     updateData.email = billingInfo.email;
                 }
-                if (billingInfo.address) {
-                    updateData.address = billingInfo.address;
+                if (billingInfo.creditCardHolderInfo?.address) {
+                    updateData.address = billingInfo.creditCardHolderInfo.address;
                 }
-                if (billingInfo.addressNumber) {
-                    updateData.address_number = billingInfo.addressNumber;
+                if (billingInfo.creditCardHolderInfo?.addressNumber) {
+                    updateData.address_number = billingInfo.creditCardHolderInfo.addressNumber;
                 }
-                if (billingInfo.province) {
-                    updateData.province = billingInfo.province;
+                if (billingInfo.creditCardHolderInfo?.complement) {
+                    updateData.complement = billingInfo.creditCardHolderInfo.complement;
                 }
-                if (billingInfo.creditCardHolderInfo?.city) {
-                    updateData.city = billingInfo.creditCardHolderInfo.city;
+                if (billingInfo.creditCardHolderInfo?.province) {
+                    updateData.province = billingInfo.creditCardHolderInfo.province;
                 }
-                if (billingInfo.postalCode) {
-                    updateData.postal_code = billingInfo.postalCode;
+                if (billingInfo.creditCardHolderInfo?.postalCode) {
+                    updateData.postal_code = billingInfo.creditCardHolderInfo.postalCode;
                 }
                 if (billingInfo.creditCardHolderInfo?.birthDate) {
                     updateData.birth_date = billingInfo.creditCardHolderInfo.birthDate;
@@ -176,11 +176,11 @@ class SellerSubscriptionService {
                     income_value: billingInfo.creditCardHolderInfo?.incomeValue || null,
                     name: billingInfo.name || null,
                     email: billingInfo.email || null,
-                    address: billingInfo.address || null,
-                    address_number: billingInfo.addressNumber || null,
-                    province: billingInfo.province || null,
-                    city: billingInfo.creditCardHolderInfo?.city || null,
-                    postal_code: billingInfo.postalCode || null,
+                    address: billingInfo.creditCardHolderInfo?.address || null,
+                    address_number: billingInfo.creditCardHolderInfo?.addressNumber || null,
+                    complement: billingInfo.creditCardHolderInfo?.complement || null,
+                    province: billingInfo.creditCardHolderInfo?.province || null,
+                    postal_code: billingInfo.creditCardHolderInfo?.postalCode || null,
                     birth_date: billingInfo.creditCardHolderInfo?.birthDate || null
                 };
 

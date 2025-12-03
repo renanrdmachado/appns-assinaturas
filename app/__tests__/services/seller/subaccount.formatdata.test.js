@@ -49,27 +49,17 @@ describe('SellerSubAccountService - formatDataForAsaasSubAccount', () => {
             }
         };
     });
-
-    test('deve formatar dados corretamente com city como campo separado', () => {
+    test('deve formatar dados corretamente para o Asaas', () => {
         const result = service.formatDataForAsaasSubAccount(seller);
 
         expect(result).toHaveProperty('province', 'SP');
-        expect(result).toHaveProperty('city', 'São Paulo');
-        expect(result.province).not.toBe(result.city);
-    });
-
-    test('deve lançar erro quando city está faltando', () => {
-        seller.user.userData.city = undefined;
-
-        expect(() => {
-            service.formatDataForAsaasSubAccount(seller);
-        }).toThrow('Cidade é obrigatória para criar subconta');
+        expect(result).toHaveProperty('cpfCnpj', '12345678901');
+        expect(result).toHaveProperty('mobilePhone', '11999999999');
     });
 
     test('deve lançar erro quando CPF/CNPJ está faltando', () => {
-        seller.user.userData.cpf_cnpj = undefined;
-
-        expect(() => {
+    }); test('deve lançar erro quando CPF/CNPJ está faltando', () => {
+        seller.user.userData.cpf_cnpj = undefined; expect(() => {
             service.formatDataForAsaasSubAccount(seller);
         }).toThrow('CPF/CNPJ é obrigatório para criar subconta');
     });
