@@ -994,23 +994,8 @@ class SellerService {
             });
 
             try {
-                // Criar subconta no Asaas se o seller não tiver uma
-                if (!newSeller.subaccount_id) {
-                    console.log(`Criando subconta para o seller ID ${seller.id} (Nuvemshop ID: ${nuvemshop_id})`);
-                    const subAccountResult = await SellerSubAccountService.create(newSeller, t);
-
-                    // Atualizar o seller local com os dados da subconta
-                    if (subAccountResult.success) {
-                        console.log(`Subconta criada com sucesso para seller ID ${seller.id}: ${subAccountResult.data.id}`);
-                        await newSeller.update({
-                            subaccount_id: subAccountResult.data.id,
-                            asaas_api_key: subAccountResult.data.apiKey,
-                            wallet_id: subAccountResult.data.walletId,
-                        }, { transaction: t });
-                    } else {
-                        console.error(`Falha ao criar subconta para seller ID ${seller.id}: ${subAccountResult.message}`);
-                    }
-                }
+                // NÃO criar subconta aqui - será criada depois quando o usuário preencher os dados
+                // Se necessário, a subconta será criada via outro endpoint após o form de dados
             } catch (subAccountError) {
                 console.error(`Erro ao criar subconta para seller ID ${seller.id}:`, subAccountError.message);
                 // Continuamos mesmo que a criação da subconta falhe - ela poderá ser criada depois
