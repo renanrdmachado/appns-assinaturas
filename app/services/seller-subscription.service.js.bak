@@ -282,11 +282,7 @@ class SellerSubscriptionService {
                         }
                     }
                     if (!sellerWithRelations.subaccount_id) {
-                        // BLOQUEIO CRÍTICO: Erro na subconta bloqueia assinatura
-                        return createError(
-                            `Erro ao criar subconta: ${subAccountResult.message}. Verifique se o CPF já está registrado em outra conta. Contate o suporte.`,
-                            subAccountResult.conflict ? 409 : (subAccountResult.status || 500)
-                        );
+                        console.log(`INFO - Prosseguindo sem subconta para seller ${sellerId}. Assinatura usará conta principal até reconciliação.`);
                     }
                 }
             } else if (sellerWithRelations.subaccount_id && (!sellerWithRelations.subaccount_wallet_id)) {
