@@ -6,11 +6,8 @@ const { Op } = require('sequelize');
 
 class SellerSubAccountService {
     /**
-     * Cria uma subconta para um vendedor no Asaas.
-     * Este método é chamado DENTRO de uma transação maior no seller.service.
-     * @param {object} seller - A instância do modelo Seller, recém-criada mas ainda não commitada.
-     * @param {object} transaction - A transação Sequelize para garantir a atomicidade.
-     * @returns {Promise<object>} - Retorna um objeto com o resultado da operação.
+     * REFATORADO: Método principal para criar/vincular subconta
+     * Usa 3 métodos privados para manter DRY + SOLID
      */
     async create(seller, transaction) {
         try {
@@ -18,37 +15,22 @@ class SellerSubAccountService {
                 throw createError('Objeto de vendedor inválido fornecido.', 400);
             }
 
-            console.log(`DEBUG - Iniciando criação de subconta para seller ${seller.id}`);
+            console.log(`\n📌 [SELLER #${seller.id}] Iniciando processo de subconta`);
 
+            // CASO 1: Seller já tem subconta vinculada
             if (seller.subaccount_id) {
-                console.log(`DEBUG - Seller ${seller.id} já possui subconta: ${seller.subaccount_id}`);
-                console.log(`DEBUG - Verificação de dados: apiKey=${seller.subaccount_api_key ? 'presente' : 'ausente'}, walletId=${seller.subaccount_wallet_id ? 'presente' : 'ausente'}`);
-
-                // Se tem subaccount_id mas faltam dados, tentar recuperar
-                if (!seller.subaccount_api_key || !seller.subaccount_wallet_id) {
-                    console.log('DEBUG - Subconta existe mas dados estão incompletos. Tentando recuperar da API...');
-
-                    const subAccountData = this.formatDataForAsaasSubAccount(seller);
-                    const existingSubAccount = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
-
-                    if (existingSubAccount.success && existingSubAccount.data) {
-                        console.log(`DEBUG - Dados recuperados da subconta existente: ${existingSubAccount.data.id}`);
-
-                        // Atualizar o seller com os dados completos
-                        // A API Asaas retorna apiKey dentro de accessToken, não no root
-                        await seller.update({
-                            subaccount_api_key: existingSubAccount.data.accessToken?.apiKey || existingSubAccount.data.apiKey || seller.subaccount_api_key || null,
-                            subaccount_wallet_id: existingSubAccount.data.walletId || seller.subaccount_wallet_id || null,
-                        }, { transaction });
-
-                        return {
-                            success: true,
-                            data: existingSubAccount.data,
-                            message: 'Dados da subconta existente atualizados com sucesso.'
-                        };
-                    } else {
-                        console.warn('WARN - Não foi possível recuperar dados da subconta existente');
-                        // Continuar com os dados que temos
+                console.log(`✅ Seller já possui subaccount_id=${seller.subaccount_id}`);
+                
+                // Se faltam dados, tentar recuperar
+                if (!seller.subaccount_wallet_id) {
+                    console.log(`⚠️  Faltam dados (walletId). Tentando recuperar...`);
+                    const { formatDataForAsaasSubAccount } = this;
+                    const subAccountData = formatDataForAsaasSubAccount.call(this, seller);
+                    const recovered = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+                    
+                    if (recovered.success && recovered.data) {
+                        await this._updateSellerWithSubaccountData(seller, recovered.data, transaction);
+                        return { success: true, data: recovered.data, message: 'Dados da subconta recuperados.' };
                     }
                 }
 
@@ -56,169 +38,69 @@ class SellerSubAccountService {
                     success: true,
                     data: {
                         id: seller.subaccount_id,
-                        apiKey: seller.subaccount_api_key,
-                        walletId: seller.subaccount_wallet_id
+                        walletId: seller.subaccount_wallet_id,
+                        apiKey: seller.subaccount_api_key
                     },
-                    message: 'Seller já possui subconta associada.'
+                    message: 'Seller já possui subconta vinculada.'
                 };
             }
 
-            const subAccountData = this.formatDataForAsaasSubAccount(seller);
+            // CASO 2: Precisa buscar/criar subconta
+            const formattedData = this.formatDataForAsaasSubAccount(seller);
+            const cpfCnpj = formattedData.cpfCnpj;
 
-            // Primeiro, verificar se já existe uma subconta com este CPF
-            console.log(`DEBUG - Verificação de subconta existente: cpfCnpj=${subAccountData.cpfCnpj}`);
-            const existingSubAccount = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
+            console.log(`🔍 Verificando se CPF/CNPJ ${cpfCnpj} já existe no Asaas...`);
+            const existing = await subAccountService.getSubAccountByCpfCnpj(cpfCnpj);
 
-            if (existingSubAccount.success && existingSubAccount.data) {
-                console.log(`DEBUG - Subconta existente encontrada: ${existingSubAccount.data.id}`);
-                const _existApiKey = existingSubAccount.data.accessToken?.apiKey || existingSubAccount.data.apiKey;
-                console.log(`DEBUG - Dados da subconta existente: apiKey=${_existApiKey ? 'presente' : 'ausente'}, walletId=${existingSubAccount.data.walletId ? 'presente' : 'ausente'}`);
-
-                // Atualizar o seller com os dados da subconta existente
-                // A API Asaas retorna apiKey dentro de accessToken, não no root
-                await seller.update({
-                    subaccount_id: existingSubAccount.data.id,
-                    subaccount_api_key: _existApiKey || seller.subaccount_api_key || null,
-                    subaccount_wallet_id: existingSubAccount.data.walletId || seller.subaccount_wallet_id || null,
-                }, { transaction });
-
+            if (existing.success && existing.data) {
+                console.log(`✅ Subconta existente encontrada: ${existing.data.id}`);
+                await this._updateSellerWithSubaccountData(seller, existing.data, transaction);
                 return {
                     success: true,
-                    data: existingSubAccount.data,
+                    data: existing.data,
                     message: 'Subconta existente vinculada com sucesso.'
                 };
             }
 
-            // Se não existe, tentar criar uma nova
-            console.log(`CPF ${subAccountData.cpfCnpj} não encontrado no Asaas. Criando nova subconta...`);
-            const asaasResult = await subAccountService.addSubAccount(subAccountData);
+            // CASO 3: Criar nova subconta
+            console.log(`📝 CPF não encontrado. Criando nova subconta...`);
+            const createResult = await subAccountService.addSubAccount(formattedData);
 
-            if (!asaasResult.success) {
-                // Se falhou por CPF já em uso, tentar buscar novamente com múltiplas tentativas
-                if (asaasResult.message && asaasResult.message.includes('já está em uso')) {
-                    console.log('CPF já em uso detectado. Tentando múltiplas recuperações de subconta existente...');
-
-                    // TENTATIVA 1: Buscar novamente imediatamente
-                    let retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
-                    if (retryResult.success && retryResult.data) {
-                        console.log(`DEBUG - Subconta existente recuperada na tentativa 1: ${retryResult.data.id}`);
-                        const _retry1ApiKey = retryResult.data.accessToken?.apiKey || retryResult.data.apiKey;
-                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${_retry1ApiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
-
-                        // Atualizar o seller com os dados da subconta recuperada
-                        // A API Asaas retorna apiKey dentro de accessToken, não no root
-                        await seller.update({
-                            subaccount_id: retryResult.data.id,
-                            subaccount_api_key: _retry1ApiKey || seller.subaccount_api_key || null,
-                            subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
-                        }, { transaction });
-
-                        return {
-                            success: true,
-                            data: retryResult.data,
-                            message: 'Subconta existente recuperada e vinculada após conflito de CPF (tentativa 1).'
-                        };
-                    }
-
-                    // TENTATIVA 2: Aguardar 1s e tentar novamente
-                    console.log('Tentativa 1 falhou. Aguardando 1s e tentando novamente...');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-
-                    retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
-                    if (retryResult.success && retryResult.data) {
-                        console.log(`DEBUG - Subconta existente recuperada na tentativa 2: ${retryResult.data.id}`);
-                        const _retry2ApiKey = retryResult.data.accessToken?.apiKey || retryResult.data.apiKey;
-                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${_retry2ApiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
-
-                        // Atualizar o seller com os dados da subconta recuperada
-                        // A API Asaas retorna apiKey dentro de accessToken, não no root
-                        await seller.update({
-                            subaccount_id: retryResult.data.id,
-                            subaccount_api_key: _retry2ApiKey || seller.subaccount_api_key || null,
-                            subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
-                        }, { transaction });
-
-                        return {
-                            success: true,
-                            data: retryResult.data,
-                            message: 'Subconta existente recuperada e vinculada após conflito de CPF (tentativa 2).'
-                        };
-                    }
-
-                    // TENTATIVA 3: Aguardar mais 2s e tentar novamente
-                    console.log('Tentativa 2 falhou. Aguardando 2s e tentando novamente...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-
-                    retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
-                    if (retryResult.success && retryResult.data) {
-                        console.log(`DEBUG - Subconta existente recuperada na tentativa 3: ${retryResult.data.id}`);
-                        const _retry3ApiKey = retryResult.data.accessToken?.apiKey || retryResult.data.apiKey;
-                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${_retry3ApiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
-
-                        // Atualizar o seller com os dados da subconta recuperada
-                        // A API Asaas retorna apiKey dentro de accessToken, não no root
-                        await seller.update({
-                            subaccount_id: retryResult.data.id,
-                            subaccount_api_key: _retry3ApiKey || seller.subaccount_api_key || null,
-                            subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
-                        }, { transaction });
-
-                        return {
-                            success: true,
-                            data: retryResult.data,
-                            message: 'Subconta existente recuperada e vinculada após conflito de CPF (tentativa 3).'
-                        };
-                    }
-
-                    // Se todas as tentativas falharam
-                    console.error('ERRO CRÍTICO: Todas as tentativas de recuperação de subconta falharam');
-                    console.error('Resultado final do Asaas:', JSON.stringify(asaasResult, null, 2));
-                    throw createError(`CPF ${subAccountData.cpfCnpj} já está em uso mas não foi possível recuperar a subconta existente após múltiplas tentativas.`, 409);
+            if (!createResult.success) {
+                // Pode ter criado e só a busca inicial falhou
+                // Tentar recuperar com múltiplas tentativas
+                console.log(`⚠️  Criação pode ter falhado. Tentando recuperar existente...`);
+                const recovered = await this._retryGetExistingSubaccount(cpfCnpj);
+                
+                if (recovered) {
+                    await this._updateSellerWithSubaccountData(seller, recovered, transaction);
+                    return {
+                        success: true,
+                        data: recovered,
+                        message: 'Subconta existente recuperada após tentativa de criação.'
+                    };
                 }
 
-                console.error('Erro ao criar subconta no Asaas:', JSON.stringify(asaasResult, null, 2));
-                // Lança o erro para que a transação externa possa fazer rollback
-                throw createError(asaasResult.message || 'Erro desconhecido ao criar subconta no Asaas.', asaasResult.status || 500);
+                throw createError(
+                    createResult.message || 'Erro ao criar subconta no Asaas',
+                    createResult.status || 500
+                );
             }
 
-            // Se criou com sucesso, atualizar o seller
-            console.log(`DEBUG - Nova subconta criada: ${asaasResult.data.id}`);
-            const _newApiKey = asaasResult.data.accessToken?.apiKey || asaasResult.data.apiKey;
-            console.log(`DEBUG - Dados da nova subconta: id=${asaasResult.data.id}, walletId=${asaasResult.data.walletId ? 'presente' : 'ausente'}, apiKey=${_newApiKey ? 'presente' : 'ausente'}`);
-
-            console.log('🔍 DEBUG - RESPOSTA COMPLETA DO ASAAS para nova subconta:');
-            console.log(JSON.stringify({
-                id: asaasResult.data.id,
-                walletId: asaasResult.data.walletId,
-                apiKey: asaasResult.data.apiKey,
-                accessToken: asaasResult.data.accessToken,
-                email: asaasResult.data.email,
-                cpfCnpj: asaasResult.data.cpfCnpj
-            }, null, 2));
-
-            // A API Asaas retorna apiKey dentro de accessToken (não no root)
-            // e walletId no root da resposta de criação
-            await seller.update({
-                subaccount_id: asaasResult.data.id,
-                subaccount_api_key: _newApiKey || seller.subaccount_api_key || null,
-                subaccount_wallet_id: asaasResult.data.walletId || seller.subaccount_wallet_id || null,
-            }, { transaction });
-
-            console.log('✅ Seller atualizado com dados da subconta:');
-            console.log(`   subaccount_id: ${asaasResult.data.id}`);
-            console.log(`   subaccount_wallet_id: ${asaasResult.data.walletId || 'NULL'}`);
-            console.log(`   subaccount_api_key: ${_newApiKey ? 'setado' : 'NULL'}`);
+            // CASO 3.1: Criou com sucesso
+            console.log(`✅ Nova subconta criada: ${createResult.data.id}`);
+            await this._updateSellerWithSubaccountData(seller, createResult.data, transaction);
 
             return {
                 success: true,
-                data: asaasResult.data,
+                data: createResult.data,
                 message: 'Subconta do Asaas criada com sucesso.'
             };
-        } catch (error) {
-            console.error('Erro interno no SellerSubAccountService.create:', error.message);
-            console.error('Stack trace:', error.stack);
 
-            // Registrar diagnóstico mínimo no seller (em nuvemshop_info) para futura reconciliação
+        } catch (error) {
+            console.error(`❌ [SELLER #${seller?.id}] Erro ao criar subconta:`, error.message);
+
+            // Registrar diagnóstico
             try {
                 const info = seller.nuvemshop_info || {};
                 info._subaccount_debug = {
@@ -227,17 +109,91 @@ class SellerSubAccountService {
                 };
                 await seller.update({ nuvemshop_info: info });
             } catch (metaErr) {
-                console.warn('WARN - Falha ao registrar _subaccount_debug:', metaErr.message);
+                console.warn('WARN - Falha ao registrar diagnóstico:', metaErr.message);
             }
 
-            // Se conflito de CPF, devolver objeto indicando conflito para camada superior decidir continuar
-            const isConflict = error.message && error.message.includes('CPF') && error.message.includes('já está em uso');
+            const isConflict = error.message?.includes('CPF') && error.message?.includes('já está em uso');
             const errObj = createError(error.message || 'Erro interno ao criar subconta', isConflict ? 409 : 500);
             errObj.conflict = isConflict;
-            errObj.raw = { message: error.message, stack: error.stack };
             return errObj;
         }
     }
+
+    /**
+     * PRIVADO: Extrai e debugua dados da subconta da API
+     * @param {object} apiResponse - Resposta bruta da API Asaas
+     * @returns {object} {id, walletId, apiKey}
+     */
+    _extractSubaccountData(apiResponse) {
+        console.log('\n   🔍 EXTRAINDO DADOS:');
+        
+        const id = apiResponse.id;
+        const walletId = apiResponse.walletId;
+        const apiKey = apiResponse.accessToken?.apiKey || apiResponse.apiKey;
+        
+        console.log(`      id: ${id}`);
+        console.log(`      walletId: ${walletId || '❌ AUSENTE!'}`);
+        console.log(`      apiKey (accessToken): ${apiResponse.accessToken?.apiKey ? '✓' : '❌ ausente'}`);
+        console.log(`      apiKey (root): ${apiResponse.apiKey ? '✓' : '❌ ausente'}`);
+        console.log(`      → apiKey final: ${apiKey ? '✓' : '❌ NENHUM!'}`);
+        
+        return { id, walletId, apiKey };
+    }
+
+    /**
+     * PRIVADO: Tenta recuperar subconta com múltiplas tentativas
+     * @param {string} cpfCnpj - CPF/CNPJ para buscar
+     * @returns {object|null} Dados da subconta ou null
+     */
+    async _retryGetExistingSubaccount(cpfCnpj) {
+        const attempts = [
+            { name: 'Imediata', wait: 0 },
+            { name: '1s depois', wait: 1000 },
+            { name: '2s depois', wait: 2000 }
+        ];
+
+        for (const attempt of attempts) {
+            if (attempt.wait > 0) {
+                console.log(`   ⏳ Aguardando ${attempt.wait / 1000}s...`);
+                await new Promise(resolve => setTimeout(resolve, attempt.wait));
+            }
+
+            console.log(`   🔄 Tentativa ${attempt.name}: Buscando ${cpfCnpj}...`);
+            const result = await subAccountService.getSubAccountByCpfCnpj(cpfCnpj);
+            
+            if (result.success && result.data) {
+                console.log(`   ✅ ENCONTRADA na tentativa ${attempt.name}!`);
+                return result.data;
+            }
+        }
+
+        console.log(`   ❌ Não encontrada após ${attempts.length} tentativas`);
+        return null;
+    }
+
+    /**
+     * PRIVADO: Salva dados extraídos da subconta no seller
+     * @param {object} seller - Instância do Seller
+     * @param {object} apiResponse - Resposta da API Asaas (resposta completa)
+     * @param {object} transaction - Transação Sequelize
+     */
+    async _updateSellerWithSubaccountData(seller, apiResponse, transaction) {
+        const { id, walletId, apiKey } = this._extractSubaccountData(apiResponse);
+
+        console.log('\n   💾 SALVANDO NO BANCO:');
+        console.log(`      subaccount_id: ${id}`);
+        console.log(`      subaccount_wallet_id: ${walletId || '(null)'}`);
+        console.log(`      subaccount_api_key: ${apiKey ? '(salvo)' : '(null)'}`);
+
+        await seller.update({
+            subaccount_id: id,
+            subaccount_wallet_id: walletId || null,
+            subaccount_api_key: apiKey || null
+        }, { transaction });
+
+        console.log(`   ✅ Seller #${seller.id} atualizado com sucesso\n`);
+    }
+
 
     /**
      * Formata os dados do vendedor para o formato esperado pela API de subcontas do Asaas.

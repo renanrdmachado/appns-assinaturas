@@ -248,18 +248,12 @@ class SellerSubscriptionService {
 
             // Se ainda precisamos criar subconta (e agora já garantimos existência/vínculo de UserData)
             if (needsSubAccountCreation && !sellerWithRelations.subaccount_id) {
-                console.log(`Iniciando criação de subconta (adiada) para seller ${sellerId}`);
+                console.log(`\n📌 [ASSINATURA #${sellerId}] Criando subconta...`);
                 const SellerSubAccountService = require('./seller-subaccount.service');
                 const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
                 
-                console.log('🔍 DEBUG - RETORNO COMPLETO da SellerSubAccountService.create():');
-                console.log(JSON.stringify(subAccountResult, null, 2));
-                
                 if (subAccountResult.success) {
-                    console.log(`✅ Subconta vinculada/criada - ID: ${subAccountResult.data?.id}`);
-                    console.log(`   walletId: ${subAccountResult.data?.walletId || 'AUSENTE!'}`);
-                    console.log(`   apiKey: ${subAccountResult.data?.apiKey ? 'presente' : 'AUSENTE!'}`);
-                    console.log(`   accessToken.apiKey: ${subAccountResult.data?.accessToken?.apiKey ? 'presente' : 'ausente'}`);
+                    console.log(`✅ Subconta criada/vinculada: ${subAccountResult.data.id}`);
                     sellerWithRelations = await Seller.findByPk(sellerId, { transaction });
                 } else {
                     const conflict = subAccountResult.conflict === true;
