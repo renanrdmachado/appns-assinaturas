@@ -7,7 +7,8 @@ const { Op } = require('sequelize');
 class SellerSubAccountService {
     /**
      * REFATORADO: Método principal para criar/vincular subconta
-     * Usa 3 métodos privados para manter DRY + SOLID
+     * Usa métodos privados para manter DRY + SOLID
+     * Strategy: Busca lista completa → cria se não encontrar → lista novamente se conflito
      */
     async create(seller, transaction) {
         try {
@@ -20,17 +21,17 @@ class SellerSubAccountService {
             // CASO 1: Seller já tem subconta vinculada
             if (seller.subaccount_id) {
                 console.log(`✅ Seller já possui subaccount_id=${seller.subaccount_id}`);
-                
+
                 // Se faltam dados, tentar recuperar
                 if (!seller.subaccount_wallet_id) {
                     console.log(`⚠️  Faltam dados (walletId). Tentando recuperar...`);
                     const { formatDataForAsaasSubAccount } = this;
                     const subAccountData = formatDataForAsaasSubAccount.call(this, seller);
-                    const recovered = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
-                    
-                    if (recovered.success && recovered.data) {
-                        await this._updateSellerWithSubaccountData(seller, recovered.data, transaction);
-                        return { success: true, data: recovered.data, message: 'Dados da subconta recuperados.' };
+                    const recovered = await this._searchExistingSubaccountInList(subAccountData.cpfCnpj);
+
+                    if (recovered) {
+                        await this._updateSellerWithSubaccountData(seller, recovered, transaction);
+                        return { success: true, data: recovered, message: 'Dados da subconta recuperados.' };
                     }
                 }
 
@@ -45,19 +46,19 @@ class SellerSubAccountService {
                 };
             }
 
-            // CASO 2: Precisa buscar/criar subconta
+            // CASO 2: Procurar subconta existente na lista completa (estratégia: sem filtro)
             const formattedData = this.formatDataForAsaasSubAccount(seller);
             const cpfCnpj = formattedData.cpfCnpj;
 
-            console.log(`🔍 Verificando se CPF/CNPJ ${cpfCnpj} já existe no Asaas...`);
-            const existing = await subAccountService.getSubAccountByCpfCnpj(cpfCnpj);
+            console.log(`🔍 Buscando se CPF ${cpfCnpj} já existe...`);
+            const existing = await this._searchExistingSubaccountInList(cpfCnpj);
 
-            if (existing.success && existing.data) {
-                console.log(`✅ Subconta existente encontrada: ${existing.data.id}`);
-                await this._updateSellerWithSubaccountData(seller, existing.data, transaction);
+            if (existing) {
+                console.log(`✅ Subconta existente encontrada: ${existing.id}`);
+                await this._updateSellerWithSubaccountData(seller, existing, transaction);
                 return {
                     success: true,
-                    data: existing.data,
+                    data: existing,
                     message: 'Subconta existente vinculada com sucesso.'
                 };
             }
@@ -66,36 +67,45 @@ class SellerSubAccountService {
             console.log(`📝 CPF não encontrado. Criando nova subconta...`);
             const createResult = await subAccountService.addSubAccount(formattedData);
 
-            if (!createResult.success) {
-                // Pode ter criado e só a busca inicial falhou
-                // Tentar recuperar com múltiplas tentativas
-                console.log(`⚠️  Criação pode ter falhado. Tentando recuperar existente...`);
-                const recovered = await this._retryGetExistingSubaccount(cpfCnpj);
-                
+            if (createResult.success) {
+                // Criou com sucesso
+                console.log(`✅ Nova subconta criada: ${createResult.data.id}`);
+                await this._updateSellerWithSubaccountData(seller, createResult.data, transaction);
+                return {
+                    success: true,
+                    data: createResult.data,
+                    message: 'Subconta do Asaas criada com sucesso.'
+                };
+            }
+
+            // CASO 4: Criação falhou - pode ser conflito de CPF
+            // Estratégia de recuperação: listar novamente
+            if (createResult.message?.includes('já está em uso')) {
+                console.log(`⚠️  Conflito detectado (CPF em uso). Tentando listar novamente...`);
+
+                const recovered = await this._searchExistingSubaccountInList(cpfCnpj);
                 if (recovered) {
+                    console.log(`✅ Subconta recuperada após conflito: ${recovered.id}`);
                     await this._updateSellerWithSubaccountData(seller, recovered, transaction);
                     return {
                         success: true,
                         data: recovered,
-                        message: 'Subconta existente recuperada após tentativa de criação.'
+                        message: 'Subconta existente recuperada e vinculada (CPF em uso).'
                     };
                 }
 
+                // Se mesmo assim não encontrou, é erro irreconciliável
                 throw createError(
-                    createResult.message || 'Erro ao criar subconta no Asaas',
-                    createResult.status || 500
+                    `CPF ${cpfCnpj} em uso mas não foi possível recuperar a subconta`,
+                    409
                 );
             }
 
-            // CASO 3.1: Criou com sucesso
-            console.log(`✅ Nova subconta criada: ${createResult.data.id}`);
-            await this._updateSellerWithSubaccountData(seller, createResult.data, transaction);
-
-            return {
-                success: true,
-                data: createResult.data,
-                message: 'Subconta do Asaas criada com sucesso.'
-            };
+            // Outro erro na criação
+            throw createError(
+                createResult.message || 'Erro ao criar subconta no Asaas',
+                createResult.status || 500
+            );
 
         } catch (error) {
             console.error(`❌ [SELLER #${seller?.id}] Erro ao criar subconta:`, error.message);
@@ -112,7 +122,7 @@ class SellerSubAccountService {
                 console.warn('WARN - Falha ao registrar diagnóstico:', metaErr.message);
             }
 
-            const isConflict = error.message?.includes('CPF') && error.message?.includes('já está em uso');
+            const isConflict = error.message?.includes('CPF') && error.message?.includes('em uso');
             const errObj = createError(error.message || 'Erro interno ao criar subconta', isConflict ? 409 : 500);
             errObj.conflict = isConflict;
             return errObj;
@@ -126,50 +136,60 @@ class SellerSubAccountService {
      */
     _extractSubaccountData(apiResponse) {
         console.log('\n   🔍 EXTRAINDO DADOS:');
-        
+
         const id = apiResponse.id;
         const walletId = apiResponse.walletId;
         const apiKey = apiResponse.accessToken?.apiKey || apiResponse.apiKey;
-        
+
         console.log(`      id: ${id}`);
         console.log(`      walletId: ${walletId || '❌ AUSENTE!'}`);
         console.log(`      apiKey (accessToken): ${apiResponse.accessToken?.apiKey ? '✓' : '❌ ausente'}`);
         console.log(`      apiKey (root): ${apiResponse.apiKey ? '✓' : '❌ ausente'}`);
         console.log(`      → apiKey final: ${apiKey ? '✓' : '❌ NENHUM!'}`);
-        
+
         return { id, walletId, apiKey };
     }
 
     /**
-     * PRIVADO: Tenta recuperar subconta com múltiplas tentativas
-     * @param {string} cpfCnpj - CPF/CNPJ para buscar
+     * PRIVADO: Lista TODAS as subcontas e procura pelo CPF localmente
+     * Estratégia: API não retorna quando filtra por CPF, então listamos tudo
+     * @param {string} cpfCnpj - CPF/CNPJ normalizado (apenas dígitos)
      * @returns {object|null} Dados da subconta ou null
      */
-    async _retryGetExistingSubaccount(cpfCnpj) {
-        const attempts = [
-            { name: 'Imediata', wait: 0 },
-            { name: '1s depois', wait: 1000 },
-            { name: '2s depois', wait: 2000 }
-        ];
+    async _searchExistingSubaccountInList(cpfCnpj) {
+        console.log(`   📋 Listando todas as subcontas para procurar ${cpfCnpj}...`);
 
-        for (const attempt of attempts) {
-            if (attempt.wait > 0) {
-                console.log(`   ⏳ Aguardando ${attempt.wait / 1000}s...`);
-                await new Promise(resolve => setTimeout(resolve, attempt.wait));
+        try {
+            // Listar subcontas SEM filtro (API bugs com filtro)
+            const response = await subAccountService.listAllSubAccounts();
+
+            if (!response.success || !response.data || !Array.isArray(response.data)) {
+                console.log(`   ❌ Erro ao listar: ${response.message || 'resposta inválida'}`);
+                return null;
             }
 
-            console.log(`   🔄 Tentativa ${attempt.name}: Buscando ${cpfCnpj}...`);
-            const result = await subAccountService.getSubAccountByCpfCnpj(cpfCnpj);
-            
-            if (result.success && result.data) {
-                console.log(`   ✅ ENCONTRADA na tentativa ${attempt.name}!`);
-                return result.data;
+            const cpfDigits = String(cpfCnpj).replace(/\D/g, '');
+            console.log(`   🔍 Procurando na lista de ${response.data.length} subcontas...`);
+
+            // Procurar na lista
+            for (const subconta of response.data) {
+                const subCpfDigits = String(subconta.cpfCnpj || '').replace(/\D/g, '');
+
+                if (subCpfDigits === cpfDigits) {
+                    console.log(`   ✅ ENCONTRADA na lista! ID: ${subconta.id}`);
+                    return subconta;
+                }
             }
+
+            console.log(`   ❌ CPF não encontrado na lista`);
+            return null;
+
+        } catch (err) {
+            console.log(`   ⚠️  Erro ao listar subcontas: ${err.message}`);
+            return null;
         }
-
-        console.log(`   ❌ Não encontrada após ${attempts.length} tentativas`);
-        return null;
     }
+
 
     /**
      * PRIVADO: Salva dados extraídos da subconta no seller

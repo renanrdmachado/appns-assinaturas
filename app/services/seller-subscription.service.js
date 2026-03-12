@@ -251,7 +251,7 @@ class SellerSubscriptionService {
                 console.log(`\n📌 [ASSINATURA #${sellerId}] Criando subconta...`);
                 const SellerSubAccountService = require('./seller-subaccount.service');
                 const subAccountResult = await SellerSubAccountService.create(sellerWithRelations, transaction);
-                
+
                 if (subAccountResult.success) {
                     console.log(`✅ Subconta criada/vinculada: ${subAccountResult.data.id}`);
                     sellerWithRelations = await Seller.findByPk(sellerId, { transaction });

@@ -61,7 +61,7 @@ class SubAccountService {
                     data: accountData
                 });
                 console.log(`DEBUG - Nova subconta criada com sucesso: ID=${subAccountData.id}`);
-                
+
                 // DEBUG DETALHADO
                 console.log('🔍 RETORNO COMPLETO DA API ASAAS - CRIAÇÃO DE SUBCONTA:');
                 console.log(JSON.stringify({
@@ -73,7 +73,7 @@ class SubAccountService {
                     cpfCnpj: subAccountData.cpfCnpj,
                     name: subAccountData.name
                 }, null, 2));
-                
+
                 return { success: true, data: subAccountData };
             } catch (err) {
                 console.error('Erro ao criar subconta no Asaas:', err.message);
@@ -245,6 +245,43 @@ class SubAccountService {
 
     async getSubAccount(cpfCnpj) {
         return await this.getSubAccountByCpfCnpj(cpfCnpj);
+    }
+
+    /**
+     * Lista TODAS as subcontas SEM filtro
+     * Estratégia: API às vezes não retorna quando filtra por CPF
+     * Esta função lista tudo e deixa a filtragem para quem chamou
+     * @returns {Promise<object>} { success: true, data: [...], totalCount: n }
+     */
+    async listAllSubAccounts() {
+        try {
+            console.log(`DEBUG - Listando TODAS as subcontas (sem filtro)`);
+
+            const items = await AsaasApiClient.request({
+                method: 'GET',
+                endpoint: 'accounts'
+                // Sem params = lista tudo
+            });
+
+            console.log(`DEBUG - Total de subcontas listadas: ${items.totalCount}`);
+
+            return {
+                success: true,
+                data: items.data || [],
+                totalCount: items.totalCount || 0,
+                message: `${items.totalCount} subcontas encontradas`
+            };
+
+        } catch (error) {
+            console.error('Erro ao listar subcontas:', error.message);
+            return {
+                success: false,
+                data: [],
+                totalCount: 0,
+                message: error.message,
+                error: error
+            };
+        }
     }
 }
 
