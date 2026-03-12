@@ -186,6 +186,16 @@ class SellerSubAccountService {
             const _newApiKey = asaasResult.data.accessToken?.apiKey || asaasResult.data.apiKey;
             console.log(`DEBUG - Dados da nova subconta: id=${asaasResult.data.id}, walletId=${asaasResult.data.walletId ? 'presente' : 'ausente'}, apiKey=${_newApiKey ? 'presente' : 'ausente'}`);
 
+            console.log('🔍 DEBUG - RESPOSTA COMPLETA DO ASAAS para nova subconta:');
+            console.log(JSON.stringify({
+                id: asaasResult.data.id,
+                walletId: asaasResult.data.walletId,
+                apiKey: asaasResult.data.apiKey,
+                accessToken: asaasResult.data.accessToken,
+                email: asaasResult.data.email,
+                cpfCnpj: asaasResult.data.cpfCnpj
+            }, null, 2));
+
             // A API Asaas retorna apiKey dentro de accessToken (não no root)
             // e walletId no root da resposta de criação
             await seller.update({
@@ -193,6 +203,11 @@ class SellerSubAccountService {
                 subaccount_api_key: _newApiKey || seller.subaccount_api_key || null,
                 subaccount_wallet_id: asaasResult.data.walletId || seller.subaccount_wallet_id || null,
             }, { transaction });
+
+            console.log('✅ Seller atualizado com dados da subconta:');
+            console.log(`   subaccount_id: ${asaasResult.data.id}`);
+            console.log(`   subaccount_wallet_id: ${asaasResult.data.walletId || 'NULL'}`);
+            console.log(`   subaccount_api_key: ${_newApiKey ? 'setado' : 'NULL'}`);
 
             return {
                 success: true,
