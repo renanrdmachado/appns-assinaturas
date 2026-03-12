@@ -155,17 +155,18 @@ class SellerService {
                 transaction: t
             });
 
-            // 3. Criar subconta no Asaas
-            // SellerSubAccountService.create() é responsável por salvar subaccount_id,
-            // subaccount_wallet_id e subaccount_api_key no seller — não duplicar aqui.
-            const subAccountResult = await SellerSubAccountService.create(newSeller, t);
-
-            if (!subAccountResult.success) {
-                throw createError(
-                    subAccountResult.message || 'Falha ao criar subconta no Asaas',
-                    subAccountResult.status || 500
-                );
-            }
+            // 3. Não criar subconta na instalação
+            // A subconta será criada depois quando o usuário preencher os dados (CPF, telefone, etc.)
+            // via form na app da Nuvemshop integrada. Naquele momento, os dados completos
+            // estarão disponíveis e a subconta poderá ser criada com sucesso.
+            const newSellerReloaded = await Seller.findByPk(seller.id, {
+                include: [{
+                    model: User,
+                    as: 'user',
+                    include: [{ model: UserData, as: 'userData' }]
+                }],
+                transaction: t
+            });
 
             // 4. Criar assinatura padrão local
             const existingSubscription = await SellerSubscription.findOne({
