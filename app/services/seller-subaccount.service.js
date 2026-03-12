@@ -35,8 +35,9 @@ class SellerSubAccountService {
                         console.log(`DEBUG - Dados recuperados da subconta existente: ${existingSubAccount.data.id}`);
 
                         // Atualizar o seller com os dados completos
+                        // A API Asaas retorna apiKey dentro de accessToken, não no root
                         await seller.update({
-                            subaccount_api_key: existingSubAccount.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_api_key: existingSubAccount.data.accessToken?.apiKey || existingSubAccount.data.apiKey || seller.subaccount_api_key || null,
                             subaccount_wallet_id: existingSubAccount.data.walletId || seller.subaccount_wallet_id || null,
                         }, { transaction });
 
@@ -70,12 +71,14 @@ class SellerSubAccountService {
 
             if (existingSubAccount.success && existingSubAccount.data) {
                 console.log(`DEBUG - Subconta existente encontrada: ${existingSubAccount.data.id}`);
-                console.log(`DEBUG - Dados da subconta existente: apiKey=${existingSubAccount.data.apiKey ? 'presente' : 'ausente'}, walletId=${existingSubAccount.data.walletId ? 'presente' : 'ausente'}`);
+                const _existApiKey = existingSubAccount.data.accessToken?.apiKey || existingSubAccount.data.apiKey;
+                console.log(`DEBUG - Dados da subconta existente: apiKey=${_existApiKey ? 'presente' : 'ausente'}, walletId=${existingSubAccount.data.walletId ? 'presente' : 'ausente'}`);
 
                 // Atualizar o seller com os dados da subconta existente
+                // A API Asaas retorna apiKey dentro de accessToken, não no root
                 await seller.update({
                     subaccount_id: existingSubAccount.data.id,
-                    subaccount_api_key: existingSubAccount.data.apiKey || seller.subaccount_api_key || null,
+                    subaccount_api_key: _existApiKey || seller.subaccount_api_key || null,
                     subaccount_wallet_id: existingSubAccount.data.walletId || seller.subaccount_wallet_id || null,
                 }, { transaction });
 
@@ -99,12 +102,14 @@ class SellerSubAccountService {
                     let retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
                     if (retryResult.success && retryResult.data) {
                         console.log(`DEBUG - Subconta existente recuperada na tentativa 1: ${retryResult.data.id}`);
-                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${retryResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
+                        const _retry1ApiKey = retryResult.data.accessToken?.apiKey || retryResult.data.apiKey;
+                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${_retry1ApiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
 
                         // Atualizar o seller com os dados da subconta recuperada
+                        // A API Asaas retorna apiKey dentro de accessToken, não no root
                         await seller.update({
                             subaccount_id: retryResult.data.id,
-                            subaccount_api_key: retryResult.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_api_key: _retry1ApiKey || seller.subaccount_api_key || null,
                             subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
                         }, { transaction });
 
@@ -122,12 +127,14 @@ class SellerSubAccountService {
                     retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
                     if (retryResult.success && retryResult.data) {
                         console.log(`DEBUG - Subconta existente recuperada na tentativa 2: ${retryResult.data.id}`);
-                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${retryResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
+                        const _retry2ApiKey = retryResult.data.accessToken?.apiKey || retryResult.data.apiKey;
+                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${_retry2ApiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
 
                         // Atualizar o seller com os dados da subconta recuperada
+                        // A API Asaas retorna apiKey dentro de accessToken, não no root
                         await seller.update({
                             subaccount_id: retryResult.data.id,
-                            subaccount_api_key: retryResult.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_api_key: _retry2ApiKey || seller.subaccount_api_key || null,
                             subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
                         }, { transaction });
 
@@ -145,12 +152,14 @@ class SellerSubAccountService {
                     retryResult = await subAccountService.getSubAccountByCpfCnpj(subAccountData.cpfCnpj);
                     if (retryResult.success && retryResult.data) {
                         console.log(`DEBUG - Subconta existente recuperada na tentativa 3: ${retryResult.data.id}`);
-                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${retryResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
+                        const _retry3ApiKey = retryResult.data.accessToken?.apiKey || retryResult.data.apiKey;
+                        console.log(`DEBUG - Dados da subconta recuperada: apiKey=${_retry3ApiKey ? 'presente' : 'ausente'}, walletId=${retryResult.data.walletId ? 'presente' : 'ausente'}`);
 
                         // Atualizar o seller com os dados da subconta recuperada
+                        // A API Asaas retorna apiKey dentro de accessToken, não no root
                         await seller.update({
                             subaccount_id: retryResult.data.id,
-                            subaccount_api_key: retryResult.data.apiKey || seller.subaccount_api_key || null,
+                            subaccount_api_key: _retry3ApiKey || seller.subaccount_api_key || null,
                             subaccount_wallet_id: retryResult.data.walletId || seller.subaccount_wallet_id || null,
                         }, { transaction });
 
@@ -174,11 +183,14 @@ class SellerSubAccountService {
 
             // Se criou com sucesso, atualizar o seller
             console.log(`DEBUG - Nova subconta criada: ${asaasResult.data.id}`);
-            console.log(`DEBUG - Dados da nova subconta: apiKey=${asaasResult.data.apiKey ? 'presente' : 'ausente'}, walletId=${asaasResult.data.walletId ? 'presente' : 'ausente'}`);
+            const _newApiKey = asaasResult.data.accessToken?.apiKey || asaasResult.data.apiKey;
+            console.log(`DEBUG - Dados da nova subconta: id=${asaasResult.data.id}, walletId=${asaasResult.data.walletId ? 'presente' : 'ausente'}, apiKey=${_newApiKey ? 'presente' : 'ausente'}`);
 
+            // A API Asaas retorna apiKey dentro de accessToken (não no root)
+            // e walletId no root da resposta de criação
             await seller.update({
                 subaccount_id: asaasResult.data.id,
-                subaccount_api_key: asaasResult.data.apiKey || seller.subaccount_api_key || null,
+                subaccount_api_key: _newApiKey || seller.subaccount_api_key || null,
                 subaccount_wallet_id: asaasResult.data.walletId || seller.subaccount_wallet_id || null,
             }, { transaction });
 

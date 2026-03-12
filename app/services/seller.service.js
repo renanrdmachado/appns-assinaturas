@@ -156,16 +156,18 @@ class SellerService {
             });
 
             // 3. Criar subconta no Asaas
+            // SellerSubAccountService.create() é responsável por salvar subaccount_id,
+            // subaccount_wallet_id e subaccount_api_key no seller — não duplicar aqui.
             const subAccountResult = await SellerSubAccountService.create(newSeller, t);
 
-            // 4. Atualizar o seller local com os dados da subconta
-            await newSeller.update({
-                subaccount_id: subAccountResult.data.id,
-                subaccount_api_key: subAccountResult.data.apiKey || null,
-                subaccount_wallet_id: subAccountResult.data.walletId || null,
-            }, { transaction: t });
+            if (!subAccountResult.success) {
+                throw createError(
+                    subAccountResult.message || 'Falha ao criar subconta no Asaas',
+                    subAccountResult.status || 500
+                );
+            }
 
-            // 5. Criar assinatura padrão local
+            // 4. Criar assinatura padrão local
             const existingSubscription = await SellerSubscription.findOne({
                 where: { seller_id: seller.id },
                 transaction: t
