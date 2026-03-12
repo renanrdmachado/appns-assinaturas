@@ -171,6 +171,14 @@ class SellerSubAccountService {
             const cpfDigits = String(cpfCnpj).replace(/\D/g, '');
             console.log(`   🔍 Procurando na lista de ${response.data.length} subcontas...`);
 
+            // DEBUG: Exibir todos os CPFs listados
+            console.log(`   📊 CPFs encontrados nas subcontas:`);
+            for (let i = 0; i < response.data.length; i++) {
+                const sub = response.data[i];
+                const subCpf = String(sub.cpfCnpj || '').replace(/\D/g, '');
+                console.log(`      [${i + 1}] ID: ${sub.id}, CPF: ${sub.cpfCnpj} (digits: ${subCpf}), Email: ${sub.email}`);
+            }
+
             // Procurar na lista
             for (const subconta of response.data) {
                 const subCpfDigits = String(subconta.cpfCnpj || '').replace(/\D/g, '');
@@ -181,38 +189,18 @@ class SellerSubAccountService {
                 }
             }
 
-            console.log(`   ❌ CPF não encontrado na lista`);
-            return null;
+            console.log(`   ❌ CPF ${cpfDigits} não encontrado na lista`);
+            console.log(`      subaccount_wallet_id: ${walletId || '(null)'}`);
+            console.log(`      subaccount_api_key: ${apiKey ? '(salvo)' : '(null)'}`);
 
-        } catch (err) {
-            console.log(`   ⚠️  Erro ao listar subcontas: ${err.message}`);
-            return null;
+            await seller.update({
+                subaccount_id: id,
+                subaccount_wallet_id: walletId || null,
+                subaccount_api_key: apiKey || null
+            }, { transaction });
+
+            console.log(`   ✅ Seller #${seller.id} atualizado com sucesso\n`);
         }
-    }
-
-
-    /**
-     * PRIVADO: Salva dados extraídos da subconta no seller
-     * @param {object} seller - Instância do Seller
-     * @param {object} apiResponse - Resposta da API Asaas (resposta completa)
-     * @param {object} transaction - Transação Sequelize
-     */
-    async _updateSellerWithSubaccountData(seller, apiResponse, transaction) {
-        const { id, walletId, apiKey } = this._extractSubaccountData(apiResponse);
-
-        console.log('\n   💾 SALVANDO NO BANCO:');
-        console.log(`      subaccount_id: ${id}`);
-        console.log(`      subaccount_wallet_id: ${walletId || '(null)'}`);
-        console.log(`      subaccount_api_key: ${apiKey ? '(salvo)' : '(null)'}`);
-
-        await seller.update({
-            subaccount_id: id,
-            subaccount_wallet_id: walletId || null,
-            subaccount_api_key: apiKey || null
-        }, { transaction });
-
-        console.log(`   ✅ Seller #${seller.id} atualizado com sucesso\n`);
-    }
 
 
     /**
@@ -221,159 +209,159 @@ class SellerSubAccountService {
      * @returns {object} - Os dados formatados para a API do Asaas.
      */
     formatDataForAsaasSubAccount(seller) {
-        if (!seller || !seller.user || !seller.user.userData) {
-            throw createError('Dados insuficientes para formatar para o Asaas. Relações `user` e `userData` são necessárias.', 400);
-        }
-
-        const { user } = seller;
-        const { userData } = user;
-
-        const {
-            name,
-            email,
-            cpf_cnpj,
-            company_type,
-            phone,
-            mobile_phone,
-            address,
-            address_number,
-            complement,
-            province,
-            postal_code,
-            birth_date,
-            income_value
-        } = userData;
-
-        // Validação de CPF/CNPJ
-        const isPerson = cpf_cnpj && cpf_cnpj.length <= 11;
-        if (isPerson && !birth_date) {
-            throw createError('Data de nascimento é obrigatória para CPF.', 400);
-        }
-
-        const formattedData = {
-            name: name || user.username,
-            email: email || user.email,
-            cpfCnpj: cpf_cnpj,
-            loginEmail: email || user.email,
-            companyType: company_type,
-            phone,
-            mobilePhone: mobile_phone,
-            address,
-            addressNumber: address_number,
-            complement,
-            province,
-            postalCode: postal_code,
-            birthDate: birth_date,
-            incomeValue: income_value
-        };
-
-        // Remove apenas chaves com valores nulos ou indefinidos, exceto campos obrigatórios
-        const requiredFields = ['cpfCnpj', 'mobilePhone', 'incomeValue'];
-        Object.keys(formattedData).forEach(key => {
-            if ((formattedData[key] === null || formattedData[key] === undefined) && !requiredFields.includes(key)) {
-                delete formattedData[key];
+            if (!seller || !seller.user || !seller.user.userData) {
+                throw createError('Dados insuficientes para formatar para o Asaas. Relações `user` e `userData` são necessárias.', 400);
             }
-        });
 
-        // Validação adicional para campos obrigatórios
-        if (!formattedData.cpfCnpj) {
-            throw createError('CPF/CNPJ é obrigatório para criar subconta', 400);
-        }
-        if (!formattedData.mobilePhone) {
-            throw createError('Telefone celular é obrigatório para criar subconta', 400);
-        }
-        if (!formattedData.incomeValue) {
-            throw createError('Valor de renda é obrigatório para criar subconta', 400);
-        }
+            const { user } = seller;
+            const { userData } = user;
 
-        return formattedData;
-    }
+            const {
+                name,
+                email,
+                cpf_cnpj,
+                company_type,
+                phone,
+                mobile_phone,
+                address,
+                address_number,
+                complement,
+                province,
+                postal_code,
+                birth_date,
+                income_value
+            } = userData;
+
+            // Validação de CPF/CNPJ
+            const isPerson = cpf_cnpj && cpf_cnpj.length <= 11;
+            if (isPerson && !birth_date) {
+                throw createError('Data de nascimento é obrigatória para CPF.', 400);
+            }
+
+            const formattedData = {
+                name: name || user.username,
+                email: email || user.email,
+                cpfCnpj: cpf_cnpj,
+                loginEmail: email || user.email,
+                companyType: company_type,
+                phone,
+                mobilePhone: mobile_phone,
+                address,
+                addressNumber: address_number,
+                complement,
+                province,
+                postalCode: postal_code,
+                birthDate: birth_date,
+                incomeValue: income_value
+            };
+
+            // Remove apenas chaves com valores nulos ou indefinidos, exceto campos obrigatórios
+            const requiredFields = ['cpfCnpj', 'mobilePhone', 'incomeValue'];
+            Object.keys(formattedData).forEach(key => {
+                if ((formattedData[key] === null || formattedData[key] === undefined) && !requiredFields.includes(key)) {
+                    delete formattedData[key];
+                }
+            });
+
+            // Validação adicional para campos obrigatórios
+            if (!formattedData.cpfCnpj) {
+                throw createError('CPF/CNPJ é obrigatório para criar subconta', 400);
+            }
+            if (!formattedData.mobilePhone) {
+                throw createError('Telefone celular é obrigatório para criar subconta', 400);
+            }
+            if (!formattedData.incomeValue) {
+                throw createError('Valor de renda é obrigatório para criar subconta', 400);
+            }
+
+            return formattedData;
+        }
 
     /**
      * Busca a subconta de um vendedor
      * @param {number} sellerId - ID do vendedor
      */
     async getBySellerId(sellerId) {
-        try {
-            // Verificar se o vendedor existe
             try {
-                SellerValidator.validateId(sellerId);
-            } catch (validationError) {
-                return formatError(validationError);
-            }
-
-            const seller = await Seller.findByPk(sellerId);
-            if (!seller) {
-                return createError('Vendedor não encontrado', 404);
-            }
-
-            // Verificar se o vendedor tem uma subconta
-            if (!seller.subaccount_id) {
-                return createError('Vendedor não possui uma subconta associada', 404);
-            }
-
-            // Buscar detalhes da subconta no Asaas
-            const subAccountParams = new URLSearchParams();
-            subAccountParams.append('cpfCnpj', seller.Asaas_cpfCnpj);
-
-            const asaasResult = await subAccountService.getSubAccountByCpfCnpj(seller.Asaas_cpfCnpj);
-
-            // Verificar se encontrou a subconta
-            if (!asaasResult) {
-                return createError(`Subconta do vendedor não encontrada no Asaas (ID: ${seller.subaccount_id})`, 404);
-            }
-
-            return {
-                success: true,
-                data: {
-                    seller: seller,
-                    subaccount: asaasResult
+                // Verificar se o vendedor existe
+                try {
+                    SellerValidator.validateId(sellerId);
+                } catch (validationError) {
+                    return formatError(validationError);
                 }
-            };
-        } catch (error) {
-            console.error(`Erro ao buscar subconta do vendedor ID ${sellerId}:`, error.message);
-            return formatError(error);
-        }
-    }
 
-    /**
-     * Lista todas as subcontas de vendedores
-     */
-    async getAll() {
-        try {
-            // Buscar todos os vendedores que possuem subconta
-            const sellers = await Seller.findAll({
-                where: {
-                    subaccount_id: {
-                        [Op.ne]: null
-                    }
+                const seller = await Seller.findByPk(sellerId);
+                if (!seller) {
+                    return createError('Vendedor não encontrado', 404);
                 }
-            });
 
-            // Para cada vendedor, buscar detalhes da subconta no Asaas
-            const result = [];
+                // Verificar se o vendedor tem uma subconta
+                if (!seller.subaccount_id) {
+                    return createError('Vendedor não possui uma subconta associada', 404);
+                }
 
-            for (const seller of sellers) {
+                // Buscar detalhes da subconta no Asaas
                 const subAccountParams = new URLSearchParams();
                 subAccountParams.append('cpfCnpj', seller.Asaas_cpfCnpj);
 
                 const asaasResult = await subAccountService.getSubAccountByCpfCnpj(seller.Asaas_cpfCnpj);
 
-                result.push({
-                    seller: seller,
-                    subaccount: asaasResult || { id: seller.subaccount_id, message: 'Detalhes da subconta não encontrados no Asaas' }
-                });
-            }
+                // Verificar se encontrou a subconta
+                if (!asaasResult) {
+                    return createError(`Subconta do vendedor não encontrada no Asaas (ID: ${seller.subaccount_id})`, 404);
+                }
 
-            return {
-                success: true,
-                data: result
-            };
-        } catch (error) {
-            console.error('Erro ao listar subcontas de vendedores:', error.message);
-            return formatError(error);
+                return {
+                    success: true,
+                    data: {
+                        seller: seller,
+                        subaccount: asaasResult
+                    }
+                };
+            } catch (error) {
+                console.error(`Erro ao buscar subconta do vendedor ID ${sellerId}:`, error.message);
+                return formatError(error);
+            }
+        }
+
+    /**
+     * Lista todas as subcontas de vendedores
+     */
+    async getAll() {
+            try {
+                // Buscar todos os vendedores que possuem subconta
+                const sellers = await Seller.findAll({
+                    where: {
+                        subaccount_id: {
+                            [Op.ne]: null
+                        }
+                    }
+                });
+
+                // Para cada vendedor, buscar detalhes da subconta no Asaas
+                const result = [];
+
+                for (const seller of sellers) {
+                    const subAccountParams = new URLSearchParams();
+                    subAccountParams.append('cpfCnpj', seller.Asaas_cpfCnpj);
+
+                    const asaasResult = await subAccountService.getSubAccountByCpfCnpj(seller.Asaas_cpfCnpj);
+
+                    result.push({
+                        seller: seller,
+                        subaccount: asaasResult || { id: seller.subaccount_id, message: 'Detalhes da subconta não encontrados no Asaas' }
+                    });
+                }
+
+                return {
+                    success: true,
+                    data: result
+                };
+            } catch (error) {
+                console.error('Erro ao listar subcontas de vendedores:', error.message);
+                return formatError(error);
+            }
         }
     }
-}
 
 module.exports = new SellerSubAccountService();
