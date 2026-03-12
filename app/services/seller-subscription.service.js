@@ -1106,6 +1106,12 @@ class SellerSubscriptionService {
                     ? `Assinatura ${existingSubscription.status === 'pending' ? 'reativada' : 'renovada'} com sucesso`
                     : 'Assinatura criada com sucesso',
                 data: {
+                    seller: {
+                        id: sellerWithRelations.id,
+                        subaccount_id: sellerWithRelations.subaccount_id,
+                        subaccount_wallet_id: sellerWithRelations.subaccount_wallet_id,
+                        subaccount_api_key: sellerWithRelations.subaccount_api_key ? 'presente' : null
+                    },
                     local_subscription: localSubscription,
                     asaas_subscription: asaasSubscription
                 }

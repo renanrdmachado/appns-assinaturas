@@ -61,6 +61,19 @@ class SubAccountService {
                     data: accountData
                 });
                 console.log(`DEBUG - Nova subconta criada com sucesso: ID=${subAccountData.id}`);
+                
+                // DEBUG DETALHADO
+                console.log('🔍 RETORNO COMPLETO DA API ASAAS - CRIAÇÃO DE SUBCONTA:');
+                console.log(JSON.stringify({
+                    id: subAccountData.id,
+                    walletId: subAccountData.walletId,
+                    apiKey: subAccountData.apiKey,
+                    accessToken: subAccountData.accessToken,
+                    email: subAccountData.email,
+                    cpfCnpj: subAccountData.cpfCnpj,
+                    name: subAccountData.name
+                }, null, 2));
+                
                 return { success: true, data: subAccountData };
             } catch (err) {
                 console.error('Erro ao criar subconta no Asaas:', err.message);
