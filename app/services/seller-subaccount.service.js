@@ -96,7 +96,7 @@ class SellerSubAccountService {
 
                 // Se mesmo assim não encontrou, é erro irreconciliável
                 throw createError(
-                    `CPF ${cpfCnpj} em uso mas não foi possível recuperar a subconta`,
+                    `Este CPF/CNPJ já possui uma conta Asaas. Para receber vendas por aqui, é necessário utilizar um CNPJ diferente ou entrar em contato com o suporte.`,
                     409
                 );
             }
@@ -126,6 +126,30 @@ class SellerSubAccountService {
             const errObj = createError(error.message || 'Erro interno ao criar subconta', isConflict ? 409 : 500);
             errObj.conflict = isConflict;
             return errObj;
+        }
+    }
+
+    /**
+     * PRIVADO: Atualiza o seller com dados da subconta do Asaas
+     * @param {object} seller - Instância do Seller
+     * @param {object} subaccountData - Dados da subconta (id, walletId, apiKey)
+     * @param {object} transaction - Transação do Sequelize (opcional)
+     */
+    async _updateSellerWithSubaccountData(seller, subaccountData, transaction) {
+        try {
+            console.log(`   📝 Atualizando seller ${seller.id} com dados da subconta...`);
+
+            const updateData = {
+                subaccount_id: subaccountData.id,
+                subaccount_wallet_id: subaccountData.walletId,
+                subaccount_api_key: subaccountData.apiKey
+            };
+
+            await seller.update(updateData, { transaction });
+            console.log(`   ✅ Seller atualizado com sucesso. Subconta ID: ${subaccountData.id}`);
+        } catch (error) {
+            console.error(`   ❌ Erro ao atualizar seller: ${error.message}`);
+            throw error;
         }
     }
 

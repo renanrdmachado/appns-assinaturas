@@ -182,7 +182,7 @@ class SubAccountService {
                     // Se todas as tentativas falharam
                     console.error('Todas as tentativas de recuperação de subconta falharam');
                     console.warn('DEBUG - Conflito irreconciliável de subconta. Diagnostic payload:', JSON.stringify(diagnostics, null, 2));
-                    return { success: false, message: 'CPF informado já está em uso mas não foi possível recuperar a subconta existente', status: 409, diagnostics };
+                    return { success: false, message: 'Este CPF/CNPJ já possui uma conta Asaas. Para receber vendas por aqui, é necessário utilizar um CNPJ diferente ou entrar em contato com o suporte.', status: 409, diagnostics };
                 }
 
                 // Se não é erro de CPF em uso, retornar o erro original
